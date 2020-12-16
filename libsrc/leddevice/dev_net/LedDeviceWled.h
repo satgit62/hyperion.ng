@@ -6,10 +6,14 @@
 #include "ProviderRestApi.h"
 #include "ProviderUdp.h"
 
+// bonjour wrapper
+#include <HyperionConfig.h>
+#ifdef ENABLE_AVAHI
+#include <bonjour/bonjourbrowserwrapper.h>
+#endif
+
 ///
 /// Implementation of a WLED-device
-/// ...
-///
 ///
 class LedDeviceWled : public ProviderUdp
 {
@@ -105,6 +109,25 @@ protected:
 	///
 	bool powerOff() override;
 
+	///
+	/// @brief Store the device's original state.
+	///
+	/// Save the device's state before hyperion color streaming starts allowing to restore state during switchOff().
+	///
+	/// @return True if success
+	///
+	bool storeState() override;
+
+	///
+	/// @brief Restore the device's original state.
+	///
+	/// Restore the device's state as before hyperion color streaming started.
+	/// This includes the on/off state of the device.
+	///
+	/// @return True, if success
+	///
+	bool restoreState() override;
+
 private:
 
 	///
@@ -123,12 +146,25 @@ private:
 	/// @return Command to switch device on/off
 	///
 	QString getOnOffRequest (bool isOn ) const;
+	QString getBrightnessRequest (int bri ) const;
+	QString getEffectRequest(int effect, int speed=128) const;
+	QString getLorRequest(int lor) const;
+
+	bool sendStateUpdateRequest(const QString &request);
 
 	///REST-API wrapper
 	ProviderRestApi* _restApi;
 
 	QString _hostname;
 	int		_apiPort;
+
+	QJsonObject _originalStateProperties;
+
+#ifdef ENABLE_AVAHI
+	/// Bonjour instance
+	BonjourBrowserWrapper* _bonjour;
+#endif
+
 };
 
 #endif // LEDDEVICEWLED_H

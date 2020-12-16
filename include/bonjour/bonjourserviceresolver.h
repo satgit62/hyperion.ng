@@ -1,5 +1,6 @@
 /*
 Copyright (c) 2007, Trenton Schulz
+2020, Updates Lord-Grey
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -30,6 +31,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define BONJOURSERVICERESOLVER_H
 
 #include <QtCore/QObject>
+#include <QMap>
 
 #ifndef PLATFORM_AMLOGIC
 #include <dns_sd.h>
@@ -50,7 +52,7 @@ public:
     bool resolveBonjourRecord(const BonjourRecord &record);
 
 signals:
-    void bonjourRecordResolved(const QHostInfo &hostInfo, int port);
+	void bonjourRecordResolved(const QString &fullname, const QHostInfo &hostInfo, int port, const QMap<QString,QByteArray> &txt);
     void error(DNSServiceErrorType error);
 
 private slots:
@@ -63,9 +65,12 @@ private:
                                     quint32 interfaceIndex, DNSServiceErrorType errorCode,
                                     const char *fullName, const char *hosttarget, quint16 port,
                                     quint16 txtLen, const char *txtRecord, void *context);
-    DNSServiceRef dnssref;
-    QSocketNotifier *bonjourSocket;
-    int bonjourPort;
+
+	DNSServiceRef _dnssref;
+	QSocketNotifier *_bonjourSocket;
+	QString _bonjourFullname;
+	int _bonjourPort;
+	QMap<QString,QByteArray> _bonjourTxtData;
 };
 
 #endif // BONJOURSERVICERESOLVER_H

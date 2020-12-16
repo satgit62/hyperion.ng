@@ -1,5 +1,6 @@
 /*
 Copyright (c) 2007, Trenton Schulz
+2020, Updates Lord-Grey
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -31,32 +32,42 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <QtCore/QMetaType>
 #include <QtCore/QString>
+#include <QtCore/QMap>
 
 class BonjourRecord
 {
 public:
 	BonjourRecord() : port(-1) {}
-	BonjourRecord(const QString &name, const QString &regType, const QString &domain)
+	BonjourRecord(const QString &name, const QString &regType, const QString &domain, uint32_t interfaceIndex)
 		: serviceName(name)
 		, registeredType(regType)
 		, replyDomain(domain)
+		, interfaceIndex(interfaceIndex)
 		, port(-1)
+		, fullName()
+		, txt()
 	{}
 
-	BonjourRecord(const char *name, const char *regType, const char *domain)
+	BonjourRecord(const char *name, const char *regType, const char *domain, uint32_t interfaceIndex)
 		: serviceName(QString::fromUtf8(name))
 		, registeredType(QString::fromUtf8(regType))
 		, replyDomain(QString::fromUtf8(domain))
+		, interfaceIndex(interfaceIndex)
 		, port(-1)
+		, txt()
 	{
 	}
 
 	QString serviceName;
 	QString registeredType;
 	QString replyDomain;
+	uint32_t interfaceIndex;
 	QString hostName;
 	QString address;
 	int     port;
+
+	QString fullName;
+	QMap<QString,QByteArray> txt;
 
 	bool operator==(const BonjourRecord &other) const
 	{

@@ -8,11 +8,14 @@
 
 //std includes
 #include <iostream>
+#include <chrono>
 
 // Constants
 namespace {
 
 const QChar ONE_SLASH = '/';
+
+constexpr std::chrono::milliseconds DEFAULT_REST_TIMEOUT{ 200 };
 
 } //End of constants
 
@@ -123,9 +126,13 @@ httpResponse ProviderRestApi::get(const QUrl &url)
 	// Perform request
 	QNetworkRequest request(url);
 	QNetworkReply* reply = _networkManager->get(request);
+
 	// Connect requestFinished signal to quit slot of the loop.
 	QEventLoop loop;
 	loop.connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+
+	ReplyTimeout::set(reply, DEFAULT_REST_TIMEOUT.count());
+
 	// Go into the loop until the request is finished.
 	loop.exec();
 
@@ -154,6 +161,9 @@ httpResponse ProviderRestApi::put(const QUrl &url, const QString &body)
 	// Connect requestFinished signal to quit slot of the loop.
 	QEventLoop loop;
 	loop.connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+
+	ReplyTimeout::set(reply, DEFAULT_REST_TIMEOUT.count());
+
 	// Go into the loop until the request is finished.
 	loop.exec();
 
@@ -231,10 +241,20 @@ httpResponse ProviderRestApi::getResponse(QNetworkReply* const &reply)
 			errorReason = QString ("[%3 %4] - %5").arg(QString(httpStatusCode) , httpReason, advise);
 		}
 		else {
+
 			errorReason = reply->errorString();
+
+			if ( reply->error() == QNetworkReply::OperationCanceledError )
+			{
+				//Do not report errors caused by request cancellation because of timeouts
+				Debug(_log, "Reply: [%s]", QSTRING_CSTR(errorReason) );
+			}
+			else
+			{
+				response.setError(true);
+				response.setErrorReason(errorReason);
+			}
 		}
-		response.setError(true);
-		response.setErrorReason(errorReason);
 
 		// Create valid body which is empty
 		response.setBody( QJsonDocument() );

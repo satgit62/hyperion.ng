@@ -1,5 +1,6 @@
 /*
 Copyright (c) 2007, Trenton Schulz
+2020, Updates Lord-Grey
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -44,7 +45,7 @@ class BonjourServiceRegister : public QObject
 {
     Q_OBJECT
 public:
-    BonjourServiceRegister(QObject *parent = 0);
+	BonjourServiceRegister(QObject *parent = nullptr);
     ~BonjourServiceRegister() override;
 
     void registerService(const QString& service, int port);
@@ -64,7 +65,8 @@ private:
     static void DNSSD_API bonjourRegisterService(DNSServiceRef sdRef, DNSServiceFlags,
                                        DNSServiceErrorType errorCode, const char *name,
                                        const char *regtype, const char *domain,
-                                       void *context);
+									   void *data);
+
     DNSServiceRef dnssref;
     QSocketNotifier *bonjourSocket;
     BonjourRecord finalRecord;

@@ -9,7 +9,9 @@
 // components
 
 #include <hyperion/ComponentRegister.h>
+
 // bonjour wrapper
+#include <HyperionConfig.h>
 #ifdef ENABLE_AVAHI
 #include <bonjour/bonjourbrowserwrapper.h>
 #endif

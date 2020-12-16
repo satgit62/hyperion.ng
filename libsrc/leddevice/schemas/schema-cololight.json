@@ -5,7 +5,7 @@
 		"host" : {
 			"type": "string",
 			"title":"edt_dev_spec_targetIpHost_title",
-			"propertyOrder" : 1
+			"propertyOrder" : 2
 		},
 		"latchTime": {
 			"type": "integer",
@@ -15,7 +15,7 @@
 			"minimum": 0,
 			"maximum": 1000,
 			"access" : "expert",
-			"propertyOrder" : 2
+			"propertyOrder" : 3
 		}
 	},
 	"additionalProperties": true

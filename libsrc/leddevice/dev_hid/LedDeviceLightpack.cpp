@@ -82,7 +82,7 @@ bool LedDeviceLightpack::init(const QJsonObject &deviceConfig)
 		{
 			Debug(_log, "USB context initialized");
 
-			if ( _log->getMinLevel() == Logger::LogLevel::DEBUG )
+			if ( _log->getLogLevel() == Logger::LogLevel::DEBUG )
 			{
 				int logLevel = LIBUSB_LOG_LEVEL_INFO;
 				#if LIBUSB_API_VERSION >= 0x01000106
@@ -197,11 +197,9 @@ bool LedDeviceLightpack::searchDevice(libusb_device * device, const QString & re
 		return false;
 	}
 
-	#define UNO_VENDOR_ID      0x2341
-	#define UNO_PRODUCT_ID     0x43
-
 	if ((deviceDescriptor.idVendor == USB_VENDOR_ID && deviceDescriptor.idProduct == USB_PRODUCT_ID) ||
-		 (deviceDescriptor.idVendor == USB_OLD_VENDOR_ID && deviceDescriptor.idProduct == USB_OLD_PRODUCT_ID))
+		 (deviceDescriptor.idVendor == USB_OLD_VENDOR_ID && deviceDescriptor.idProduct == USB_OLD_PRODUCT_ID)
+	   )
 	{
 		Info(_log, "Found a Lightpack device. Retrieving more information...");
 
@@ -346,7 +344,7 @@ int LedDeviceLightpack::writeBytes(uint8_t *data, int size)
 	if (error != size)
 	{
 		rc = -1;
-		Error(_log, "Unable to write %d bytes to Lightpack device(%d): %s", size, error, libusb_error_name(error));
+		Error(_log, "Unable to write %d bytes to Lightpack device (%d): %s", size, error, libusb_error_name(error));
 	}
 
 	return rc;
@@ -375,28 +373,29 @@ int LedDeviceLightpack::openDevice(libusb_device *device, libusb_device_handle *
 		Error(_log, "unable to open device(%d): %s", error, libusb_error_name(error));
 		rc = -1;
 	}
-
-	// detach kernel driver if it is active
-	if (libusb_kernel_driver_active(handle, LIGHTPACK_INTERFACE) == 1)
+	else
 	{
-		error = libusb_detach_kernel_driver(handle, LIGHTPACK_INTERFACE);
+		// detach kernel driver if it is active
+		if (libusb_kernel_driver_active(handle, LIGHTPACK_INTERFACE) == 1)
+		{
+			error = libusb_detach_kernel_driver(handle, LIGHTPACK_INTERFACE);
+			if (error != LIBUSB_SUCCESS)
+			{
+				Error(_log, "unable to detach kernel driver(%d): %s", error, libusb_error_name(error));
+				libusb_close(handle);
+				rc = -1;
+			}
+		}
+
+		error = libusb_claim_interface(handle, LIGHTPACK_INTERFACE);
 		if (error != LIBUSB_SUCCESS)
 		{
-			Error(_log, "unable to detach kernel driver(%d): %s", error, libusb_error_name(error));
+			Error(_log, "unable to claim interface(%d): %s", error, libusb_error_name(error));
+			libusb_attach_kernel_driver(handle, LIGHTPACK_INTERFACE);
 			libusb_close(handle);
 			rc = -1;
 		}
 	}
-
-	error = libusb_claim_interface(handle, LIGHTPACK_INTERFACE);
-	if (error != LIBUSB_SUCCESS)
-	{
-		Error(_log, "unable to claim interface(%d): %s", error, libusb_error_name(error));
-		libusb_attach_kernel_driver(handle, LIGHTPACK_INTERFACE);
-		libusb_close(handle);
-		rc = -1;
-	}
-
 	*deviceHandle = handle;
 	return rc;
 }

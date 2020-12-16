@@ -12,76 +12,78 @@
 #include <leddevice/LedDevice.h>
 
 ///
-/// LedDevice implementation for a USBasp programmer with modified firmware (https://github.com/poljvd/hyperion-usbasp)
+/// LedDevice implementation for a USBASP programmer with modified firmware (https://github.com/poljvd/hyperion-usbasp)
 ///
 class LedDeviceHyperionUsbasp : public LedDevice
 {
 public:
-	// Commands to the Device
-	enum Commands {
-		CMD_WRITE_WS2801 = 10,
-		CMD_WRITE_WS2812 = 11
-	};
 
 	///
-	/// Constructs specific LedDevice
+	/// Constructs a Hyperion USBASP LedDevice
 	///
 	/// @param deviceConfig json device config
 	///
 	explicit LedDeviceHyperionUsbasp(const QJsonObject &deviceConfig);
 
 	///
-	/// Sets configuration
-	///
-	/// @para#endif // LEDEVICETEMPLATE_Hm deviceConfig the json device config
-	/// @return true if success
-	bool init(const QJsonObject &deviceConfig) override;
-
-	/// constructs leddevice
-	static LedDevice* construct(const QJsonObject &deviceConfig);
-
-	///
-	/// Destructor of the LedDevice; closes the output device if it is open
+	/// @brief Destructor of the LedDevice
 	///
 	~LedDeviceHyperionUsbasp() override;
 
-public slots:
 	///
-	/// Closes the output device.
-	/// Includes switching-off the device and stopping refreshes
+	/// @brief Constructs the LED-device
 	///
-	int close() override;
+	/// @param[in] deviceConfig Device's configuration as JSON-Object
+	/// @return LedDevice constructed
+	///
+	static LedDevice* construct(const QJsonObject &deviceConfig);
 
-protected:
 	///
-	/// Opens and configures the output device
+	/// @brief Initialise the device's configuration
 	///
-	/// @return Zero on succes else negative
+	/// @param[in] deviceConfig the JSON device configuration
+	/// @return True, if success
+	///
+	bool init(const QJsonObject &deviceConfig) override;
+
+	///
+	/// @brief Opens the output device.
+	///
+	/// @return Zero on success (i.e. device is ready), else negative
 	///
 	int open() override;
 
 	///
-	/// Writes the RGB-Color values to the leds.
+	/// @brief Closes the output device.
 	///
-	/// @param[in] ledValues  The RGB-color per led
+	/// @return Zero on success (i.e. device is closed), else negative
 	///
-	/// @return Zero on success else negative
-	///
-	int write(const std::vector<ColorRgb>& ledValues) override;
+	int close() override;
+
+protected:
 
 	///
-	/// Test if the device is a Hyperion Usbasp device
+	/// @brief Writes the RGB-Color values to the LEDs.
 	///
-	/// @return Zero on succes else negative
+	/// @param[in] ledValues The RGB-color per LED
+	/// @return Zero on success, else negative
 	///
-	int testAndOpen(libusb_device * device);
+	int write(const std::vector<ColorRgb> & ledValues) override;
 
-	static libusb_device_handle * openDevice(libusb_device * device);
+private:
 
-	static QString getString(libusb_device * device, int stringDescriptorIndex);
+	///
+	/// Search for a LightPack Device (first one found or matching a given serial number)
+	///
+	/// @param[in] requestedSerialNumber serial number of Lightpack to be search
+	/// @return True on Lightpack found
+	///
+	bool searchDevice(libusb_device * device, const QString & requestedSerialNumber);
 
-	/// command to write the leds
-	uint8_t _writeLedsCommand;
+	int openDevice(libusb_device *device, libusb_device_handle ** deviceHandle);
+	int closeDevice(libusb_device_handle * deviceHandle);
+
+	QString getProperty(libusb_device * device, int stringDescriptorIndex);
 
 	/// libusb context
 	libusb_context * _libusbContext;
@@ -91,6 +93,18 @@ protected:
 
 	/// libusb device handle
 	libusb_device_handle * _deviceHandle;
+
+	/// hardware bus number
+	int _busNumber;
+
+	/// hardware address number
+	int  _addressNumber;
+
+	/// device serial number
+	QString _serialNumber;
+
+	/// command to write the LEDs
+	uint8_t _writeLedsCommand;
 };
 
 #endif // LEDEVICEHYPERIONUSBASP_H

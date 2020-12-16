@@ -1,5 +1,12 @@
 ﻿#include "LedDeviceYeelight.h"
 
+// bonjour wrapper
+#include <HyperionConfig.h>
+#ifdef ENABLE_AVAHI
+#include <bonjour/bonjourbrowserwrapper.h>
+#include <leddevice/LedDeviceBonjourRegister.h>
+#endif
+
 #include <ssdp/SSDPDiscover.h>
 #include <utils/QStringUtils.h>
 
@@ -978,6 +985,9 @@ LedDeviceYeelight::LedDeviceYeelight(const QJsonObject &deviceConfig)
 	  ,_waitTimeQuota(API_DEFAULT_QUOTA_WAIT_TIME)
 	  ,_debuglevel(0)
 	  ,_musicModeServerPort(-1)
+#ifdef ENABLE_AVAHI
+	  , _bonjour(BonjourBrowserWrapper::getInstance())
+#endif
 {
 }
 
@@ -1347,14 +1357,10 @@ bool LedDeviceYeelight::restoreState()
 	return rc;
 }
 
-QJsonObject LedDeviceYeelight::discover(const QJsonObject& /*params*/)
+QJsonArray LedDeviceYeelight::discover()
 {
-	QJsonObject devicesDiscovered;
-	devicesDiscovered.insert("ledDeviceType", _activeDeviceType );
-
 	QJsonArray deviceList;
 
-	// Discover Yeelight Devices
 	SSDPDiscover discover;
 	discover.setPort(SSDP_PORT);
 	discover.skipDuplicateKeys(true);
@@ -1365,9 +1371,31 @@ QJsonObject LedDeviceYeelight::discover(const QJsonObject& /*params*/)
 	{
 		deviceList = discover.getServicesDiscoveredJson();
 	}
+	return deviceList;
+}
+
+QJsonObject LedDeviceYeelight::discover(const QJsonObject& /*params*/)
+{
+	QJsonObject devicesDiscovered;
+	devicesDiscovered.insert("ledDeviceType", _activeDeviceType );
+
+	QJsonArray deviceList;
+
+#ifdef ENABLE_AVAHI
+	QVariantList deviceListResponse;
+	QMetaObject::invokeMethod(_bonjour, "getServicesDiscoveredJson", Qt::DirectConnection,
+							   Q_RETURN_ARG(QVariantList, deviceListResponse),
+							   Q_ARG(QString,LedDeviceBonjourRegister::getServiceType(_activeDeviceType)),
+							   Q_ARG(QString,LedDeviceBonjourRegister::getServiceNameFilter(_activeDeviceType))
+							   );
+	deviceList = QJsonValue::fromVariant( deviceListResponse ).toArray();
+#else
+	deviceList = discover();
+#endif
 
 	devicesDiscovered.insert("devices", deviceList);
-	Debug(_log, "devicesDiscovered: [%s]", QString(QJsonDocument(devicesDiscovered).toJson(QJsonDocument::Compact)).toUtf8().constData() );
+
+	//Debug(_log, "devicesDiscovered: [%s]", QString(QJsonDocument(devicesDiscovered).toJson(QJsonDocument::Compact)).toUtf8().constData() );
 
 	return devicesDiscovered;
 }

@@ -5,18 +5,31 @@
 		"host": {
 			"type": "string",
 			"title":"edt_dev_spec_targetIpHost_title",
-			"propertyOrder" : 1
+			"propertyOrder" : 2,
+		    "options": {
+			  "infoText": "The device's hostname or IP-address"
+		    }			
 		},
 		"token": {
 			"type": "string",
 			"title":"edt_dev_auth_key_title",
-			"propertyOrder" : 2
+			"propertyOrder" : 4
+		},
+		"tokenGenerationButton": {
+			"title":"Generate API-Token",
+        	"format": "button",			
+		    "options": {
+		      "button": {
+		        "action": "generateToken"
+		      }
+		    },
+			"propertyOrder" : 4		    
 		},
 		"title": {
 		"type" : "object",
 		"title":"edt_dev_spec_panelorganisation_title",
 		"access" : "advanced",
-		"propertyOrder" : 3
+		"propertyOrder" : 5
 		},
 		"panelOrderTopDown": {
 			"type": "integer",
@@ -28,8 +41,9 @@
 			},
 			"minimum" : 0,
 			"maximum" : 1,
+			"required" : true,			
 			"access" : "advanced",
-			"propertyOrder" : 4
+			"propertyOrder" : 6
 		},
 		"panelOrderLeftRight": {
 			"type": "integer",
@@ -41,8 +55,9 @@
 			},
 			"minimum" : 0,
 			"maximum" : 1,
+			"required" : true,			
 			"access" : "advanced",
-			"propertyOrder" : 5
+			"propertyOrder" : 7
 		},
 		"panelStartPos": {
 			"type": "integer",
@@ -51,7 +66,7 @@
 			"minimum" : 0,
 			"default": 0,
 			"access" : "advanced",
-			"propertyOrder" : 6
+			"propertyOrder" : 8
 		}
 	},
 	"additionalProperties": true

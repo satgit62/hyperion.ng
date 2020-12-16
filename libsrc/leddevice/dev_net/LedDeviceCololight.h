@@ -5,6 +5,12 @@
 #include <leddevice/LedDevice.h>
 #include "ProviderUdp.h"
 
+// bonjour wrapper
+#include <HyperionConfig.h>
+#ifdef ENABLE_AVAHI
+#include <bonjour/bonjourbrowserwrapper.h>
+#endif
+
 enum appID {
 	TL1_CMD = 0x00,
 	DIRECT_CONTROL = 0x01,
@@ -284,6 +290,14 @@ private:
 	///
 	bool readResponse(QByteArray& response);
 
+	///
+	/// @brief Discover Cololight devices available (for configuration).
+	/// Cololight specific UDP Broadcast discovery
+	///
+	/// @return A JSON structure holding a list of devices found
+	///
+	QJsonArray discover();
+
 	// Cololight model, e.g. CololightPlus, CololightStrip
 	int _modelType;
 
@@ -305,6 +319,12 @@ private:
 
 	//Cololights discovered and their response message details
 	QMultiMap<QString, QMap <QString, QString>> _services;
+
+	#ifdef ENABLE_AVAHI
+	/// Bonjour instance
+	BonjourBrowserWrapper* _bonjour;
+	#endif
+
 };
 
 #endif // LEDEVICECOLOLIGHT_H

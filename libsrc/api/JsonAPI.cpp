@@ -547,19 +547,20 @@ void JsonAPI::handleServerInfoCommand(const QJsonObject &message, const QString 
 	// add sessions
 	QJsonArray sessions;
 #ifdef ENABLE_AVAHI
-	for (auto session: BonjourBrowserWrapper::getInstance()->getAllServices())
-	{
-		if (session.port < 0)
-			continue;
-		QJsonObject item;
-		item["name"] = session.serviceName;
-		item["type"] = session.registeredType;
-		item["domain"] = session.replyDomain;
-		item["host"] = session.hostName;
-		item["address"] = session.address;
-		item["port"] = session.port;
-		sessions.append(item);
-	}
+//	for (auto session: BonjourBrowserWrapper::getInstance()->getAllServices())
+//	{
+//		if (session.port < 0)
+//			continue;
+//		QJsonObject item;
+//		item["name"] = session.serviceName;
+//		item["type"] = session.registeredType;
+//		item["domain"] = session.replyDomain;
+//		item["host"] = session.hostName;
+//		item["address"] = session.address;
+//		item["port"] = session.port;
+//		sessions.append(item);
+//	}
+	BonjourBrowserWrapper::getInstance()->getServicesDiscoveredJson("_hyperiond-http._tcp");
 	info["sessions"] = sessions;
 #endif
 	// add instance info

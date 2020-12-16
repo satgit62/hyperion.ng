@@ -12,6 +12,11 @@ body{font-family:Roboto,"Helvetica Neue",Helvetica,Arial,sans-serif;font-size:15
 body{
     overflow-y: scroll;
 }
+
+table.jsoneditor-tree > tbody > tr.jsoneditor-expandable:first-child {
+      display: none ;
+    }
+
 /*
 #page-wrapper a[target=_blank]::after {
     content:"\f08e";

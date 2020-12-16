@@ -6,6 +6,12 @@
 #include "ProviderRestApi.h"
 #include "ProviderUdp.h"
 
+// bonjour wrapper
+#include <HyperionConfig.h>
+#ifdef ENABLE_AVAHI
+#include <bonjour/bonjourbrowserwrapper.h>
+#endif
+
 // Qt includes
 #include <QString>
 #include <QNetworkAccessManager>
@@ -149,9 +155,15 @@ private:
 	///
 	/// @brief Change Nanoleaf device to External Control (UDP) mode
 	///
-	/// @return Response from device
-	///@brief
-	QJsonDocument changeToExternalControlMode();
+	/// @return True, if success
+	bool changeToExternalControlMode();
+	///
+	/// @brief Change Nanoleaf device to External Control (UDP) mode
+	///
+	/// @param[out] response from device
+	///
+	/// @return True, if success
+	bool changeToExternalControlMode(QJsonDocument& resp);
 
 	///
 	/// @brief Get command to power Nanoleaf device on or off
@@ -160,6 +172,14 @@ private:
 	/// @return Command to switch device on/off
 	///
 	QString getOnOffRequest(bool isOn) const;
+
+	///
+	/// @brief Discover Nanoleaf devices available (for configuration).
+	/// Nanoleaf specific ssdp discovery
+	///
+	/// @return A JSON structure holding a list of devices found
+	///
+	QJsonArray discover();
 
 	///REST-API wrapper
 	ProviderRestApi* _restApi;
@@ -183,6 +203,11 @@ private:
 
 	/// Array of the panel ids.
 	QVector<int> _panelIds;
+
+#ifdef ENABLE_AVAHI
+	/// Bonjour instance
+	BonjourBrowserWrapper* _bonjour;
+#endif
 };
 
 #endif // LEDEVICENANOLEAF_H

@@ -463,6 +463,7 @@
     "edt_dev_spec_debugLevel_title": "Debug Level",
     "edt_dev_spec_debugStreamer_title": "Streamer Debug",
     "edt_dev_spec_delayAfterConnect_title": "Delay after connect",
+    "edt_dev_spec_devices_discovered_title": "Devices Discovered",    
     "edt_dev_spec_dithering_title": "Dithering",
     "edt_dev_spec_dmaNumber_title": "DMA channel",
     "edt_dev_spec_gamma_title": "Gamma",

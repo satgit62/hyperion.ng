@@ -4,6 +4,12 @@
 // LedDevice includes
 #include <leddevice/LedDevice.h>
 
+// bonjour wrapper
+#include <HyperionConfig.h>
+#ifdef ENABLE_AVAHI
+#include <bonjour/bonjourbrowserwrapper.h>
+#endif
+
 // Qt includes
 #include <QTcpSocket>
 #include <QHostAddress>
@@ -591,6 +597,14 @@ private:
 	///
 	uint getLightsCount() const { return _lightsCount; }
 
+	///
+	/// @brief Discover Yeelight devices available (for configuration).
+	/// Yeelight specific UDP Broadcast discovery
+	///
+	/// @return A JSON structure holding a list of devices found
+	///
+	QJsonArray discover();
+
 	/// Array of the Yeelight addresses handled by the LED-device
 	QVector<yeelightAddress> _lightsAddressList;
 
@@ -617,6 +631,11 @@ private:
 	QHostAddress _musicModeServerAddress;
 	int _musicModeServerPort;
 	QTcpServer* _tcpMusicModeServer = nullptr;
+
+#ifdef ENABLE_AVAHI
+	/// Bonjour instance
+	BonjourBrowserWrapper* _bonjour;
+#endif
 
 };
 

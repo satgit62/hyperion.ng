@@ -1,11 +1,26 @@
 {
 	"type":"object",
+	"title" : "",	
 	"required":true,
 	"properties":{
 		"host" : {
 			"type": "string",
 			"title":"edt_dev_spec_targetIpHost_title",
-			"propertyOrder" : 1
+			"required":true,
+			"propertyOrder" : 2,
+		    "options": {
+			  "infoText": "The device's hostname or IP-address"
+		    }
+		},
+		"restoreOriginalState": {
+			"type": "boolean",
+			"title":"edt_dev_spec_restoreOriginalState_title",
+			"default" : false,
+			"required" : true,
+			"options": {
+				"infoText": "Restore the device's original state when device is disabled"
+			},
+			"propertyOrder" : 3
 		},
 		"latchTime": {
 			"type": "integer",
@@ -15,8 +30,11 @@
 			"minimum": 0,
 			"maximum": 1000,
 			"access" : "expert",
-			"propertyOrder" : 2
-		}
+			"options": {
+				"infoText": "latchTime Info Text"
+			},
+			"propertyOrder" : 4
+		} 	
 	},
 	"additionalProperties": true
 }

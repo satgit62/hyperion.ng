@@ -27,6 +27,7 @@
 			"type": "boolean",
 			"title":"edt_dev_spec_LBap102Mode_title",
 			"default": false,
+			"required" : true,			
 			"access" : "advanced",
 			"propertyOrder" : 4
 		},

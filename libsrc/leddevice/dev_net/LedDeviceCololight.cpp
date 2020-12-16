@@ -1,5 +1,12 @@
 #include "LedDeviceCololight.h"
 
+// bonjour wrapper
+#include <HyperionConfig.h>
+#ifdef ENABLE_AVAHI
+#include <bonjour/bonjourbrowserwrapper.h>
+#include <leddevice/LedDeviceBonjourRegister.h>
+#endif
+
 #include <utils/QStringUtils.h>
 #include <QUdpSocket>
 #include <QHostInfo>
@@ -17,6 +24,9 @@ const bool verbose3 = false;
 
 const char CONFIG_HW_LED_COUNT[] = "hardwareLedCount";
 
+const int COLOLIGHT_BEADS_PER_MODULE = 19;
+const int COLOLIGHT_MIN_STRIP_SEGMENT_SIZE = 30;
+
 // Cololight discovery service
 
 const int API_DEFAULT_PORT = 8900;
@@ -24,7 +34,7 @@ const int API_DEFAULT_PORT = 8900;
 const char DISCOVERY_ADDRESS[] = "255.255.255.255";
 const quint16 DISCOVERY_PORT = 12345;
 const char DISCOVERY_MESSAGE[] = "Z-SEARCH * \r\n";
-constexpr std::chrono::milliseconds DEFAULT_DISCOVERY_TIMEOUT{ 5000 };
+constexpr std::chrono::milliseconds DEFAULT_DISCOVERY_TIMEOUT{ 2000 };
 constexpr std::chrono::milliseconds DEFAULT_READ_TIMEOUT{ 1000 };
 constexpr std::chrono::milliseconds DEFAULT_IDENTIFY_TIME{ 2000 };
 
@@ -35,9 +45,6 @@ const char COLOLIGHT_NAME[] = "name";
 
 const char COLOLIGHT_MODEL_IDENTIFIER[] = "OD_WE_QUAN";
 
-const int COLOLIGHT_BEADS_PER_MODULE = 19;
-const int COLOLIGHT_MIN_STRIP_SEGMENT_SIZE = 30;
-
 } //End of constants
 
 LedDeviceCololight::LedDeviceCololight(const QJsonObject& deviceConfig)
@@ -47,6 +54,9 @@ LedDeviceCololight::LedDeviceCololight(const QJsonObject& deviceConfig)
 	  , _ledBeadCount(0)
 	  , _distance(0)
 	  , _sequenceNumber(1)
+#ifdef ENABLE_AVAHI
+	  , _bonjour(BonjourBrowserWrapper::getInstance())
+#endif
 {
 	_packetFixPart.append(reinterpret_cast<const char*>(PACKET_HEADER), sizeof(PACKET_HEADER));
 	_packetFixPart.append(reinterpret_cast<const char*>(PACKET_SECU), sizeof(PACKET_SECU));
@@ -545,20 +555,15 @@ bool LedDeviceCololight::powerOff()
 	return off;
 }
 
-QJsonObject LedDeviceCololight::discover(const QJsonObject& /*params*/)
+QJsonArray LedDeviceCololight::discover()
 {
-	QJsonObject devicesDiscovered;
-	devicesDiscovered.insert("ledDeviceType", _activeDeviceType);
-
-	QJsonArray deviceList;
-
 	QUdpSocket udpSocket;
 
 	udpSocket.writeDatagram(QString(DISCOVERY_MESSAGE).toUtf8(), QHostAddress(DISCOVERY_ADDRESS), DISCOVERY_PORT);
 
 	if (udpSocket.waitForReadyRead(DEFAULT_DISCOVERY_TIMEOUT.count()))
 	{
-		while (udpSocket.waitForReadyRead(500))
+		while (udpSocket.waitForReadyRead(200))
 		{
 			QByteArray datagram;
 
@@ -602,13 +607,13 @@ QJsonObject LedDeviceCololight::discover(const QJsonObject& /*params*/)
 		}
 	}
 
+	QJsonArray deviceList;
 	QMap<QString, QMap <QString, QString>>::iterator i;
 	for (i = _services.begin(); i != _services.end(); ++i)
 	{
 		QJsonObject obj;
 
-		QString ipAddress = i.key();
-		obj.insert("ip", ipAddress);
+		obj.insert("ip", i.key());
 		obj.insert("model", i.value().value(COLOLIGHT_MODEL));
 		obj.insert("type", i.value().value(COLOLIGHT_MODEL_TYPE));
 		obj.insert("mac", i.value().value(COLOLIGHT_MAC));
@@ -618,6 +623,7 @@ QJsonObject LedDeviceCololight::discover(const QJsonObject& /*params*/)
 		if (hostInfo.error() == QHostInfo::NoError)
 		{
 			QString hostname = hostInfo.hostName();
+			//Seems that for Windows no local domain name is resolved
 			if (!QHostInfo::localDomainName().isEmpty())
 			{
 				obj.insert("hostname", hostname.remove("." + QHostInfo::localDomainName()));
@@ -625,31 +631,39 @@ QJsonObject LedDeviceCololight::discover(const QJsonObject& /*params*/)
 			}
 			else
 			{
-				if (hostname.startsWith(ipAddress))
-				{
-					obj.insert("hostname", ipAddress);
-
-					QString domain = hostname.remove(ipAddress);
-					if (domain.at(0) == '.')
-					{
-						domain.remove(0, 1);
-					}
-					obj.insert("domain", domain);
-				}
-				else
-				{
-					int domainPos = hostname.indexOf('.');
-					obj.insert("hostname", hostname.left(domainPos));
-					obj.insert("domain", hostname.mid(domainPos + 1));
-				}
+				int domainPos = hostname.indexOf('.');
+				obj.insert("hostname", hostname.left(domainPos));
+				obj.insert("domain", hostname.mid(domainPos + 1));
 			}
 		}
 
 		deviceList << obj;
 	}
+	return deviceList;
+}
+
+QJsonObject LedDeviceCololight::discover(const QJsonObject& /*params*/)
+{
+	QJsonObject devicesDiscovered;
+	devicesDiscovered.insert("ledDeviceType", _activeDeviceType);
+
+	QJsonArray deviceList;
+
+#ifdef ENABLE_AVAHI
+	QVariantList deviceListResponse;
+	QMetaObject::invokeMethod(_bonjour, "getServicesDiscoveredJson", Qt::DirectConnection,
+							   Q_RETURN_ARG(QVariantList, deviceListResponse),
+							   Q_ARG(QString,LedDeviceBonjourRegister::getServiceType(_activeDeviceType)),
+							   Q_ARG(QString, LedDeviceBonjourRegister::getServiceNameFilter(_activeDeviceType))
+							   );
+	deviceList = QJsonValue::fromVariant( deviceListResponse ).toArray();
+#else
+	deviceList = discover();
+#endif
 
 	devicesDiscovered.insert("devices", deviceList);
-	DebugIf(verbose, _log, "devicesDiscovered: [%s]", QString(QJsonDocument(devicesDiscovered).toJson(QJsonDocument::Compact)).toUtf8().constData());
+
+	//Debug(_log, "devicesDiscovered: [%s]", QString(QJsonDocument(devicesDiscovered).toJson(QJsonDocument::Compact)).toUtf8().constData());
 
 	return devicesDiscovered;
 }
@@ -662,6 +676,7 @@ QJsonObject LedDeviceCololight::getProperties(const QJsonObject& params)
 	QString apiHostname = params["host"].toString("");
 	quint16 apiPort = static_cast<quint16>(params["port"].toInt(API_DEFAULT_PORT));
 
+	QJsonObject propertiesDetails;
 	if (!apiHostname.isEmpty())
 	{
 		QJsonObject deviceConfig;
@@ -682,13 +697,15 @@ QJsonObject LedDeviceCololight::getProperties(const QJsonObject& params)
 					modelTypeText = "Strip";
 					break;
 				}
-				properties.insert("modelType", modelTypeText);
-				properties.insert("ledCount", static_cast<int>(getLedCount()));
-				properties.insert("ledBeadCount", _ledBeadCount);
-				properties.insert("distance", _distance);
+				propertiesDetails.insert("modelType", modelTypeText);
+				propertiesDetails.insert("ledCount", static_cast<int>(getLedCount()));
+				propertiesDetails.insert("ledBeadCount", _ledBeadCount);
+				propertiesDetails.insert("distance", _distance);
 			}
 		}
 	}
+
+	properties.insert("properties", propertiesDetails);
 
 	DebugIf(verbose, _log, "properties: [%s]", QString(QJsonDocument(properties).toJson(QJsonDocument::Compact)).toUtf8().constData());
 

@@ -1,5 +1,13 @@
 #include <leddevice/LedDeviceWrapper.h>
 
+// bonjour wrapper
+#include <HyperionConfig.h>
+#ifdef ENABLE_AVAHI
+#include <bonjour/bonjourbrowserwrapper.h>
+#include <leddevice/LedDeviceBonjourRegister.h>
+
+#endif
+
 #include <leddevice/LedDevice.h>
 #include <leddevice/LedDeviceFactory.h>
 
@@ -23,6 +31,9 @@ LedDeviceWrapper::LedDeviceWrapper(Hyperion* hyperion)
 	, _hyperion(hyperion)
 	, _ledDevice(nullptr)
 	, _enabled(false)
+#ifdef ENABLE_AVAHI
+	, _bonjour(BonjourBrowserWrapper::getInstance())
+#endif
 {
 	// prepare the device constructor map
 	#define REGISTER(className) LedDeviceWrapper::addToDeviceMap(QString(#className).toLower(), LedDevice##className::construct);
@@ -33,6 +44,16 @@ LedDeviceWrapper::LedDeviceWrapper(Hyperion* hyperion)
 	#undef REGISTER
 
 	_hyperion->setNewComponentState(hyperion::COMP_LEDDEVICE, false);
+
+#ifdef ENABLE_AVAHI
+	//Register all LED-Devices configured for Bonjour discovery
+	BonjourConfigMap deviceConfig = LedDeviceBonjourRegister::getAllConfigs();
+	BonjourConfigMap::const_iterator deviceIterator;
+	for (deviceIterator = deviceConfig.begin(); deviceIterator != deviceConfig.end(); ++deviceIterator)
+	{
+		QMetaObject::invokeMethod(_bonjour, "browseForServiceType", Qt::BlockingQueuedConnection,  Q_ARG(QString,deviceIterator.value().serviceType));
+	}
+#endif
 }
 
 LedDeviceWrapper::~LedDeviceWrapper()

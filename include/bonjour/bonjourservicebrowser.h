@@ -1,5 +1,6 @@
 /*
 Copyright (c) 2007, Trenton Schulz
+2020, Updates Lord-Grey
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -43,7 +44,7 @@ class BonjourServiceBrowser : public QObject
 {
 	Q_OBJECT
 public:
-	BonjourServiceBrowser(QObject *parent = 0);
+	BonjourServiceBrowser(QObject *parent = nullptr);
 	~BonjourServiceBrowser() override;
 	void browseForServiceType(const QString &serviceType);
 	inline QList<BonjourRecord> currentRecords() const { return bonjourRecords; }
@@ -57,7 +58,7 @@ private slots:
 	void bonjourSocketReadyRead();
 
 private:
-	static void DNSSD_API bonjourBrowseReply(DNSServiceRef , DNSServiceFlags flags, quint32,
+	static void DNSSD_API bonjourBrowseReply(DNSServiceRef sdRef , DNSServiceFlags flags, quint32 interfaceIndex,
 								   DNSServiceErrorType errorCode, const char *serviceName,
 								   const char *regType, const char *replyDomain, void *context);
 	DNSServiceRef dnssref;

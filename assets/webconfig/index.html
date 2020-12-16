@@ -1,4 +1,3 @@
-<!DOCTYPE html>
 <html>
 
 <head>
@@ -21,7 +20,17 @@
 	<title data-i18n="general_webui_title">Hyperion - Web Configuration</title>
 
 	<!-- jQuery -->
-	<script src="js/lib/jquery.min.js"></script>
+	
+	<!-- jQuery - OLD -->
+	<!script src="js/lib/jquery.min.js"></script>
+	
+	<!-- jQuery - NEW -->
+	<script src="js/lib/jquery-3.5.1.js"></script>
+	<script src="js/lib/jquery-migrate-3.3.2.js"></script>
+
+	<!-- jQuery - NEW minified -->
+	<!script src="js/lib/jquery-3.5.1.min.js"></script>
+	<!script src="https://code.jquery.com/jquery-migrate-3.3.2.min.js"></script>
 
 	<!-- SemVer -->
 	<script src='js/lib/semver.js'></script>
@@ -41,18 +50,39 @@
 	<script src="js/lib/bootstrap-notify.min.js"></script>
 
 	<!-- JSONEditor -->
-	<script src="js/lib/jsoneditor.js"></script>
 
-	<!--Language Support -->
+	<!-- JSONEditor - OLD -->
+	<!script src="js/lib/jsoneditor.js"></script>
+
+	<!-- JSONEditor - NEW -->
+	<script src="js/lib/jsoneditor-2-5.1.js"></script>
+	
+	<!script src="https://cdn.jsdelivr.net/npm/@json-editor/json-editor@latest/dist/jsoneditor.min.js"></script>
+
+	<!--Language Support - OLD
 	<script src="js/lib/jquery.i18n.js"></script>
 	<script src="js/lib/jquery.i18n.messagestore.js"></script>
 	<script src="js/lib/jquery.i18n.fallbacks.js"></script>
 	<script src="js/lib/jquery.i18n.parser.js"></script>
 	<script src="js/lib/jquery.i18n.emitter.js"></script>
 	<script src="js/lib/jquery.i18n.language.js"></script>
+ -->
 
-	<!-- Bootstrap Core CSS -->
+ 	<!--Language Support - NEW
+ -->
+	<script src="js/lib/jquery.i18n-1.0.7/src/jquery.i18n.js"></script>
+	<script src="js/lib/jquery.i18n-1.0.7/src/jquery.i18n.messagestore.js"></script>
+	<script src="js/lib/jquery.i18n-1.0.7/src/jquery.i18n.fallbacks.js"></script>
+	<script src="js/lib/jquery.i18n-1.0.7/src/jquery.i18n.parser.js"></script>
+	<script src="js/lib/jquery.i18n-1.0.7/src/jquery.i18n.emitter.js"></script>
+	<script src="js/lib/jquery.i18n-1.0.7/src/jquery.i18n.language.js"></script>
+
+	<!-- Bootstrap 3 Core CSS -->
 	<link href="css/bootstrap.min.css" rel="stylesheet">
+
+	<!-- Bootstrap 4 - NEW - Does not work -->
+	<!link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+
 
 	<link href="css/bootstrap-colorpicker.min.css" rel="stylesheet">
 
@@ -346,7 +376,10 @@
 		</div>
 	</div>
 
-	<!-- Bootstrap Core JavaScript -->
+	<!-- Bootstrap 4 - NEW - Does not work -->
+	<!script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+
+	<!-- Bootstrap 3 Core JavaScript -->
 	<script src="js/lib/bootstrap.min.js"></script>
 
 	<!-- BSToggle -->

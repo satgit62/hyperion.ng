@@ -1,6 +1,12 @@
 #ifndef LEDEVICEWRAPPER_H
 #define LEDEVICEWRAPPER_H
 
+// bonjour wrapper
+#include <HyperionConfig.h>
+#ifdef ENABLE_AVAHI
+#include <bonjour/bonjourbrowserwrapper.h>
+#endif
+
 // util
 #include <utils/Logger.h>
 #include <utils/ColorRgb.h>
@@ -10,7 +16,9 @@
 
 class LedDevice;
 class Hyperion;
-
+#ifdef ENABLE_AVAHI
+class BonjourBrowserWrapper;
+#endif
 typedef LedDevice* ( *LedDeviceCreateFuncType ) ( const QJsonObject& );
 typedef std::map<QString,LedDeviceCreateFuncType> LedDeviceRegistry;
 
@@ -139,6 +147,11 @@ private:
 	LedDevice* _ledDevice;
 	// the enable state
 	bool _enabled;
+
+#ifdef ENABLE_AVAHI
+	/// Bonjour instance
+	BonjourBrowserWrapper* _bonjour;
+#endif
 };
 
 #endif // LEDEVICEWRAPPER_H

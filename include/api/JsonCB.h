@@ -6,10 +6,13 @@
 
 // components def
 #include <utils/Components.h>
-// bonjour
+
+// bonjour wrapper
+#include <HyperionConfig.h>
 #ifdef ENABLE_AVAHI
-#include <bonjour/bonjourrecord.h>
+#include <bonjour/bonjourbrowserwrapper.h>
 #endif
+
 // videModes
 #include <utils/VideoMode.h>
 // settings
