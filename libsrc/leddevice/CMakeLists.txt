@@ -88,12 +88,15 @@ target_link_libraries(leddevice
 	Qt5::Network
 	Qt5::SerialPort
 	ssdp
-	bonjour
 )
 
 if(WIN32)
 	target_link_libraries(leddevice ws2_32)
 endif()
+
+if(ENABLE_AVAHI)
+	target_link_libraries(leddevice bonjour)
+endif(ENABLE_AVAHI)
 
 if(ENABLE_TINKERFORGE)
 	target_link_libraries(leddevice tinkerforge)

@@ -7561,7 +7561,10 @@ var AbstractEditor = /*#__PURE__*/function () {
   }, {
     key: "getTitle",
     value: function getTitle() {
-      return this.schema.title || this.key;
+      if (this.schema.title == null)
+        return this.key;
+      else
+        return $.i18n(this.schema.title);
     }
   }, {
     key: "enable",
@@ -8240,6 +8243,10 @@ var ArrayEditor = /*#__PURE__*/function (_AbstractEditor) {
         if (this.schema.items && !Array.isArray(this.schema.items)) {
           var tmp = this.jsoneditor.expandRefs(this.schema.items);
           this.item_title = tmp.title || this.translate('default_array_item_title');
+          if (typeof tmp.title == 'undefined')
+            this.item_title = this.translate('default_array_item_title');
+          else
+            this.item_title = $.i18n(tmp.title);
         } else {
           this.item_title = this.translate('default_array_item_title');
         }
@@ -8292,7 +8299,7 @@ var ArrayEditor = /*#__PURE__*/function (_AbstractEditor) {
       var itemInfo = this.getItemInfo(i);
       var schema = this.getItemSchema(i);
       schema = this.jsoneditor.expandRefs(schema);
-      schema.title = "".concat(itemInfo.title, " ").concat(i + 1);
+      schema.title = "".concat($.i18n(itemInfo.title), " ").concat(i + 1);
       var editor = this.jsoneditor.getEditorClass(schema);
       var holder;
 
@@ -12426,7 +12433,10 @@ var InfoEditor = /*#__PURE__*/function (_ButtonEditor) {
   }, {
     key: "getTitle",
     value: function getTitle() {
-      return this.schema.title;
+      if (this.schema.title == null)
+        return this.key;
+      else
+        return $.i18n(this.schema.title);
     }
   }, {
     key: "getNumColumns",
@@ -16467,7 +16477,7 @@ var SelectEditor = /*#__PURE__*/function (_AbstractEditor) {
       if (this.options.infoText) this.infoButton = this.theme.getInfoButton(this.options.infoText);
       if (this.options.compact) this.container.classList.add('compact');
       this.input = this.theme.getSelectInput(this.enum_options, false);
-      this.theme.setSelectOptions(this.input, this.enum_options, this.enum_display);
+      this.theme.setSelectOptions(this.input, this.enum_options, $.i18n(this.enum_display));
 
       if (this.schema.readOnly || this.schema.readonly) {
         this.always_disabled = true;
@@ -25684,7 +25694,10 @@ var tailwindTheme = /*#__PURE__*/function (_AbstractTheme) {
   }, {
     key: "getTitle",
     value: function getTitle() {
-      return this.schema.title;
+      if (this.schema.title == null)
+        return this.key;
+      else
+        return $.i18n(this.schema.title);
     }
   }, {
     key: "getSelectInput",
