@@ -421,9 +421,11 @@ QJsonObject LedDeviceNanoleaf::discover(const QJsonObject& /*params*/)
 	QJsonObject devicesDiscovered;
 	devicesDiscovered.insert("ledDeviceType", _activeDeviceType);
 
+	QString discoveryMethod("ssdp");
 	QJsonArray deviceList;
 
 #ifdef ENABLE_AVAHI
+	discoveryMethod = "mDNS";
 	QVariantList deviceListResponse;
 	QMetaObject::invokeMethod(_bonjour, "getServicesDiscoveredJson", Qt::DirectConnection,
 							   Q_RETURN_ARG(QVariantList, deviceListResponse),
@@ -435,6 +437,7 @@ QJsonObject LedDeviceNanoleaf::discover(const QJsonObject& /*params*/)
 	deviceList = discover();
 #endif
 
+	devicesDiscovered.insert("discoveryMethod", discoveryMethod);
 	devicesDiscovered.insert("devices", deviceList);
 
 	//Debug(_log, "devicesDiscovered: [%s]", QString(QJsonDocument(devicesDiscovered).toJson(QJsonDocument::Compact)).toUtf8().constData());

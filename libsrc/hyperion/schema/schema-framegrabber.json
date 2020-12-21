@@ -13,7 +13,8 @@
 				"enum_titles": ["edt_conf_enum_automatic","AMLogic","DispmanX","DirectX9","Framebuffer","OSX","QT","X11","XCB"]
 
 			},
-			"default" : "auto",
+			"default": "auto",
+			"required": true,
 			"propertyOrder" : 1
 		},
 		"width" :

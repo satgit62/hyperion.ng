@@ -3,12 +3,13 @@
 	"title" : "edt_conf_bb_heading_title",
 	"properties" :
 	{
-		"enable" :
-		{
-			"type" : "boolean",
-			"title" : "edt_conf_general_enable_title",
-			"default" : true,
-			"propertyOrder" : 1
+		"enable": {
+			"type": "boolean",
+			"format": "checkbox",
+			"title": "edt_conf_general_enable_title",
+			"default": true,
+			"format": "checkbox",
+			"propertyOrder": 1
 		},
 		"threshold" :
 		{
@@ -56,16 +57,16 @@
 			"access" : "expert",
 			"propertyOrder" : 6
 		},
-		"mode" :
-		{
-			"type" : "string",
+		"mode": {
+			"type": "string",
 			"title": "edt_conf_bb_mode_title",
-			"enum" : ["default", "classic", "osd", "letterbox"],
-			"default" : "default",
-			"options" : {
-				"enum_titles" : ["edt_conf_enum_bbdefault", "edt_conf_enum_bbclassic", "edt_conf_enum_bbosd", "edt_conf_enum_bbletterbox"]
+			"enum": [ "default", "classic", "osd", "letterbox" ],
+			"default": "default",
+			"required": true,
+			"options": {
+				"enum_titles": [ "edt_conf_enum_bbdefault", "edt_conf_enum_bbclassic", "edt_conf_enum_bbosd", "edt_conf_enum_bbletterbox" ]
 			},
-			"propertyOrder" : 7
+			"propertyOrder": 7
 		}
 	},
 	"additionalProperties" : false

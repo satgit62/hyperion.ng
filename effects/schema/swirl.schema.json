@@ -14,9 +14,10 @@
 		},
 		"random-center": {
 			"type": "boolean",
-			"title":"edt_eff_randomCenter",
+			"format": "checkbox",
+			"title": "edt_eff_randomCenter",
 			"default": false,
-			"propertyOrder" : 2
+			"propertyOrder": 2
 		},
 		"center_x": {
 			"type": "number",
@@ -48,9 +49,10 @@
 		},
 		"reverse": {
 			"type": "boolean",
-			"title":"edt_eff_reversedirection",
+			"format": "checkbox",
+			"title": "edt_eff_reversedirection",
 			"default": false,
-			"propertyOrder" : 5
+			"propertyOrder": 5
 		},
 		"custom-colors": {
 			"type": "array",
@@ -72,20 +74,22 @@
 		},
 		"enable-second": {
 			"type": "boolean",
-			"title":"edt_eff_enableSecondSwirl",
+			"format": "checkbox",
+			"title": "edt_eff_enableSecondSwirl",
 			"default": false,
-			"propertyOrder" : 7
+			"propertyOrder": 7
 		},
 		"random-center2": {
 			"type": "boolean",
-			"title":"edt_eff_randomCenter",
+			"format": "checkbox",
+			"title": "edt_eff_randomCenter",
 			"default": false,
 			"options": {
 				"dependencies": {
 					"enable-second": true
 				}
 			},
-			"propertyOrder" : 8
+			"propertyOrder": 8
 		},
 		"center_x2": {
 			"type": "number",
@@ -119,14 +123,15 @@
 		},
 		"reverse2": {
 			"type": "boolean",
-			"title":"edt_eff_reversedirection",
+			"format": "checkbox",
+			"title": "edt_eff_reversedirection",
 			"default": true,
 			"options": {
 				"dependencies": {
 					"enable-second": true
 				}
 			},
-			"propertyOrder" : 11
+			"propertyOrder": 11
 		},
 		"custom-colors2": {
 			"type": "array",
@@ -146,12 +151,12 @@
 			},
 			"propertyOrder" : 12
 		},
-		"smoothing-custom-settings" :
-		{
-			"type" : "boolean",
-			"title" : "edt_eff_smooth_custom",
-			"default" : false,
-			"propertyOrder" : 13
+		"smoothing-custom-settings": {
+			"type": "boolean",
+			"format": "checkbox",
+			"title": "edt_eff_smooth_custom",
+			"default": false,
+			"propertyOrder": 13
 		},
 		"smoothing-time_ms" :
 		{

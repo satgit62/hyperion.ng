@@ -4,13 +4,13 @@
 	"title" : "edt_conf_instC_heading_title",
 	"properties" :
 	{
-		"systemEnable" :
-		{
-			"type" : "boolean",
-			"required" : true,
-			"title" : "edt_conf_instC_systemEnable_title",
-			"default" : true,
-			"propertyOrder" : 1
+		"systemEnable": {
+			"type": "boolean",
+			"format": "checkbox",
+			"required": true,
+			"title": "edt_conf_instC_systemEnable_title",
+			"default": true,
+			"propertyOrder": 1
 		},
 		"systemPriority" :
 		{
@@ -22,13 +22,13 @@
 			"default" : 250,
 			"propertyOrder" : 2
 		},
-		"v4lEnable" :
-		{
-			"type" : "boolean",
-			"required" : true,
-			"title" : "edt_conf_instC_v4lEnable_title",
-			"default" : false,
-			"propertyOrder" : 3
+		"v4lEnable": {
+			"type": "boolean",
+			"format": "checkbox",
+			"required": true,
+			"title": "edt_conf_instC_v4lEnable_title",
+			"default": false,
+			"propertyOrder": 3
 		},
 		"v4lPriority" :
 		{

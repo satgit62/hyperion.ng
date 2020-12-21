@@ -5919,12 +5919,15 @@ var JSONEditor = /*#__PURE__*/function () {
 
     if (!(element instanceof Element)) throw new Error('element should be an instance of Element');
     this.element = element;
+
     this.options = Object(_utilities_js__WEBPACK_IMPORTED_MODULE_29__["extend"])({}, JSONEditor.defaults.options, options);
     this.ready = false;
     this.copyClipboard = null;
     this.schema = this.options.schema;
     this.template = this.options.template;
     this.translate = this.options.translate || JSONEditor.defaults.translate;
+    this.translateElement = this.options.translateElement || JSONEditor.defaults.translateElement;
+
     this.uuid = 0;
     this.__data = {};
     var themeName = this.options.theme || JSONEditor.defaults.theme;
@@ -5962,6 +5965,7 @@ var JSONEditor = /*#__PURE__*/function () {
     /* Fetch all external refs via ajax */
 
     var fetchUrl = document.location.origin + document.location.pathname.toString();
+
     var loader = new _schemaloader_js__WEBPACK_IMPORTED_MODULE_24__["SchemaLoader"](this.options);
     var location = document.location.toString();
 
@@ -6112,7 +6116,7 @@ var JSONEditor = /*#__PURE__*/function () {
     }
   }, {
     key: "setOption",
-    value: function setOption(option, value) {
+      value: function setOption(option, value) {
       if (option === 'show_errors') {
         this.options.show_errors = value;
         this.onChange();
@@ -6143,6 +6147,7 @@ var JSONEditor = /*#__PURE__*/function () {
       });
       if (!classname) throw new Error("Unknown editor for schema ".concat(JSON.stringify(schema)));
       if (!JSONEditor.defaults.editors[classname]) throw new Error("Unknown editor ".concat(classname));
+
       return JSONEditor.defaults.editors[classname];
     }
   }, {
@@ -6202,7 +6207,8 @@ var JSONEditor = /*#__PURE__*/function () {
     }
   }, {
     key: "_data",
-    value: function _data(el, key, value) {
+      value: function _data(el, key, value) {
+
       /* Setting data */
       if (arguments.length === 3) {
         var uuid;
@@ -6762,8 +6768,13 @@ Object.entries(editors).forEach(function (_ref) {
 function upload(type, file, cbs) {
   console.log('Upload handler required for upload editor');
 }
-/* String translate function */
+/* Text translate function */
 
+function translateElement(text, variables) {
+  return text;
+}
+
+/* String translate function */
 
 function translate(key, variables) {
   var lang = defaults.languages[defaults.language];
@@ -6779,6 +6790,7 @@ function translate(key, variables) {
 
   return string;
 }
+
 /* Default options when initializing JSON Editor */
 
 
@@ -6804,7 +6816,8 @@ var defaults = {
   custom_validators: custom_validators,
   default_language: default_language,
   language: language,
-  translate: translate
+  translate: translate,
+  translateElement: translateElement
 };
 
 /***/ }),
@@ -6943,6 +6956,7 @@ var AbstractEditor = /*#__PURE__*/function () {
     this.template_engine = this.jsoneditor.template;
     this.iconlib = this.jsoneditor.iconlib;
     this.translate = this.jsoneditor.translate || this.defaults.translate;
+    this.translateElement = this.jsoneditor.translateElement || this.defaults.translateElement;
     this.original_schema = options.schema;
     this.schema = this.jsoneditor.expandSchema(this.original_schema);
     this.active = true;
@@ -7436,7 +7450,7 @@ var AbstractEditor = /*#__PURE__*/function () {
   }, {
     key: "getHeaderText",
     value: function getHeaderText(titleOnly) {
-      if (this.header_text) return this.header_text;else if (titleOnly) return this.schema.title;else return this.getTitle();
+      if (this.header_text) return this.header_text; else if (titleOnly) return this.translateElement(this.schema.title);else return this.getTitle();
     }
   }, {
     key: "cleanText",
@@ -7560,18 +7574,14 @@ var AbstractEditor = /*#__PURE__*/function () {
     }
   }, {
     key: "getTitle",
-    value: function getTitle() {
-      if (this.schema.title == null)
-        return this.key;
-      else
-        return $.i18n(this.schema.title);
+      value: function getTitle() {
+       return this.translateElement(this.schema.title || this.key);
     }
   }, {
-    key: "enable",
-    value: function enable() {
-      this.disabled = false;
-    }
-  }, {
+      key: "enable",
+      value: function enable() {
+        this.disabled = false;
+      }}, {
     key: "disable",
     value: function disable() {
       this.disabled = true;
@@ -8242,11 +8252,7 @@ var ArrayEditor = /*#__PURE__*/function (_AbstractEditor) {
       if (!this.item_title) {
         if (this.schema.items && !Array.isArray(this.schema.items)) {
           var tmp = this.jsoneditor.expandRefs(this.schema.items);
-          this.item_title = tmp.title || this.translate('default_array_item_title');
-          if (typeof tmp.title == 'undefined')
-            this.item_title = this.translate('default_array_item_title');
-          else
-            this.item_title = $.i18n(tmp.title);
+          this.item_title = this.translateElement(tmp.title) || this.translate('default_array_item_title');
         } else {
           this.item_title = this.translate('default_array_item_title');
         }
@@ -8286,7 +8292,7 @@ var ArrayEditor = /*#__PURE__*/function (_AbstractEditor) {
 
       schema = this.jsoneditor.expandRefs(schema);
       this.item_info[stringified] = {
-        title: schema.title || this.translate('default_array_item_title'),
+        title: this.translateElement(schema.title) || this.translate('default_array_item_title'),
         "default": schema["default"],
         width: 12,
         child_editors: schema.properties || schema.items
@@ -8299,7 +8305,7 @@ var ArrayEditor = /*#__PURE__*/function (_AbstractEditor) {
       var itemInfo = this.getItemInfo(i);
       var schema = this.getItemSchema(i);
       schema = this.jsoneditor.expandRefs(schema);
-      schema.title = "".concat($.i18n(itemInfo.title), " ").concat(i + 1);
+      schema.title = "".concat(itemInfo.title, " ").concat(i + 1);
       var editor = this.jsoneditor.getEditorClass(schema);
       var holder;
 
@@ -10036,7 +10042,8 @@ var Base64Editor = /*#__PURE__*/function (_AbstractEditor) {
       var _this2 = this;
 
       this.title = this.header = this.label = this.theme.getFormInputLabel(this.getTitle(), this.isRequired());
-      if (this.options.infoText) this.infoButton = this.theme.getInfoButton(this.options.infoText);
+
+      if (this.options.infoText) this.infoButton = this.theme.getInfoButton(this.translateElement(this.options.infoText));
       /* Input that holds the base64 string */
 
       this.input = this.theme.getFormInputField('hidden');
@@ -10108,7 +10115,7 @@ var Base64Editor = /*#__PURE__*/function (_AbstractEditor) {
         });
       }
 
-      this.preview = this.theme.getFormInputDescription(this.schema.description);
+      this.preview = this.theme.getFormInputDescription(this.translateElement(this.schema.description));
       this.container.appendChild(this.preview);
       this.control = this.theme.getFormControl(this.label, this.uploader || this.input, this.preview, this.infoButton);
       this.container.appendChild(this.control);
@@ -10316,9 +10323,9 @@ var ButtonEditor = /*#__PURE__*/function (_AbstractEditor) {
       this.options.compact = true;
       /* Get options, either global options from "this.defaults.options.button" or */
 
-      /* single property options from schema "options.button" */
+    /* single property options from schema "options.button" */
 
-      var title = this.schema.title || this.key;
+      var title = this.translateElement(this.schema.title) || this.key;
       var options = this.expandCallbacks('button', Object(_utilities_js__WEBPACK_IMPORTED_MODULE_20__["extend"])({}, {
         icon: '',
         validated: false,
@@ -10546,8 +10553,8 @@ var CheckboxEditor = /*#__PURE__*/function (_AbstractEditor) {
         this.label.htmlFor = this.formname;
       }
 
-      if (this.schema.description) this.description = this.theme.getFormInputDescription(this.schema.description);
-      if (this.options.infoText && !this.options.compact) this.infoButton = this.theme.getInfoButton(this.options.infoText);
+      if (this.schema.description) this.description = this.theme.getFormInputDescription(this.translateElement(this.schema.description));
+      if (this.options.infoText && !this.options.compact) this.infoButton = this.theme.getInfoButton(this.translateElement(this.options.infoText));
       if (this.options.compact) this.container.classList.add('compact');
       this.input = this.theme.getCheckbox();
       this.input.id = this.formname;
@@ -11811,7 +11818,11 @@ var EnumEditor = /*#__PURE__*/function (_AbstractEditor) {
 
       this.title = this.header = this.label = this.theme.getFormInputLabel(this.getTitle(), this.isRequired());
       this.container.appendChild(this.title);
+
+
+      console.log("EnumEditor", this.schema.options.enum_titles);
       this.options.enum_titles = this.options.enum_titles || [];
+
       this["enum"] = this.schema["enum"];
       this.selected = 0;
       this.select_options = [];
@@ -12432,11 +12443,8 @@ var InfoEditor = /*#__PURE__*/function (_ButtonEditor) {
     }
   }, {
     key: "getTitle",
-    value: function getTitle() {
-      if (this.schema.title == null)
-        return this.key;
-      else
-        return $.i18n(this.schema.title);
+      value: function getTitle() {
+        return this.translateElement(this.schema.title);
     }
   }, {
     key: "getNumColumns",
@@ -13595,6 +13603,9 @@ var MultiSelectEditor = /*#__PURE__*/function (_AbstractEditor) {
       var i;
       var itemsSchema = this.jsoneditor.expandRefs(this.schema.items || {});
       var e = itemsSchema["enum"] || [];
+
+      console.log("MultiSelectEditor", this.schema.options.enum_titles);
+
       var t = itemsSchema.options ? itemsSchema.options.enum_titles || [] : [];
 
       for (i = 0; i < e.length; i++) {
@@ -13612,8 +13623,8 @@ var MultiSelectEditor = /*#__PURE__*/function (_AbstractEditor) {
 
       var i;
       if (!this.options.compact) this.header = this.label = this.theme.getFormInputLabel(this.getTitle(), this.isRequired());
-      if (this.schema.description) this.description = this.theme.getFormInputDescription(this.schema.description);
-      if (this.options.infoText) this.infoButton = this.theme.getInfoButton(this.options.infoText);
+      if (this.schema.description) this.description = this.theme.getFormInputDescription(this.translateElement(this.schema.description));
+      if (this.options.infoText) this.infoButton = this.theme.getInfoButton(this.translateElement(this.options.infoText));
       if (this.options.compact) this.container.classList.add('compact');
 
       if (!this.schema.format && this.option_keys.length < 8 || this.schema.format === 'checkbox') {
@@ -14297,6 +14308,7 @@ var ObjectEditor = /*#__PURE__*/function (_AbstractEditor) {
 
     _this = _super.call(this, options, defaults);
     _this.currentDepth = depth;
+
     return _this;
   }
 
@@ -14555,7 +14567,7 @@ var ObjectEditor = /*#__PURE__*/function (_AbstractEditor) {
 
           /* tabs_holder has 2 childs, [0]: ul.nav.nav-tabs and [1]: div.tab-content */
 
-          var newTabsHolder = this.theme.getTopTabHolder(this.schema.title);
+          var newTabsHolder = this.theme.getTopTabHolder(this.translateElement(this.schema.title));
           /* child [1] of previous, stores panes */
 
           var newTabPanesContainer = this.theme.getTopTabContentHolder(newTabsHolder);
@@ -14784,6 +14796,7 @@ var ObjectEditor = /*#__PURE__*/function (_AbstractEditor) {
 
         if (Array.isArray(this.schema.defaultProperties)) {
           this.schema.defaultProperties.forEach(function (key) {
+
             _this4.addObjectProperty(key, true);
 
             if (_this4.editors[key]) {
@@ -15052,11 +15065,11 @@ var ObjectEditor = /*#__PURE__*/function (_AbstractEditor) {
         this.row_container = this.theme.getGridContainer();
 
         if (isCategoriesFormat) {
-          this.tabs_holder = this.theme.getTopTabHolder(this.getValidId(this.schema.title));
+          this.tabs_holder = this.theme.getTopTabHolder(this.getValidId(this.translateElement(this.schema.title)));
           this.tabPanesContainer = this.theme.getTopTabContentHolder(this.tabs_holder);
           this.editor_holder.appendChild(this.tabs_holder);
         } else {
-          this.tabs_holder = this.theme.getTabHolder(this.getValidId(this.schema.title));
+          this.tabs_holder = this.theme.getTabHolder(this.getValidId(this.translateElement(this.schema.title)));
           this.tabPanesContainer = this.theme.getTabContentHolder(this.tabs_holder);
           this.editor_holder.appendChild(this.row_container);
         }
@@ -15847,8 +15860,8 @@ var RadioEditor = /*#__PURE__*/function (_SelectEditor) {
 
       this.label = '';
       if (!this.options.compact) this.header = this.label = this.theme.getFormInputLabel(this.getTitle(), this.isRequired());
-      if (this.schema.description) this.description = this.theme.getFormInputDescription(this.schema.description);
-      if (this.options.infoText) this.infoButton = this.theme.getInfoButton(this.options.infoText);
+      if (this.schema.description) this.description = this.theme.getFormInputDescription(this.translateElement(this.schema.description));
+      if (this.options.infoText) this.infoButton = this.theme.getInfoButton(this.translateElement(this.options.infoText));
       if (this.options.compact) this.container.classList.add('compact');
       this.radioContainer = document.createElement('div');
       this.radioGroup = [];
@@ -16375,10 +16388,13 @@ var SelectEditor = /*#__PURE__*/function (_AbstractEditor) {
       /* Enum options enumerated */
 
       if (this.schema["enum"]) {
+
         var display = this.schema.options && this.schema.options.enum_titles || [];
+
         this.schema["enum"].forEach(function (option, i) {
+
           _this.enum_options[i] = "".concat(option);
-          _this.enum_display[i] = "".concat(display[i] || option);
+          _this.enum_display[i] = "".concat(_this.translateElement(display[i]) || option);
           _this.enum_values[i] = _this.typecast(option);
         });
 
@@ -16390,6 +16406,7 @@ var SelectEditor = /*#__PURE__*/function (_AbstractEditor) {
         /* Boolean */
 
       } else if (this.schema.type === 'boolean') {
+
         this.enum_display = this.schema.options && this.schema.options.enum_titles || ['true', 'false'];
         this.enum_options = ['1', ''];
         this.enum_values = [true, false];
@@ -16473,11 +16490,13 @@ var SelectEditor = /*#__PURE__*/function (_AbstractEditor) {
       var _this2 = this;
 
       if (!this.options.compact) this.header = this.label = this.theme.getFormInputLabel(this.getTitle(), this.isRequired());
-      if (this.schema.description) this.description = this.theme.getFormInputDescription(this.schema.description);
-      if (this.options.infoText) this.infoButton = this.theme.getInfoButton(this.options.infoText);
+      if (this.schema.description) this.description = this.theme.getFormInputDescription(this.translateElement(this.schema.description));
+      if (this.options.infoText) this.infoButton = this.theme.getInfoButton(this.translateElement(this.options.infoText));
+
       if (this.options.compact) this.container.classList.add('compact');
       this.input = this.theme.getSelectInput(this.enum_options, false);
-      this.theme.setSelectOptions(this.input, this.enum_options, $.i18n(this.enum_display));
+
+      this.theme.setSelectOptions(this.input, this.enum_options, this.enum_display);
 
       if (this.schema.readOnly || this.schema.readonly) {
         this.always_disabled = true;
@@ -16631,6 +16650,8 @@ var SelectEditor = /*#__PURE__*/function (_AbstractEditor) {
           }
         }
 
+
+        console.log("SelectEditor build: selectTitles: ", selectTitles);
         var prevValue = this.value;
         this.theme.setSelectOptions(this.input, selectOptions, selectTitles);
         this.enum_options = selectOptions;
@@ -17317,7 +17338,7 @@ var SignatureEditor = /*#__PURE__*/function (_StringEditor) {
       var _this = this;
 
       if (!this.options.compact) this.header = this.label = this.theme.getFormInputLabel(this.getTitle(), this.isRequired());
-      if (this.schema.description) this.description = this.theme.getFormInputDescription(this.schema.description);
+      if (this.schema.description) this.description = this.theme.getFormInputDescription(this.translateElement(this.schema.description));
       var formname = this.formname.replace(/\W/g, '');
 
       if (typeof SignaturePad === 'function') {
@@ -17809,8 +17830,8 @@ var StarratingEditor = /*#__PURE__*/function (_StringEditor) {
       var _this = this;
 
       if (!this.options.compact) this.header = this.label = this.theme.getFormInputLabel(this.getTitle(), this.isRequired());
-      if (this.schema.description) this.description = this.theme.getFormInputDescription(this.schema.description);
-      if (this.options.infoText) this.infoButton = this.theme.getInfoButton(this.options.infoText);
+      if (this.schema.description) this.description = this.theme.getFormInputDescription(this.translateElement(this.schema.description));
+      if (this.options.infoText) this.infoButton = this.theme.getInfoButton(this.translateElement(this.options.infoText));
       if (this.options.compact) this.container.classList.add('compact');
       this.ratingContainer = document.createElement('div');
       this.ratingContainer.classList.add('starrating');
@@ -18296,8 +18317,8 @@ var StringEditor = /*#__PURE__*/function (_AbstractEditor) {
       var _this = this;
 
       if (!this.options.compact) this.header = this.label = this.theme.getFormInputLabel(this.getTitle(), this.isRequired());
-      if (this.schema.description) this.description = this.theme.getFormInputDescription(this.schema.description);
-      if (this.options.infoText) this.infoButton = this.theme.getInfoButton(this.options.infoText);
+      if (this.schema.description) this.description = this.theme.getFormInputDescription(this.translateElement(this.schema.description));
+      if (this.options.infoText) this.infoButton = this.theme.getInfoButton(this.translateElement(this.options.infoText));
       this.format = this.schema.format;
 
       if (!this.format && this.schema.media && this.schema.media.type) {
@@ -19504,8 +19525,8 @@ var UploadEditor = /*#__PURE__*/function (_AbstractEditor) {
       var _this = this;
 
       if (!this.options.compact) this.header = this.label = this.theme.getFormInputLabel(this.getTitle(), this.isRequired());
-      if (this.schema.description) this.description = this.theme.getFormInputDescription(this.schema.description);
-      if (this.options.infoText) this.infoButton = this.theme.getInfoButton(this.options.infoText);
+      if (this.schema.description) this.description = this.theme.getFormInputDescription(this.translateElement(this.schema.description));
+      if (this.options.infoText) this.infoButton = this.theme.getInfoButton(this.translateElement(this.options.infoText));
       /* Editor options */
 
       this.options = this.expandCallbacks('upload', Object(_utilities_js__WEBPACK_IMPORTED_MODULE_27__["extend"])({}, {
@@ -25693,11 +25714,8 @@ var tailwindTheme = /*#__PURE__*/function (_AbstractTheme) {
     }
   }, {
     key: "getTitle",
-    value: function getTitle() {
-      if (this.schema.title == null)
-        return this.key;
-      else
-        return $.i18n(this.schema.title);
+      value: function getTitle() {
+       return this.translateElement(this.schema.title);
     }
   }, {
     key: "getSelectInput",
@@ -26432,8 +26450,10 @@ var Validator = /*#__PURE__*/function () {
 
     this.jsoneditor = jsoneditor;
     this.schema = schema || this.jsoneditor.schema;
+
     this.options = options || {};
     this.translate = this.jsoneditor.translate || defaults.translate;
+    this.translateElement = this.jsoneditor.translateElement || defaults.translateElement;
     this.defaults = defaults;
     this._validateSubSchema = {
       "enum": function _enum(schema, value, path) {

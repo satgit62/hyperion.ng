@@ -21,12 +21,12 @@
 			"step" : 0.1,
 			"propertyOrder" : 2
 		},
-		"smoothing-custom-settings" :
-		{
-			"type" : "boolean",
-			"title" : "edt_eff_smooth_custom",
-			"default" : false,
-			"propertyOrder" : 3
+		"smoothing-custom-settings": {
+			"type": "boolean",
+			"format": "checkbox",
+			"title": "edt_eff_smooth_custom",
+			"default": false,
+			"propertyOrder": 3
 		},
 		"smoothing-time_ms" :
 		{

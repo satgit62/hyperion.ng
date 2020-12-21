@@ -4,39 +4,39 @@
 	"required" : true,
 	"properties" :
 	{
-		"apiAuth" :
-		{
-			"type" : "boolean",
-			"title" : "edt_conf_net_apiAuth_title",
-			"required" : true,
-			"default" : true,
-			"propertyOrder" : 1
+		"apiAuth": {
+			"type": "boolean",
+			"format": "checkbox",
+			"title": "edt_conf_net_apiAuth_title",
+			"required": true,
+			"default": true,
+			"propertyOrder": 1
 		},
-		"internetAccessAPI" :
-		{
-			"type" : "boolean",
-			"title" : "edt_conf_net_internetAccessAPI_title",
-			"required" : true,
-			"default" : false,
+		"internetAccessAPI": {
+			"type": "boolean",
+			"format": "checkbox",
+			"title": "edt_conf_net_internetAccessAPI_title",
+			"required": true,
+			"default": false,
 			"options": {
 				"dependencies": {
 					"apiAuth": true
 				}
 			},
-			"propertyOrder" : 2
+			"propertyOrder": 2
 		},
-		"restirctedInternetAccessAPI" :
-		{
-			"type" : "boolean",
-			"title" : "edt_conf_net_restirctedInternetAccessAPI_title",
-			"required" : true,
-			"default" : false,
+		"restirctedInternetAccessAPI": {
+			"type": "boolean",
+			"format": "checkbox",
+			"title": "edt_conf_net_restirctedInternetAccessAPI_title",
+			"required": true,
+			"default": false,
 			"options": {
 				"dependencies": {
 					"internetAccessAPI": true
 				}
 			},
-			"propertyOrder" : 3
+			"propertyOrder": 3
 		},
 		"ipWhitelist" :
 		{
@@ -55,26 +55,26 @@
 			},
 			"propertyOrder" : 4
 		},
-		"localApiAuth" :
-		{
-			"type" : "boolean",
-			"title" : "edt_conf_net_localApiAuth_title",
-			"required" : true,
-			"default" : false,
+		"localApiAuth": {
+			"type": "boolean",
+			"format": "checkbox",
+			"title": "edt_conf_net_localApiAuth_title",
+			"required": true,
+			"default": false,
 			"options": {
 				"dependencies": {
 					"apiAuth": true
 				}
 			},
-			"propertyOrder" : 5
+			"propertyOrder": 5
 		},
-		"localAdminAuth" :
-		{
-			"type" : "boolean",
-			"title" : "edt_conf_net_localAdminAuth_title",
-			"required" : true,
-			"default" : true,
-			"propertyOrder" : 5
+		"localAdminAuth": {
+			"type": "boolean",
+			"format": "checkbox",
+			"title": "edt_conf_net_localAdminAuth_title",
+			"required": true,
+			"default": true,
+			"propertyOrder": 5
 		}
 	},
 	"additionalProperties" : false

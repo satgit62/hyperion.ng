@@ -6,9 +6,10 @@
 	"properties":{
 		"reverse": {
 			"type": "boolean",
-			"title":"edt_eff_reversedirection",
+			"format": "checkbox",
+			"title": "edt_eff_reversedirection",
 			"default": false,
-			"propertyOrder" : 1
+			"propertyOrder": 1
 		},
 		"reverse_time": {
 			"type": "integer",
@@ -28,9 +29,10 @@
 		},
 		"random-center": {
 			"type": "boolean",
-			"title":"edt_eff_randomCenter",
+			"format": "checkbox",
+			"title": "edt_eff_randomCenter",
 			"default": false,
-			"propertyOrder" : 3
+			"propertyOrder": 3
 		},
 		"center_x": {
 			"type": "number",
@@ -60,12 +62,12 @@
 			},
 			"propertyOrder" : 5
 		},
-		"smoothing-custom-settings" :
-		{
-			"type" : "boolean",
-			"title" : "edt_eff_smooth_custom",
-			"default" : true,
-			"propertyOrder" : 6
+		"smoothing-custom-settings": {
+			"type": "boolean",
+			"format": "checkbox",
+			"title": "edt_eff_smooth_custom",
+			"default": true,
+			"propertyOrder": 6
 		},
 		"smoothing-time_ms" :
 		{

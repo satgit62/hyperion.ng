@@ -4,13 +4,13 @@
 	"title" : "edt_conf_pbs_heading_title",
 	"properties" :
 	{
-		"enable" :
-		{
-			"type" : "boolean",
-			"required" : true,
-			"title" : "edt_conf_general_enable_title",
-			"default" : true,
-			"propertyOrder" : 1
+		"enable": {
+			"type": "boolean",
+			"format": "checkbox",
+			"required": true,
+			"title": "edt_conf_general_enable_title",
+			"default": true,
+			"propertyOrder": 1
 		},
 		"port" :
 		{

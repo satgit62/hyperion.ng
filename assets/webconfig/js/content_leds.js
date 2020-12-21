@@ -608,7 +608,17 @@ $(document).ready(function () {
         case "wled":
         case "nanoleaf":
           discover_device(ledType);
-          conf_editor.getEditor("root.generalOptions.hardwareLedCount").setValue(1);
+
+          var hwLedCount = conf_editor.getEditor("root.generalOptions.hardwareLedCount")
+          if (hwLedCount) {
+            hwLedCount.setValue(1);
+          }
+
+          var colorOrder = conf_editor.getEditor("root.generalOptions.colorOrder")
+          if (colorOrder) {
+            colorOrder.setValue("rgb");
+          }
+
           break;
 
         default:
@@ -618,7 +628,7 @@ $(document).ready(function () {
     conf_editor.on('change', function () {
       //debugMessage("conf_editor.on(change)");
 
-    // --------------------- B E G I N ---------------------
+      // --------------------- B E G I N ---------------------
 
       //Check, if device can be identified/tested and/or saved
       var canIdentify = false;
@@ -665,7 +675,7 @@ $(document).ready(function () {
         $('#btn_submit_controller').attr('disabled', true);
       }
 
-    // --------------------- E N D ---------------------
+      // --------------------- E N D ---------------------
 
       window.readOnlyMode ? $('#btn_cl_save').attr('disabled', true) : $('#btn_submit').attr('disabled', false);
       window.readOnlyMode ? $('#btn_ma_save').attr('disabled', true) : $('#btn_submit').attr('disabled', false);
@@ -682,15 +692,18 @@ $(document).ready(function () {
       //Disable General Options, as LED count will be resolved from device itself
       conf_editor.getEditor("root.generalOptions").disable();
 
-      val = conf_editor.getEditor("root.specificOptions.hostList").getValue();
+      var hostList = conf_editor.getEditor("root.specificOptions.hostList")
+      if (hostList) {
+        var val = hostList.getValue();
 
-      if (val === 'custom' || val === "") {
-        conf_editor.getEditor(specOptPath + "host").enable()
-        conf_editor.getEditor(specOptPath + "host").setValue("");
-      }
-      else {
-        conf_editor.getEditor(specOptPath + "host").disable();
-        conf_editor.getEditor(specOptPath + "host").setValue(val);
+        if (val === 'custom' || val === "") {
+          conf_editor.getEditor(specOptPath + "host").enable()
+          conf_editor.getEditor(specOptPath + "host").setValue("");
+        }
+        else {
+          conf_editor.getEditor(specOptPath + "host").disable();
+          conf_editor.getEditor(specOptPath + "host").setValue(val);
+        }
       }
     });
 
@@ -919,15 +932,15 @@ $(document).ready(function () {
         // Generate default layout
 
         var ledLedConfig = [];
-        
-        // TODO: Handle Strip 
-        if (coloLightProperties.modelType === "Strip") {
-          ledLedConfig = createClassicLedLayoutSimple(d.hardwareLedCount / 2, d.hardwareLedCount / 4, d.hardwareLedCount / 4, 0, d.hardwareLedCount / 4 * 3, false);
+
+        // TODO: Handle Strip
+        if (devicesProperties[ledType].modelType === "Strip") {
+          ledLedConfig = createClassicLedLayoutSimple(hardwareLedCount / 2, hardwareLedCount / 4, hardwareLedCount / 4, 0, hardwareLedCount / 4 * 3, false);
         }
         else {
-          ledLedConfig = createClassicLedLayoutSimple(0, 0, 0, d.hardwareLedCount, 0, true);
+          ledLedConfig = createClassicLedLayoutSimple(0, 0, 0, hardwareLedCount, 0, true);
         }
-        result.leds = wledLedConfig;
+        result.leds = ledLedConfig;
 
         // TODO: Turn smoothing off
         //result.smoothing.enable = false;
@@ -941,9 +954,9 @@ $(document).ready(function () {
         result.device.hardwareLedCount = hardwareLedCount;
 
         // Generate default layout
-        var wledLedConfig = [];
-        wledLedConfig = createClassicLedLayoutSimple(0, 0, 0, hardwareLedCount, 0, true);
-        result.leds = wledLedConfig;
+        var ledLedConfig = [];
+        ledLedConfig = createClassicLedLayoutSimple(0, 0, 0, hardwareLedCount, 0, true);
+        result.leds = ledLedConfig;
 
         // TODO: Turn smoothing off
         //result.smoothing.enable = false;
@@ -965,63 +978,155 @@ $(document).ready(function () {
 // --------------------- B E G I N ---------------------
 
 // build dynamic enum
-var updateSelectList = function (ledType, key, devices) {
-  console.log("updateSelectList() - ledType: ", ledType, " key: ", key, " devices: ", devices);
+var updateSelectList = function (ledType, key, discoveryInfo) {
+  console.log("updateSelectList() - ledType: ", ledType, " key: ", key, " discoveryInfo: ", discoveryInfo);
+
+  if (!discoveryInfo.devices) {
+    return;
+  }
 
   var dynamic_enum_schema = [];
   dynamic_enum_schema[key] =
   {
     "type": "string",
-    "title": $.i18n("edt_dev_spec_devices_discovered_title"),
+    "title": "edt_dev_spec_devices_discovered_title",
     "enum": [],
+    "default": "",
     "propertyOrder": 1, // don't forget to modify the original schema and count from 2
     "required": true,
-    "options": { "infoText": $.i18n("Select your LED-Device discovered") }
+    "options": { "enum_titles": [], "infoText": "edt_dev_spec_devices_discovered_title_info" }
   };
 
   var enumVals = [];
   var enumTitelVals = [];
+  var enumDefaultVal = "";
   var allowCustom = false;
 
-  switch (ledType) {
-    case "cololight":
-    case "nanoleaf":
-    case "wled":
-      for (const device of devices) {
-        enumVals.push(device.hostname);
-        if (device.hostname !== device.name) {
-          enumTitelVals.push(device.name + " (" + device.hostname + ")");
+
+  var ledTypeGroup;
+
+  var devNET = ['atmoorb', 'cololight', 'fadecandy', 'philipshue', 'nanoleaf', 'tinkerforge', 'tpm2net', 'udpe131', 'udpartnet', 'udph801', 'udpraw', 'wled', 'yeelight'];
+  var devSerial = ['adalight', 'dmx', 'atmo', 'sedu', 'tpm2', 'karate'];
+  var devHID = ['hyperionusbasp', 'lightpack', 'paintpack', 'rawhid', ];
+
+
+  if ($.inArray(ledType, devNET) != -1) {
+    ledTypeGroup = "devNET";
+  } else if ($.inArray(ledType, devSerial) != -1) {
+    ledTypeGroup = "devSerial";
+  }
+
+  switch (ledTypeGroup) {
+
+    case "devNET":
+
+      var name;
+
+      var discoveryMethod = "ssdp";
+      if (discoveryInfo.discoveryMethod) {
+        discoveryMethod = discoveryInfo.discoveryMethod;
+      }
+
+      for (const device of discoveryInfo.devices) {
+
+        var name;
+        var host;
+        allowCustom = true;
+
+        switch (ledType) {
+          case "nanoleaf":
+            if (discoveryMethod === "ssdp") {
+              name = device.other["nl-devicename"];
+            }
+            else {
+              name = device.name;
+            }
+            break;
+          case "cololight":
+            if (discoveryMethod === "ssdp") {
+              name = device.hostname;
+            }
+            else {
+              name = device.name;
+            }
+            break;
+          case "wled":
+            name = device.name;
+            break;
+          default:
+            name = device.name;
+        }
+
+        if (discoveryMethod === "ssdp") {
+          host = device.ip;
         }
         else {
-          enumTitelVals.push(device.hostname);
+          host = device.hostname;
+        }
+
+        enumVals.push(host);
+        if (host !== name) {
+          enumTitelVals.push(name + " (" + host + ")");
+        }
+        else {
+          enumTitelVals.push(host);
+        }
+
+        allowCustom = true;
+
+        // Select configured device
+        var configuredDeviceType = window.serverConfig.device.type;
+        var configuredHost = window.serverConfig.device.hostList;
+        if (ledType === configuredDeviceType && configuredHost) {
+          enumDefaultVal = configuredHost;
         }
       }
-      allowCustom = true;
-      break;
-    case "adalight":
-      for (const device of devices) {
-        enumVals.push(device.portName);
-        enumTitelVals.push(device.portName + " (" + device.manufacturer + ")");
-      }
+
       break;
 
+    case "devSerial":
+
+      switch (ledType) {
+
+        case "adalight":
+          for (const device of discoveryInfo.devices) {
+            enumVals.push(device.portName);
+            enumTitelVals.push(device.portName + " (" + device.manufacturer + ")");
+          }
+
+          // Select configured device
+          var configuredDeviceType = window.serverConfig.device.type;
+          var configuredOutput = window.serverConfig.device.output;
+          if (ledType === configuredDeviceType && configuredOutput) {
+            enumDefaultVal = configuredOutput;
+          }
+
+          break;
+        default:
+      }
+      break;
     default:
   }
 
   if (allowCustom) {
     enumVals.push("custom");
-    enumTitelVals.push($.i18n("edt_conf_enum_custom"));
+    enumTitelVals.push("edt_conf_enum_custom");
 
-    dynamic_enum_schema[key].options.infoText = $.i18n("Select your LED-Device discovered or configure a custome one");
+    dynamic_enum_schema[key].options.infoText = "edt_dev_spec_devices_discovered_title_info_custom";
   }
 
   dynamic_enum_schema[key].enum = enumVals;
   dynamic_enum_schema[key].options.enum_titles = enumTitelVals;
 
+  console.log("updateSelectList : enumVals: ", enumVals);
+  console.log("updateSelectList : enumTitelVals: ", enumTitelVals);
+  console.log("updateSelectList : enumDefaultVal: ", enumDefaultVal);
+
   window.serverSchema.properties.alldevices[ledType].properties[key] = {
     "type": dynamic_enum_schema[key].type,
     "title": dynamic_enum_schema[key].title,
     "enum": enumVals,
+    "default": enumDefaultVal,
     "propertyOrder": dynamic_enum_schema[key].propertyOrder,
     "required": dynamic_enum_schema[key].required,
     "options": dynamic_enum_schema[key].options
@@ -1032,23 +1137,31 @@ var updateSelectList = function (ledType, key, devices) {
   specOpt.original_schema.properties = window.serverSchema.properties.alldevices[ledType].properties; // replace original_schema with new schema
   specOpt.schema.properties = window.serverSchema.properties.alldevices[ledType].properties; // replace schema with new schema
 
+  console.log("updateSelectList : specOpt.schema.properties: ", specOpt.schema.properties);
+
   specOpt.removeObjectProperty(key); // remove new object if exists
   delete specOpt.cached_editors[key]; // delete cache otherwise the new object is appended to the end of the editor
   specOpt.addObjectProperty(key); // add new object (wled)
+
+  spectOpt = conf_editor.getEditor('root.specificOptions');
+
+  console.log("updateSelectList : specOpt: ", specOpt);
 };
 
 async function discover_device(ledType, params) {
   console.log("discover_devices()- ledType: ", ledType, " params: ", params);
 
+  waitingDialog.show('Device discovery for ' + ledType + " in progress");
   const result = await requestLedDeviceDiscovery(ledType, params);
+  waitingDialog.hide();
 
   console.log("requestLedDeviceDiscovery(), result:", result);
 
   if (result && !result.error) {
-    const r = result.info
+    const discoveryResult = result.info;
 
     // Process devices returned by discovery
-    if (r.devices.length == 0) {
+    if (discoveryResult.devices.length == 0) {
       debugMessage("No device of type " + ledType + " found!");
     }
     else {
@@ -1066,7 +1179,7 @@ async function discover_device(ledType, params) {
         default:
       }
 
-      updateSelectList(ledType, key, r.devices);
+      updateSelectList(ledType, key, discoveryResult);
     }
   }
 }
@@ -1081,11 +1194,14 @@ async function getProperties_device(ledType, key, params) {
   if (!devicesProperties[ledType]) {
     devicesProperties[ledType] = {};
   }
-  
-  // get device's properties, if prperties not available in chache
+
+  // get device's properties, if properties not available in chache
   if (!devicesProperties[ledType][host]) {
+
+    waitingDialog.show('Get properties for' + ledType);
     const res = await requestLedDeviceProperties(ledType, params);
     console.log("requestLedDeviceProperties(), res: ", res);
+    waitingDialog.hide();
 
     if (res && !res.error) {
       var deviceProperties = res.info.properties;
@@ -1114,8 +1230,10 @@ async function identify_device(type, params) {
   // Take care that connfig cannot be saved during background processing
   $('#btn_submit_controller').attr('disabled', true);
 
+  waitingDialog.show('Identification in progess');
   const res = await requestLedDeviceIdentification(type, params);
   console.log("requestLedDeviceIdentification(), res: ", res);
+  waitingDialog.hide();
 
   if (!window.readOnlyMode) {
     $('#btn_submit_controller').attr('disabled', false);
@@ -1132,9 +1250,9 @@ function updateElements(ledType, key) {
     switch (ledType) {
       case "cololight":
         var ledProperties = devicesProperties[ledType][key];
-        
+
         // TODO: Handle Strip exclicitly, as not ledNum is provided
-        
+
         if (ledProperties) {
           hardwareLedCount = ledProperties.ledCount;
         }
@@ -1153,7 +1271,6 @@ function updateElements(ledType, key) {
           hardwareLedCount = 1;
         }
         conf_editor.getEditor("root.generalOptions.hardwareLedCount").setValue(hardwareLedCount);
-
         break;
 
       case "nanoleaf":
@@ -1182,4 +1299,3 @@ function updateElements(ledType, key) {
 }
 
 // --------------------- E N D --------------------
-

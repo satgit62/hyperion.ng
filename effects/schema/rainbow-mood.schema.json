@@ -34,9 +34,10 @@
 		},
 		"reverse": {
 			"type": "boolean",
-			"title":"edt_eff_reversedirection",
+			"format": "checkbox",
+			"title": "edt_eff_reversedirection",
 			"default": false,
-			"propertyOrder" : 4
+			"propertyOrder": 4
 		}
 	},
 	"additionalProperties": false

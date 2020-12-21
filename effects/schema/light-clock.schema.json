@@ -62,15 +62,17 @@
 		},
 		"show_seconds": {
 			"type": "boolean",
-			"title":"edt_eff_showseconds",
+			"format": "checkbox",
+			"title": "edt_eff_showseconds",
 			"default": true,
-			"propertyOrder" : 5
+			"propertyOrder": 5
 		},
 		"marker-enabled": {
 			"type": "boolean",
+			"format": "checkbox",
 			"title": "edt_eff_markerEnable",
 			"default": false,
-			"propertyOrder" : 6
+			"propertyOrder": 6
 		},
 		"marker-depth": {
 			"type": "integer",

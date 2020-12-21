@@ -3,23 +3,23 @@
 	"title" : "edt_conf_smooth_heading_title",
 	"properties" :
 	{
-		"enable" :
-		{
-			"type" : "boolean",
-			"title" : "edt_conf_general_enable_title",
-			"default" : true,
-			"propertyOrder" : 1
+		"enable": {
+			"type": "boolean",
+			"format": "checkbox",
+			"title": "edt_conf_general_enable_title",
+			"default": true,
+			"propertyOrder": 1
 		},
-		"type" :
-		{
-			"type" : "string",
-			"title" : "edt_conf_smooth_type_title",
-			"enum" : ["linear", "decay"],
-			"default" : "linear",
-			"options" : {
-				"enum_titles" : ["edt_conf_enum_linear", "edt_conf_enum_decay"]
+		"type": {
+			"type": "string",
+			"title": "edt_conf_smooth_type_title",
+			"enum": [ "linear", "decay" ],
+			"default": "linear",
+			"required": true,
+			"options": {
+				"enum_titles": [ "edt_conf_enum_linear", "edt_conf_enum_decay" ]
 			},
-			"propertyOrder" : 2
+			"propertyOrder": 2
 		},
 		"time_ms" :
 		{
@@ -70,12 +70,12 @@
 			"maximum": 20.0,
 			"propertyOrder" : 7
 		},
-		"dithering" :
-		{
-			"type" : "boolean",
-			"title" : "edt_conf_smooth_dithering_title",
-			"default" : true,
-			"propertyOrder" : 8
+		"dithering": {
+			"type": "boolean",
+			"format": "checkbox",
+			"title": "edt_conf_smooth_dithering_title",
+			"default": true,
+			"propertyOrder": 8
 		},
 		"updateDelay" :
 		{
@@ -87,12 +87,12 @@
 			"append" : "edt_append_ms",
 			"propertyOrder" : 9
 		},
-		"continuousOutput" :
-		{
-			"type" : "boolean",
-			"title" : "edt_conf_smooth_continuousOutput_title",
-			"default" : true,
-			"propertyOrder" : 10
+		"continuousOutput": {
+			"type": "boolean",
+			"format": "checkbox",
+			"title": "edt_conf_smooth_continuousOutput_title",
+			"default": true,
+			"propertyOrder": 10
 		}
 	},
 	"additionalProperties" : false

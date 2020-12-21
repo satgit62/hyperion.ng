@@ -17,45 +17,44 @@
 
 // Constants
 namespace {
-const bool verbose = false;
-const bool verbose3 = false;
+	const bool verbose = false;
+	const bool verbose3 = false;
 
-// Configuration settings
+	// Configuration settings
 
-const char CONFIG_HW_LED_COUNT[] = "hardwareLedCount";
+	const char CONFIG_HW_LED_COUNT[] = "hardwareLedCount";
 
-const int COLOLIGHT_BEADS_PER_MODULE = 19;
-const int COLOLIGHT_MIN_STRIP_SEGMENT_SIZE = 30;
+	const int COLOLIGHT_BEADS_PER_MODULE = 19;
+	const int COLOLIGHT_MIN_STRIP_SEGMENT_SIZE = 30;
 
-// Cololight discovery service
+	// Cololight discovery service
 
-const int API_DEFAULT_PORT = 8900;
+	const int API_DEFAULT_PORT = 8900;
 
-const char DISCOVERY_ADDRESS[] = "255.255.255.255";
-const quint16 DISCOVERY_PORT = 12345;
-const char DISCOVERY_MESSAGE[] = "Z-SEARCH * \r\n";
-constexpr std::chrono::milliseconds DEFAULT_DISCOVERY_TIMEOUT{ 2000 };
-constexpr std::chrono::milliseconds DEFAULT_READ_TIMEOUT{ 1000 };
-constexpr std::chrono::milliseconds DEFAULT_IDENTIFY_TIME{ 2000 };
+	const char DISCOVERY_ADDRESS[] = "255.255.255.255";
+	const quint16 DISCOVERY_PORT = 12345;
+	const char DISCOVERY_MESSAGE[] = "Z-SEARCH * \r\n";
+	constexpr std::chrono::milliseconds DEFAULT_DISCOVERY_TIMEOUT{ 2000 };
+	constexpr std::chrono::milliseconds DEFAULT_READ_TIMEOUT{ 1000 };
+	constexpr std::chrono::milliseconds DEFAULT_IDENTIFY_TIME{ 2000 };
 
-const char COLOLIGHT_MODEL[] = "mod";
-const char COLOLIGHT_MODEL_TYPE[] = "subkey";
-const char COLOLIGHT_MAC[] = "sn";
-const char COLOLIGHT_NAME[] = "name";
+	const char COLOLIGHT_MODEL[] = "mod";
+	const char COLOLIGHT_MODEL_TYPE[] = "subkey";
+	const char COLOLIGHT_MAC[] = "sn";
+	const char COLOLIGHT_NAME[] = "name";
 
-const char COLOLIGHT_MODEL_IDENTIFIER[] = "OD_WE_QUAN";
-
+	const char COLOLIGHT_MODEL_IDENTIFIER[] = "OD_WE_QUAN";
 } //End of constants
 
 LedDeviceCololight::LedDeviceCololight(const QJsonObject& deviceConfig)
 	: ProviderUdp(deviceConfig)
-	  , _modelType(-1)
-	  , _ledLayoutType(STRIP_LAYOUT)
-	  , _ledBeadCount(0)
-	  , _distance(0)
-	  , _sequenceNumber(1)
+	, _modelType(-1)
+	, _ledLayoutType(-1)
+	, _ledBeadCount(0)
+	, _distance(0)
+	, _sequenceNumber(1)
 #ifdef ENABLE_AVAHI
-	  , _bonjour(BonjourBrowserWrapper::getInstance())
+	, _bonjour(BonjourBrowserWrapper::getInstance())
 #endif
 {
 	_packetFixPart.append(reinterpret_cast<const char*>(PACKET_HEADER), sizeof(PACKET_HEADER));
@@ -96,7 +95,7 @@ bool LedDeviceCololight::initLedsConfiguration()
 	if (!getInfo())
 	{
 		QString errorReason = QString("Cololight device (%1) not accessible to get additional properties!")
-								  .arg(getAddress().toString());
+			.arg(getAddress().toString());
 		setInError(errorReason);
 	}
 	else
@@ -104,11 +103,11 @@ bool LedDeviceCololight::initLedsConfiguration()
 		QString modelTypeText;
 
 		switch (_modelType) {
-		case 0:
+		case STRIP:
 			modelTypeText = "Strip";
 			_ledLayoutType = STRIP_LAYOUT;
 			break;
-		case 1:
+		case PLUS:
 			_ledLayoutType = MODLUE_LAYOUT;
 			modelTypeText = "Plus";
 			break;
@@ -129,7 +128,7 @@ bool LedDeviceCololight::initLedsConfiguration()
 		if (_modelType == STRIP && (getLedCount() % COLOLIGHT_MIN_STRIP_SEGMENT_SIZE != 0))
 		{
 			QString errorReason = QString("Hardware LED count must be multiple of %1 for Cololight Strip!")
-									  .arg(COLOLIGHT_MIN_STRIP_SEGMENT_SIZE);
+				.arg(COLOLIGHT_MIN_STRIP_SEGMENT_SIZE);
 			this->setInError(errorReason);
 		}
 		else
@@ -141,8 +140,8 @@ bool LedDeviceCololight::initLedsConfiguration()
 			if (getLedCount() < configuredLedCount)
 			{
 				QString errorReason = QString("Not enough LEDs [%1] for configured LEDs in layout [%2] found!")
-										  .arg(getLedCount())
-										  .arg(configuredLedCount);
+					.arg(getLedCount())
+					.arg(configuredLedCount);
 				this->setInError(errorReason);
 			}
 			else
@@ -214,22 +213,34 @@ bool LedDeviceCololight::getInfo()
 			if (ledNum != 0xFFFF)
 			{
 				_ledBeadCount = ledNum;
+				// Cololight types are not identifyable currently
+				// Work under the assumption that modules (Cololight Plus) have a number of beads and a Colologht Strip does not have a mulitple of beads
 				if (ledNum % COLOLIGHT_BEADS_PER_MODULE == 0)
 				{
-					_modelType = MODLUE_LAYOUT;
+					_modelType = PLUS;
+					_ledLayoutType = MODLUE_LAYOUT;
 					_distance = ledNum / COLOLIGHT_BEADS_PER_MODULE;
 					setLedCount(_distance);
 				}
+				else
+				{
+					_modelType = STRIP;
+					_ledLayoutType = STRIP_LAYOUT;
+					_distance = 0;
+					setLedCount(ledNum);
+				}
+				isCmdOK = true;
+				Debug(_log, "#LEDs found [0x%x], [%u], distance [%d]", _ledBeadCount, _ledBeadCount, _distance);
 			}
 			else
 			{
-				_modelType = STRIP;
+				_modelType = -1;
+				_ledLayoutType = -1;
+				_distance = 0;
 				setLedCount(0);
+				isCmdOK = false;
+				Error(_log, "Number of LEDs cannot be resolved");
 			}
-
-			Debug(_log, "#LEDs found [0x%x], [%u], distance [%d]", _ledBeadCount, _ledBeadCount, _distance);
-
-			isCmdOK = true;
 		}
 	}
 
@@ -613,7 +624,8 @@ QJsonArray LedDeviceCololight::discover()
 	{
 		QJsonObject obj;
 
-		obj.insert("ip", i.key());
+		QString ipAddress = i.key();
+		obj.insert("ip", ipAddress);
 		obj.insert("model", i.value().value(COLOLIGHT_MODEL));
 		obj.insert("type", i.value().value(COLOLIGHT_MODEL_TYPE));
 		obj.insert("mac", i.value().value(COLOLIGHT_MAC));
@@ -623,7 +635,6 @@ QJsonArray LedDeviceCololight::discover()
 		if (hostInfo.error() == QHostInfo::NoError)
 		{
 			QString hostname = hostInfo.hostName();
-			//Seems that for Windows no local domain name is resolved
 			if (!QHostInfo::localDomainName().isEmpty())
 			{
 				obj.insert("hostname", hostname.remove("." + QHostInfo::localDomainName()));
@@ -631,9 +642,23 @@ QJsonArray LedDeviceCololight::discover()
 			}
 			else
 			{
-				int domainPos = hostname.indexOf('.');
-				obj.insert("hostname", hostname.left(domainPos));
-				obj.insert("domain", hostname.mid(domainPos + 1));
+				if (hostname.startsWith(ipAddress))
+				{
+					obj.insert("hostname", ipAddress);
+
+					QString domain = hostname.remove(ipAddress);
+					if (domain.at(0) == '.')
+					{
+						domain.remove(0, 1);
+					}
+					obj.insert("domain", domain);
+				}
+				else
+				{
+					int domainPos = hostname.indexOf('.');
+					obj.insert("hostname", hostname.left(domainPos));
+					obj.insert("domain", hostname.mid(domainPos + 1));
+				}
 			}
 		}
 
@@ -647,20 +672,23 @@ QJsonObject LedDeviceCololight::discover(const QJsonObject& /*params*/)
 	QJsonObject devicesDiscovered;
 	devicesDiscovered.insert("ledDeviceType", _activeDeviceType);
 
+	QString discoveryMethod("ssdp");
 	QJsonArray deviceList;
 
 #ifdef ENABLE_AVAHI
+	discoveryMethod = "mDNS";
 	QVariantList deviceListResponse;
 	QMetaObject::invokeMethod(_bonjour, "getServicesDiscoveredJson", Qt::DirectConnection,
-							   Q_RETURN_ARG(QVariantList, deviceListResponse),
-							   Q_ARG(QString,LedDeviceBonjourRegister::getServiceType(_activeDeviceType)),
-							   Q_ARG(QString, LedDeviceBonjourRegister::getServiceNameFilter(_activeDeviceType))
-							   );
-	deviceList = QJsonValue::fromVariant( deviceListResponse ).toArray();
+		Q_RETURN_ARG(QVariantList, deviceListResponse),
+		Q_ARG(QString, LedDeviceBonjourRegister::getServiceType(_activeDeviceType)),
+		Q_ARG(QString, LedDeviceBonjourRegister::getServiceNameFilter(_activeDeviceType))
+	);
+	deviceList = QJsonValue::fromVariant(deviceListResponse).toArray();
 #else
 	deviceList = discover();
 #endif
 
+	devicesDiscovered.insert("discoveryMethod", discoveryMethod);
 	devicesDiscovered.insert("devices", deviceList);
 
 	//Debug(_log, "devicesDiscovered: [%s]", QString(QJsonDocument(devicesDiscovered).toJson(QJsonDocument::Compact)).toUtf8().constData());
@@ -690,7 +718,10 @@ QJsonObject LedDeviceCololight::getProperties(const QJsonObject& params)
 				QString modelTypeText;
 
 				switch (_modelType) {
-				case 1:
+				case STRIP:
+					modelTypeText = "Strip";
+					break;
+				case PLUS:
 					modelTypeText = "Plus";
 					break;
 				default:

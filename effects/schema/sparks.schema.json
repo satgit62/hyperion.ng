@@ -60,9 +60,10 @@
 		},
 		"random-color": {
 			"type": "boolean",
-			"title":"edt_eff_colorrandom",
+			"format": "checkbox",
+			"title": "edt_eff_colorrandom",
 			"default": false,
-			"propertyOrder" : 6
+			"propertyOrder": 6
 		}
 	},
 	"additionalProperties": false

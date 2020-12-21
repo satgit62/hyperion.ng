@@ -42,21 +42,24 @@
 		},
 		"reverse": {
 			"type": "boolean",
-			"title":"edt_eff_reversedirection",
+			"format": "checkbox",
+			"title": "edt_eff_reversedirection",
 			"default": false,
-			"propertyOrder" : 5
+			"propertyOrder": 5
 		},
 		"colorRandom": {
 			"type": "boolean",
-			"title":"edt_eff_colorrandom",
+			"format": "checkbox",
+			"title": "edt_eff_colorrandom",
 			"default": false,
-			"propertyOrder" : 6
+			"propertyOrder": 6
 		},
 		"baseChange": {
 			"type": "boolean",
-			"title":"edt_eff_basecolorchange",
+			"format": "checkbox",
+			"title": "edt_eff_basecolorchange",
 			"default": false,
-			"propertyOrder" : 7
+			"propertyOrder": 7
 		},
 		"baseColorRangeLeft": {
 			"type": "number",
@@ -99,12 +102,12 @@
 			},
 			"propertyOrder" : 8
 		},
-		"smoothing-custom-settings" :
-		{
-			"type" : "boolean",
-			"title" : "edt_eff_smooth_custom",
-			"default" : false,
-			"propertyOrder" : 9
+		"smoothing-custom-settings": {
+			"type": "boolean",
+			"format": "checkbox",
+			"title": "edt_eff_smooth_custom",
+			"default": false,
+			"propertyOrder": 9
 		},
 		"smoothing-time_ms" :
 		{

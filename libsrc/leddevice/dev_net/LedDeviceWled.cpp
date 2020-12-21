@@ -274,9 +274,11 @@ QJsonObject LedDeviceWled::discover(const QJsonObject& /*params*/)
 	QJsonObject devicesDiscovered;
 	devicesDiscovered.insert("ledDeviceType", _activeDeviceType );
 
+	QString discoveryMethod("mDNS");
 	QJsonArray deviceList;
 
 #ifdef ENABLE_AVAHI
+	
 	QVariantList deviceListResponse;
 	QMetaObject::invokeMethod(_bonjour, "getServicesDiscoveredJson", Qt::DirectConnection,
 							   Q_RETURN_ARG(QVariantList, deviceListResponse),
@@ -286,6 +288,7 @@ QJsonObject LedDeviceWled::discover(const QJsonObject& /*params*/)
 	deviceList = QJsonValue::fromVariant( deviceListResponse ).toArray();
 #endif
 
+	devicesDiscovered.insert("discoveryMethod", discoveryMethod);
 	devicesDiscovered.insert("devices", deviceList);
 
 	//Debug(_log, "devicesDiscovered: [%s]", QString(QJsonDocument(devicesDiscovered).toJson(QJsonDocument::Compact)).toUtf8().constData() );

@@ -49,9 +49,10 @@
 		},
 		"reverse": {
 			"type": "boolean",
-			"title":"edt_eff_reversedirection",
+			"format": "checkbox",
+			"title": "edt_eff_reversedirection",
 			"default": false,
-			"propertyOrder" : 5
+			"propertyOrder": 5
 		}
 	},
 	"additionalProperties": false

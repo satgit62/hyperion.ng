@@ -71,12 +71,12 @@ The option `swirl_spread` will be of type number (float) with title `edt_eff_swi
 ### Select
 Create a select element, where you can select one of the `enum` items. Default is required!
 ``` json
-	"candles": {
-		"type": "string",
-		"title":"edt_eff_whichleds",
-		"enum" : ["all","all-together","list"],
-		"default" : "all"
-	}
+    "candles": {
+        "type": "string",
+        "title":"edt_eff_whichleds",
+        "enum" : ["all","all-together","list"],
+        "default" : "all"
+    }
 ```
 
 ### Array
@@ -103,10 +103,10 @@ The option `countries` will be of type array (in python it's a python tuple) (sh
 Create a selection where multiple elements from `ènum` can be selected. Default value is not required.
 ``` json
   "countries": {
-		"type": "array",
-		"title" : "edt_eff_countries",
-		"uniqueItems": true,
-		"items": {
+        "type": "array",
+        "title" : "edt_eff_countries",
+        "uniqueItems": true,
+        "items": {
       "type": "string",			
       "enum": ["de","at","fr","be","it","es","bg","ee","dk","fi","hu","ie","lv","lt","lu","mt","nl","pl","pt","ro","sl","se","ch"]
     },
@@ -121,15 +121,8 @@ Creates a RGB colorpicker.
   "color" : {
     "type": "array",
     "title" : "edt_eff_color",
-    "format":"colorpicker",
-    "default" : [255,0,0],
-    "items":{
-      "type":"integer",
-      "minimum": 0,
-      "maximum": 255
-    },
-    "minItems": 3,
-    "maxItems": 3
+    "format":"color",
+    "default" : "#ff0000",
   }
 ```
 The option `color` will be of type array (shown as RGB colorpicker) with the title `edt_eff_color` ([Titles will be translated](#translation)). This colorpicker will be set to initial red.

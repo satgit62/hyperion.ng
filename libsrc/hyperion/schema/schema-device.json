@@ -7,10 +7,7 @@
 		"type" :
 		{
 			"type" : "string",
-			"propertyOrder" : 1,
-		    "options": {
-			  "infoText": "Select the device type to be configured"
-		    }
+			"propertyOrder" : 1
 		},
 		"hardwareLedCount" :
 		{
@@ -18,9 +15,9 @@
 			"title" : "edt_dev_general_hardwareLedCount_title",
 			"minimum" : 1,
 			"default" : 1,
-		    "options": {
-			  "infoText": "Define the number of physical LEDs availabe for the given device"
-		    },			
+			"options": {
+				"infoText": "edt_dev_general_hardwareLedCount_title_info"
+			},			
 			"propertyOrder" : 2
 		},
 		"colorOrder" :
@@ -30,9 +27,9 @@
 			"enum" : ["rgb", "bgr", "rbg", "brg", "gbr", "grb"],
 			"default" : "rgb",
 			"required" : true,
-			"options" : {
-				"enum_titles" : ["edt_conf_enum_rgb", "edt_conf_enum_bgr", "edt_conf_enum_rbg", "edt_conf_enum_brg", "edt_conf_enum_gbr", "edt_conf_enum_grb"],
-				"infoText": "Set the device's color order"
+			"options": {
+				"enum_titles": [ "edt_conf_enum_rgb", "edt_conf_enum_bgr", "edt_conf_enum_rbg", "edt_conf_enum_brg", "edt_conf_enum_gbr", "edt_conf_enum_grb" ],
+				"infoText": "edt_dev_general_colorOrder_title_info"
 			},
 			"propertyOrder" : 3
 		}
