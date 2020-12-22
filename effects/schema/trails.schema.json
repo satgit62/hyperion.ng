@@ -47,18 +47,11 @@
 			"propertyOrder" : 6
 		},
 		"color": {
-			"type": "array",
-			"title":"edt_eff_color",
-			"format":"colorpicker",
-			"default": [255,0,0],
-			"items" : {
-				"type": "integer",
-				"minimum": 0,
-				"maximum": 255
-			},
-			"minItems": 3,
-			"maxItems": 3,
-			"propertyOrder" : 7
+			"type": "string",
+			"title": "edt_eff_color",
+			"format": "color",
+			"default": "#ff0000",
+			"propertyOrder": 7
 		}
 	},
 	"additionalProperties": false

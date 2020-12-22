@@ -1,11 +1,10 @@
 {
 	"name" : "X-Mas",
 	"script" : "x-mas.py",
-	"args" :
-	{
-		"sleepTime" : 750,
-		"color1" : [255,255,255],
-		"color2" : [255,0,0],
-		"length" : 1
+	"args": {
+		"sleepTime": 750,
+		"color1": "#ffffff",
+		"color2": "#ff0000",
+		"length": 1
 	}
 }

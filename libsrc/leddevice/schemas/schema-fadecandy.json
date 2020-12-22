@@ -87,24 +87,24 @@
 			},
 			"propertyOrder" : 9
 		},
-		"whitepoint" : {
-			"type" : "array",
-			"title" : "edt_dev_spec_whitepoint_title",
+		"whitepoint": {
+			"type": "array",
+			"title": "edt_dev_spec_whitepoint_title",
 			"options": {
 				"dependencies": {
 					"setFcConfig": true
 				}
 			},
-			"propertyOrder" : 10,
-			"default" : [255,255,255],
-			"maxItems" : 3,
-			"minItems" : 3,
-			"format" : "colorpicker",
-			"items" : {
-				"type" : "integer",
-				"minimum" : 0,
+			"propertyOrder": 10,
+			"default": "#ffffff",
+			"maxItems": 3,
+			"minItems": 3,
+			"format": "colorpicker",
+			"items": {
+				"type": "integer",
+				"minimum": 0,
 				"maximum": 255,
-				"default" : 255
+				"default": 255
 			}
 		}
 	},
