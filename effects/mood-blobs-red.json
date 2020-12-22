@@ -3,7 +3,7 @@
 	"script" : "mood-blobs.py",
 	"args": {
 		"rotationTime": 60.0,
-		"default": "#ff0000",
+		"color": "#ff0000",
 		"hueChange": 60.0,
 		"blobs": 5,
 		"reverse": false

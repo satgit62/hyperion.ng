@@ -4,6 +4,6 @@
 	"args": {
 		"speed": 1.0,
 		"fadeFactor": 0.7,
-		"default": "#ff0000"
+		"color": "#ff0000"
 	}
 }

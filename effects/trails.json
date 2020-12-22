@@ -8,6 +8,6 @@
 		"trails": 3,
 		"speed": 30,
 		"random": false,
-		"default": "#ffffff"
+		"color": "#ffffff"
 	}
 }

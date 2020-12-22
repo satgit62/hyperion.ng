@@ -26,9 +26,9 @@
       },
       "propertyOrder": 2
     },
-    "edt_eff_color": {
+    "color": {
       "type": "string",
-      "title": "edt_conf_color_white_title",
+      "title": "edt_eff_color",
       "format": "color",
       "default": "#ff8a00",
       "propertyOrder": 3
