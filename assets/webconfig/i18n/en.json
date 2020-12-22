@@ -344,7 +344,7 @@
   "edt_conf_instC_systemEnable_title": "Enable platform capture",
   "edt_conf_instC_v4lEnable_expl": "Enables the USB capture for this led hardware instance",
   "edt_conf_instC_v4lEnable_title": "Enable USB capture",
-  "edt_conf_instC_heading_title": "Instance Capture",
+  "edt_conf_instCapture_heading_title": "Instance Capture",
   "edt_conf_js_heading_title": "JSON Server",
   "edt_conf_log_heading_title": "Logging",
   "edt_conf_log_level_expl": "Depending on loglevel you see less or more messages in your log.",
