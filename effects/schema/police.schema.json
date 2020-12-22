@@ -5,32 +5,18 @@
 	"required":true,
 	"properties":{
 		"color_one": {
-			"type": "array",
-			"title":"edt_eff_colorone",
-			"format":"colorpicker",
-			"default": [255,0,0],
-			"items" : {
-				"type": "integer",
-				"minimum": 0,
-				"maximum": 255
-			},
-			"minItems": 3,
-			"maxItems": 3,
-			"propertyOrder" : 1
+			"type": "string",
+			"title": "edt_eff_colorone",
+			"format": "color",
+			"default": "#ff0000",
+			"propertyOrder": 1
 		},
 		"color_two": {
-			"type": "array",
-			"title":"edt_eff_colortwo",
-			"format":"colorpicker",
-			"default": [0,0,255],
-			"items" : {
-				"type": "integer",
-				"minimum": 0,
-				"maximum": 255
-			},
-			"minItems": 3,
-			"maxItems": 3,
-			"propertyOrder" : 2
+			"type": "string",
+			"title": "edt_eff_colortwo",
+			"format": "color",
+			"default": "#0000ff",
+			"propertyOrder": 2
 		},
 		"colors_count": {
 			"type": "integer",

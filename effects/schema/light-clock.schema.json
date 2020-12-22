@@ -5,59 +5,31 @@
 	"required":true,
 	"properties":{
 		"hour-color": {
-			"type": "array",
+			"type": "string",
 			"title": "edt_eff_colorHour",
-			"format": "colorpicker",
-			"default": [0, 0, 255],
-			"items": {
-				"type": "integer",
-				"minimum": 0,
-				"maximum": 255
-			},
-			"minItems": 3,
-			"maxItems": 3,
+			"format": "color",
+			"default": "#0000ff",
 			"propertyOrder": 1
 		},
 		"minute-color": {
-			"type": "array",
+			"type": "string",
 			"title": "edt_eff_colorMinute",
-			"format": "colorpicker",
-			"default": [0, 255, 0],
-			"items": {
-				"type": "integer",
-				"minimum": 0,
-				"maximum": 255
-			},
-			"minItems": 3,
-			"maxItems": 3,
+			"format": "color",
+			"default": "#00ff00",
 			"propertyOrder": 2
 		},
 		"second-color": {
-			"type": "array",
+			"type": "string",
 			"title": "edt_eff_colorSecond",
-			"format": "colorpicker",
-			"default": [255, 0, 0],
-			"items": {
-				"type": "integer",
-				"minimum": 0,
-				"maximum": 255
-			},
-			"minItems": 3,
-			"maxItems": 3,
+			"format": "color",
+			"default": "#ff0000",
 			"propertyOrder": 3
 		},
 		"background-color": {
-			"type": "array",
+			"type": "string",
 			"title": "edt_eff_backgroundColor",
-			"format": "colorpicker",
-			"default": [0, 0, 0],
-			"items": {
-				"type": "integer",
-				"minimum": 0,
-				"maximum": 255
-			},
-			"minItems": 3,
-			"maxItems": 3,
+			"format": "color",
+			"default": "#000000",
 			"propertyOrder": 4
 		},
 		"show_seconds": {
@@ -103,23 +75,16 @@
 			"propertyOrder" : 8
 		},
 		"marker-color": {
-			"type": "array",
-			"title":"edt_eff_colorMarker",
-			"format":"colorpicker",
-			"default": [255,255,255],
-			"items" : {
-				"type": "integer",
-				"minimum": 0,
-				"maximum": 255
-			},
-			"minItems": 3,
-			"maxItems": 3,
+			"type": "string",
+			"title": "edt_eff_colorMarker",
+			"format": "color",
+			"default": "#ffffff",
 			"options": {
 				"dependencies": {
 					"marker-enabled": true
 				}
 			},
-			"propertyOrder" : 9
+			"propertyOrder": 9
 		}
 	},
 	"additionalProperties": false

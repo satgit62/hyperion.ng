@@ -101,22 +101,15 @@
 		},
 		"colors": {
 			"type": "array",
-			"title":"edt_eff_customColor",
-			"items" : {
-				"type": "array",
-				"title" : "edt_eff_color",
-				"format":"colorpicker",
-				"default" : [255,0,0],
-				"items":{
-					"type":"integer",
-					"minimum": 0,
-					"maximum": 255
-				},
-				"minItems": 3,
-				"maxItems": 3
+			"title": "edt_eff_customColor",
+			"items": {
+				"type": "string",
+				"title": "edt_eff_color",
+				"format": "color",
+				"default": "#ff0000"
 			},
 			"minItems": 6,
-			"propertyOrder" : 9
+			"propertyOrder": 9
 		}
 	},
 	"additionalProperties": false

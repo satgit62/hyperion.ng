@@ -5,23 +5,16 @@
 	"required":true,
 	"properties":{
 		"color": {
-			"type": "array",
-			"title":"edt_eff_color",
-			"format":"colorpicker",
-			"default": [255,0,0],
-			"items" : {
-				"type": "integer",
-				"minimum": 0,
-				"maximum": 255
-			},
-			"minItems": 3,
-			"maxItems": 3,
+			"type": "string",
+			"title": "edt_eff_color",
+			"format": "color",
+			"default": "#ff0000",
 			"options": {
 				"dependencies": {
 					"random-color": false
 				}
 			},
-			"propertyOrder" : 1
+			"propertyOrder": 1
 		},
 		"rotation-time": {
 			"type": "number",
@@ -63,6 +56,7 @@
 			"format": "checkbox",
 			"title": "edt_eff_colorrandom",
 			"default": false,
+			"requried": true,	
 			"propertyOrder": 6
 		}
 	},
