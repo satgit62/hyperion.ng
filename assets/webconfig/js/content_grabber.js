@@ -217,37 +217,7 @@ $(document).ready(function () {
   $('#btn_submit_instCapt').off().on('click', function () {
     requestWriteConfig(conf_editor_instCapt.getValue());
   });
-
-  // Framegrabber
-  conf_editor_fg = createJsonEditor('editor_container_fg', {
-    framegrabber: window.schema.framegrabber
-  }, true, true);
-
-  conf_editor_fg.on('change', function () {
-    //Remove Grabbers which are not supported
-    var grabbers = window.serverInfo.grabbers.available;
-
-    var selector = "root_framegrabber_type";
-    var options = $("#" + selector + " option");
-
-    for (var i = 0; i < options.length; i++) {
-      var type = options[i].value;
-      if (grabbers.indexOf(type) === -1) {
-        $("#" + selector + " option[value='" + type + "']").remove();
-      }
-    }
-
-    if (window.serverInfo.grabbers.active) {
-      var activegrabber = window.serverInfo.grabbers.active.toLowerCase();
-      $("#" + selector + " option[value='" + activegrabber + "']").attr('selected', 'selected');
-    }
-
-    var selectedType = $("#root_framegrabber_type").val();
-    filerFgGrabberOptions(selectedType);
-
-    conf_editor_fg.validate().length || window.readOnlyMode ? $('#btn_submit_fg').attr('disabled', true) : $('#btn_submit_fg').attr('disabled', false);
-  });
-
+    
   $('#btn_submit_fg').off().on('click', function () {
     requestWriteConfig(conf_editor_fg.getValue());
   });
@@ -329,16 +299,86 @@ $(document).ready(function () {
     }
   }
 
+  // Framegrabber
+  conf_editor_fg = createJsonEditor('editor_container_fg', {
+    framegrabber: window.schema.framegrabber
+  }, true, true);
+
+
+  conf_editor_fg.on('ready', function () {
+
+    console.log("conf_editor_fg.on->ready");
+
+    var availableGrabbers = window.serverInfo.grabbers.available;
+
+    console.log("conf_editor_fg.on->ready, availableGrabbers: ", availableGrabbers);
+
+    var fgOptions = conf_editor_fg.getEditor('root.framegrabber');
+
+    var orginalGrabberTypes  = fgOptions.schema.properties.type.enum;
+    var orginalGrabberTitles = fgOptions.schema.properties.type.options.enum_titles;
+
+    var enumVals = [];
+    var enumTitelVals = [];
+    var enumDefaultVal = "";
+
+    for (var i = 0; i < orginalGrabberTypes.length; i++) {
+      var grabberType = orginalGrabberTypes[i];
+      if ($.inArray(grabberType, availableGrabbers) != -1) {
+        enumVals.push(grabberType);
+        enumTitelVals.push(orginalGrabberTitles[i]);
+      }
+    }
+
+    var activeGrabbers = window.serverInfo.grabbers.active.map(v => v.toLowerCase());
+
+    console.log("conf_editor_fg.on->ready, activeGrabbers: ", activeGrabbers);
+
+    if (typeof activeGrabbers !== 'undefined' && activeGrabbers.length > 0) {
+
+      enumDefaultVal = activeGrabbers[0];
+    }
+
+    key = "type";
+
+    console.log("updateSelectList : enumVals: ", enumVals);
+    console.log("updateSelectList : enumTitelVals: ", enumTitelVals);
+    console.log("updateSelectList : enumDefaultVal: ", enumDefaultVal);
+
+    fgOptions.schema.properties.type.enum = enumVals;
+    fgOptions.schema.properties.type.options.enum_titles = enumTitelVals;
+    fgOptions.schema.properties.type.default = enumDefaultVal;
+
+    fgOptions.removeObjectProperty(key);
+    delete fgOptions.cached_editors[key];
+    fgOptions.addObjectProperty(key);
+
+  });
+
+    conf_editor_fg.on('change', function () {
+
+    var selectedType = conf_editor_fg.getEditor("root.framegrabber.type").getValue();
+
+    console.log("conf_editor_fg.on->change, selectedType: ", selectedType);
+
+    filerFgGrabberOptions(selectedType);
+
+    conf_editor_fg.validate().length || window.readOnlyMode ? $('#btn_submit_fg').attr('disabled', true) : $('#btn_submit_fg').attr('disabled', false);
+  });
+
   function toggleFgOptions(el, state) {
+
+    console.log("toggleFgOptions: ", el, state);
     for (var i = 0; i < el.length; i++) {
       $('[data-schemapath*="root.framegrabber.' + el[i] + '"]').toggle(state);
     }
   }
 
   function filerFgGrabberOptions(type) {
-    //hide specific options for grabbers found
 
+    //hide specific options for grabbers found
     var grabbers = window.serverInfo.grabbers.available;
+
     if (grabbers.indexOf(type) > -1) {
       toggleFgOptions(["width", "height", "pixelDecimation", "display"], true);
 
@@ -366,11 +406,6 @@ $(document).ready(function () {
       }
     }
   };
-
-  $('#root_framegrabber_type').change(function () {
-    var selectedType = $("#root_framegrabber_type").val();
-    filerFgGrabberOptions(selectedType);
-  });
 
   removeOverlay();
 });

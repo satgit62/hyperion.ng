@@ -471,7 +471,14 @@ void JsonAPI::handleServerInfoCommand(const QJsonObject &message, const QString 
 
 	if ( GrabberWrapper::getInstance() != nullptr )
 	{
-		grabbers["active"] = GrabberWrapper::getInstance()->getActive();
+		QStringList activeGrabbers = GrabberWrapper::getInstance()->getActive(_hyperion->getInstanceIndex());
+		QJsonArray activeGrabberNames;
+		for (auto grabberName : activeGrabbers)
+		{
+			activeGrabberNames.append(grabberName);
+		}
+
+		grabbers["active"] = activeGrabberNames;
 	}
 
 	// get available grabbers

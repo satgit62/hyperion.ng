@@ -65,9 +65,17 @@ bool GrabberWrapper::isActive() const
 	return _timer->isActive();
 }
 
-QString GrabberWrapper::getActive() const
+QStringList GrabberWrapper::getActive(int inst) const
 {
-	return _grabberName;
+	QStringList result = QStringList();
+
+	if (GRABBER_V4L_CLIENTS.contains(inst))
+		result << GRABBER_V4L_CLIENTS.value(inst);
+
+	if (GRABBER_SYS_CLIENTS.contains(inst))
+		result << GRABBER_SYS_CLIENTS.value(inst);
+
+	return result;
 }
 
 QStringList GrabberWrapper::availableGrabbers()
@@ -178,9 +186,9 @@ void GrabberWrapper::handleSourceRequest(hyperion::Components component, int hyp
 	if(component == hyperion::Components::COMP_GRABBER  && !_grabberName.startsWith("V4L"))
 	{
 		if(listen && !GRABBER_SYS_CLIENTS.contains(hyperionInd))
-			GRABBER_SYS_CLIENTS.append(hyperionInd);
+			GRABBER_SYS_CLIENTS.insert(hyperionInd, _grabberName);
 		else if (!listen)
-			GRABBER_SYS_CLIENTS.removeOne(hyperionInd);
+			GRABBER_SYS_CLIENTS.remove(hyperionInd);
 
 		if(GRABBER_SYS_CLIENTS.empty())
 			stop();
@@ -190,9 +198,9 @@ void GrabberWrapper::handleSourceRequest(hyperion::Components component, int hyp
 	else if(component == hyperion::Components::COMP_V4L && _grabberName.startsWith("V4L"))
 	{
 		if(listen && !GRABBER_V4L_CLIENTS.contains(hyperionInd))
-			GRABBER_V4L_CLIENTS.append(hyperionInd);
+			GRABBER_V4L_CLIENTS.insert(hyperionInd, _grabberName);
 		else if (!listen)
-			GRABBER_V4L_CLIENTS.removeOne(hyperionInd);
+			GRABBER_V4L_CLIENTS.remove(hyperionInd);
 
 		if(GRABBER_V4L_CLIENTS.empty())
 			stop();

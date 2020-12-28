@@ -1151,9 +1151,9 @@ var updateSelectList = function (ledType, key, discoveryInfo) {
 async function discover_device(ledType, params) {
   console.log("discover_devices()- ledType: ", ledType, " params: ", params);
 
-  waitingDialog.show('Device discovery for ' + ledType + " in progress");
+//  waitingDialog.show('Device discovery for ' + ledType + " in progress");
   const result = await requestLedDeviceDiscovery(ledType, params);
-  waitingDialog.hide();
+//  waitingDialog.hide();
 
   console.log("requestLedDeviceDiscovery(), result:", result);
 
@@ -1198,10 +1198,10 @@ async function getProperties_device(ledType, key, params) {
   // get device's properties, if properties not available in chache
   if (!devicesProperties[ledType][host]) {
 
-    waitingDialog.show('Get properties for' + ledType);
+    //waitingDialog.show('Get properties for' + ledType);
     const res = await requestLedDeviceProperties(ledType, params);
     console.log("requestLedDeviceProperties(), res: ", res);
-    waitingDialog.hide();
+    //waitingDialog.hide();
 
     if (res && !res.error) {
       var deviceProperties = res.info.properties;
@@ -1230,10 +1230,10 @@ async function identify_device(type, params) {
   // Take care that connfig cannot be saved during background processing
   $('#btn_submit_controller').attr('disabled', true);
 
-  waitingDialog.show('Identification in progess');
+  //waitingDialog.show('Identification in progess');
   const res = await requestLedDeviceIdentification(type, params);
   console.log("requestLedDeviceIdentification(), res: ", res);
-  waitingDialog.hide();
+  //waitingDialog.hide();
 
   if (!window.readOnlyMode) {
     $('#btn_submit_controller').attr('disabled', false);
