@@ -985,23 +985,16 @@ var updateSelectList = function (ledType, key, discoveryInfo) {
     return;
   }
 
-  var dynamic_enum_schema = [];
-  dynamic_enum_schema[key] =
-  {
-    "type": "string",
+  let addSchemaElements = {
     "title": "edt_dev_spec_devices_discovered_title",
-    "enum": [],
-    "default": "",
-    "propertyOrder": 1, // don't forget to modify the original schema and count from 2
-    "required": true,
-    "options": { "enum_titles": [], "infoText": "edt_dev_spec_devices_discovered_title_info" }
+    "propertyOrder": 1,
+    "options": { "infoText": "edt_dev_spec_devices_discovered_title_info" }
   };
 
   var enumVals = [];
   var enumTitelVals = [];
   var enumDefaultVal = "";
-  var allowCustom = false;
-
+  var addCustom = false;
 
   var ledTypeGroup;
 
@@ -1031,7 +1024,7 @@ var updateSelectList = function (ledType, key, discoveryInfo) {
 
         var name;
         var host;
-        allowCustom = true;
+        addCustom = true;
 
         switch (ledType) {
           case "nanoleaf":
@@ -1072,7 +1065,7 @@ var updateSelectList = function (ledType, key, discoveryInfo) {
           enumTitelVals.push(host);
         }
 
-        allowCustom = true;
+        addCustom = true;
 
         // Select configured device
         var configuredDeviceType = window.serverConfig.device.type;
@@ -1108,44 +1101,9 @@ var updateSelectList = function (ledType, key, discoveryInfo) {
     default:
   }
 
-  if (allowCustom) {
-    enumVals.push("custom");
-    enumTitelVals.push("edt_conf_enum_custom");
-
-    dynamic_enum_schema[key].options.infoText = "edt_dev_spec_devices_discovered_title_info_custom";
-  }
-
-  dynamic_enum_schema[key].enum = enumVals;
-  dynamic_enum_schema[key].options.enum_titles = enumTitelVals;
-
-  console.log("updateSelectList : enumVals: ", enumVals);
-  console.log("updateSelectList : enumTitelVals: ", enumTitelVals);
-  console.log("updateSelectList : enumDefaultVal: ", enumDefaultVal);
-
-  window.serverSchema.properties.alldevices[ledType].properties[key] = {
-    "type": dynamic_enum_schema[key].type,
-    "title": dynamic_enum_schema[key].title,
-    "enum": enumVals,
-    "default": enumDefaultVal,
-    "propertyOrder": dynamic_enum_schema[key].propertyOrder,
-    "required": dynamic_enum_schema[key].required,
-    "options": dynamic_enum_schema[key].options
-  };
-
   var specOpt = conf_editor.getEditor('root.specificOptions'); // get specificOptions of the editor
-
-  specOpt.original_schema.properties = window.serverSchema.properties.alldevices[ledType].properties; // replace original_schema with new schema
-  specOpt.schema.properties = window.serverSchema.properties.alldevices[ledType].properties; // replace schema with new schema
-
-  console.log("updateSelectList : specOpt.schema.properties: ", specOpt.schema.properties);
-
-  specOpt.removeObjectProperty(key); // remove new object if exists
-  delete specOpt.cached_editors[key]; // delete cache otherwise the new object is appended to the end of the editor
-  specOpt.addObjectProperty(key); // add new object (wled)
-
-  spectOpt = conf_editor.getEditor('root.specificOptions');
-
-  console.log("updateSelectList : specOpt: ", specOpt);
+  updateJsonEditorSelection(specOpt, key, addSchemaElements, enumVals, enumTitelVals, enumDefaultVal, addCustom);
+   
 };
 
 async function discover_device(ledType, params) {

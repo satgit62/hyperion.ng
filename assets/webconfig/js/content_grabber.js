@@ -210,14 +210,41 @@ $(document).ready(function () {
     instCapture: window.schema.instCapture
   }, true, true);
 
+  // Hide V4L2 elements, if not available
+  if (!V4L2_AVAIL) {
+    var instCapOptions = conf_editor_instCapt;
+    $('[data-schemapath*="root.instCapture.v4lEnable' + '"]').hide();
+    $('[data-schemapath*="root.instCapture.v4lPriority' + '"]').hide();
+  }
+
   conf_editor_instCapt.on('change', function () {
+
+    var systemEnable = conf_editor_instCapt.getEditor("root.instCapture.systemEnable").getValue();
+    if (systemEnable) {
+      $('[data-schemapath*="root.instCapture.systemPriority' + '"]').show();
+      $('#conf_cont_fg').show();
+    } else {
+      $('#conf_cont_fg').hide();
+      $('[data-schemapath*="root.instCapture.systemPriority' + '"]').hide();
+    }
+
+    if (V4L2_AVAIL) {
+      var v4lEnable = conf_editor_instCapt.getEditor("root.instCapture.v4lEnable").getValue();
+      if (v4lEnable) {
+        $('[data-schemapath*="root.instCapture.v4lPriority' + '"]').show();
+        $('#conf_cont_v4l').show();
+      } else {
+        $('[data-schemapath*="root.instCapture.v4lPriority' + '"]').hide();
+        $('#conf_cont_v4l').hide();
+      }
+    }
     conf_editor_instCapt.validate().length || window.readOnlyMode ? $('#btn_submit_instCapt').attr('disabled', true) : $('#btn_submit_instCapt').attr('disabled', false);
   });
 
   $('#btn_submit_instCapt').off().on('click', function () {
     requestWriteConfig(conf_editor_instCapt.getValue());
   });
-    
+
   $('#btn_submit_fg').off().on('click', function () {
     requestWriteConfig(conf_editor_fg.getValue());
   });
@@ -304,18 +331,13 @@ $(document).ready(function () {
     framegrabber: window.schema.framegrabber
   }, true, true);
 
-
   conf_editor_fg.on('ready', function () {
 
-    console.log("conf_editor_fg.on->ready");
-
     var availableGrabbers = window.serverInfo.grabbers.available;
-
     console.log("conf_editor_fg.on->ready, availableGrabbers: ", availableGrabbers);
 
     var fgOptions = conf_editor_fg.getEditor('root.framegrabber');
-
-    var orginalGrabberTypes  = fgOptions.schema.properties.type.enum;
+    var orginalGrabberTypes = fgOptions.schema.properties.type.enum;
     var orginalGrabberTitles = fgOptions.schema.properties.type.options.enum_titles;
 
     var enumVals = [];
@@ -331,31 +353,21 @@ $(document).ready(function () {
     }
 
     var activeGrabbers = window.serverInfo.grabbers.active.map(v => v.toLowerCase());
-
     console.log("conf_editor_fg.on->ready, activeGrabbers: ", activeGrabbers);
 
-    if (typeof activeGrabbers !== 'undefined' && activeGrabbers.length > 0) {
-
-      enumDefaultVal = activeGrabbers[0];
+    // Select first active platform grabber
+    for (var i = 0; i < enumVals.length; i++) {
+      var grabberType = enumVals[i];
+      if ($.inArray(grabberType, activeGrabbers) != -1) {
+        enumDefaultVal = grabberType;
+        break;
+      }
     }
 
-    key = "type";
-
-    console.log("updateSelectList : enumVals: ", enumVals);
-    console.log("updateSelectList : enumTitelVals: ", enumTitelVals);
-    console.log("updateSelectList : enumDefaultVal: ", enumDefaultVal);
-
-    fgOptions.schema.properties.type.enum = enumVals;
-    fgOptions.schema.properties.type.options.enum_titles = enumTitelVals;
-    fgOptions.schema.properties.type.default = enumDefaultVal;
-
-    fgOptions.removeObjectProperty(key);
-    delete fgOptions.cached_editors[key];
-    fgOptions.addObjectProperty(key);
-
+    updateJsonEditorSelection(fgOptions, "type", {}, enumVals, enumTitelVals, enumDefaultVal);
   });
 
-    conf_editor_fg.on('change', function () {
+  conf_editor_fg.on('change', function () {
 
     var selectedType = conf_editor_fg.getEditor("root.framegrabber.type").getValue();
 
@@ -367,8 +379,6 @@ $(document).ready(function () {
   });
 
   function toggleFgOptions(el, state) {
-
-    console.log("toggleFgOptions: ", el, state);
     for (var i = 0; i < el.length; i++) {
       $('[data-schemapath*="root.framegrabber.' + el[i] + '"]').toggle(state);
     }
