@@ -334,9 +334,13 @@ $(document).ready(function () {
 
     console.log("conf_editor_fg.on->ready, activeGrabbers: ", activeGrabbers);
 
-    if (typeof activeGrabbers !== 'undefined' && activeGrabbers.length > 0) {
-
-      enumDefaultVal = activeGrabbers[0];
+    // Select first active platform grabber
+    for (var i = 0; i < enumVals.length; i++) {
+      var grabberType = enumVals[i];
+      if ($.inArray(grabberType, activeGrabbers) != -1) {
+        enumDefaultVal = grabberType;
+        break;
+      }
     }
 
     key = "type";
