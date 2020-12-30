@@ -243,7 +243,7 @@ macro(DeployWindows TARGET)
 
 		# Copy QMdnsEngine Lib
 		install(
-			FILES ${CMAKE_BINARY_DIR}/bin/qmdnsengine.dll
+			FILES ${CMAKE_BINARY_DIR}/lib/qmdnsengine.dll
 			DESTINATION "bin"
 			COMPONENT "Hyperion"
 		)
