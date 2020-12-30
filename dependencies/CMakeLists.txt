@@ -17,15 +17,24 @@ endif()
 #=============================================================================
 
 if(NOT APPLE)
-	include(ExternalProject)
-	ExternalProject_Add(
-		qmdnsengine
-		PREFIX                "${CMAKE_BINARY_DIR}/dependencies/external/qmdnsengine"
-		DOWNLOAD_COMMAND      "" # Disable download step
-		SOURCE_DIR            "${CMAKE_CURRENT_SOURCE_DIR}/external/qmdnsengine" # Source dir for configuration
-		INSTALL_DIR           ${CMAKE_BINARY_DIR}
-		CMAKE_CACHE_ARGS      -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_BINARY_DIR} -DCMAKE_PREFIX_PATH:PATH=${Qt5Network_DIR}
+	set(QMDNS_WORK_DIR "${CMAKE_BINARY_DIR}/dependencies/external/qmdnsengine")
+	set(QMDNS_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/qmdnsengine")
+	set(QMDNS_INSTALL_DIR ${CMAKE_BINARY_DIR})
+	set(QMDNS_CMAKE_ARGS
+		-DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_BINARY_DIR}
+		-DBIN_INSTALL_DIR:STRING=lib
+		-DLIB_INSTALL_DIR:STRING=lib
+		-DINCLUDE_INSTALL_DIR:STRING=include
+		-DCMAKE_PREFIX_PATH:PATH=${Qt5Network_DIR}
+		-Wno-dev
 	)
+
+	if(NOT DEFINED BUILD_QMDNS_ONCE)
+		set(BUILD_QMDNS_ONCE CACHE INTERNAL "Done")
+		configure_file(${CMAKE_SOURCE_DIR}/dependencies/CMakeLists-qmdnsengine.txt.in ${QMDNS_WORK_DIR}/CMakeLists.txt @ONLY)
+		execute_process(COMMAND ${CMAKE_COMMAND} ${QMDNS_INSTALL_DIR} -G "${CMAKE_GENERATOR}" . WORKING_DIRECTORY ${QMDNS_WORK_DIR})
+		execute_process(COMMAND ${CMAKE_COMMAND} --build . WORKING_DIRECTORY ${QMDNS_WORK_DIR})
+	endif()
 
 	set(QMDNS_INCLUDE_DIR "${CMAKE_BINARY_DIR}/include")
 	set(QMDNS_INCLUDE_DIR ${QMDNS_INCLUDE_DIR} PARENT_SCOPE)
