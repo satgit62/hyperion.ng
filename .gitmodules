@@ -10,3 +10,6 @@
 	path = dependencies/external/protobuf
 	url = https://github.com/hyperion-project/protobuf.git
 	branch = master
+[submodule "dependencies/external/qmdnsengine"]
+	path = dependencies/external/qmdnsengine
+	url = https://github.com/nitroshare/qmdnsengine.git

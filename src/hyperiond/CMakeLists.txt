@@ -44,6 +44,12 @@ target_link_libraries(hyperiond
 	Qt5::Widgets
 )
 
+# QMdnsEngine is currently not supported under MacOS because no Devs
+if(NOT APPLE)
+	include_directories(${QMDNS_INCLUDE_DIR})
+	target_link_libraries(hyperiond mdns)
+endif()
+
 if (NOT CMAKE_VERSION VERSION_LESS "3.12")
 	target_link_libraries( hyperiond ${Python3_LIBRARIES} )
 else()
@@ -52,7 +58,7 @@ endif()
 
 if (ENABLE_AVAHI)
 	target_link_libraries(hyperiond bonjour)
-endif ()
+endif()
 
 if (ENABLE_AMLOGIC)
 	target_link_libraries(hyperiond
@@ -104,7 +110,6 @@ if (ENABLE_QT)
 endif ()
 
 if (ENABLE_DX)
-	include_directories(${DIRECTX9_INCLUDE_DIRS})
 	target_link_libraries(hyperiond	directx-grabber)
 endif ()
 
@@ -124,10 +129,6 @@ if(NOT WIN32)
 else()
 	install ( TARGETS hyperiond DESTINATION "bin" COMPONENT "Hyperion" )
 	install ( FILES ${CMAKE_SOURCE_DIR}/effects/readme.txt DESTINATION "effects" COMPONENT "Hyperion" )
-
-	#set( CMAKE_INSTALL_UCRT_LIBRARIES TRUE )
-	#set( CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS_SKIP TRUE )
-	#include( InstallRequiredSystemLibraries )
 endif()
 
 if(CMAKE_HOST_UNIX)
@@ -136,11 +137,21 @@ if(CMAKE_HOST_UNIX)
 	install( CODE "FILE (REMOVE ${CMAKE_BINARY_DIR}/symlink_hyperiond )" COMPONENT "Hyperion" )
 endif()
 
-# Copy dependencies (not for OSX)
+# Deploy Qt DLLs into the binary folder.
+# This is necessary for starting the application from within the IDE
+if(WIN32)
+	get_target_property(QMAKE_EXECUTABLE Qt5::qmake IMPORTED_LOCATION)
+	get_filename_component(QT_BIN_DIR "${QT_QMAKE_EXECUTABLE}" DIRECTORY)
+	find_program(WINDEPLOYQT_EXECUTABLE windeployqt HINTS "${QT_BIN_DIR}")
+	set(WINDEPLOYQT_PARAMS --verbose 0 --no-compiler-runtime --no-opengl-sw --no-system-d3d-compiler)
+	add_custom_command(TARGET hyperiond POST_BUILD COMMAND ${WINDEPLOYQT_EXECUTABLE} ${WINDEPLOYQT_PARAMS} "$<TARGET_FILE:hyperiond>")
+endif()
+
+# Deploy all dependencies for package creation (not for OSX)
 include(${CMAKE_SOURCE_DIR}/cmake/Dependencies.cmake)
 
-if (NOT ENABLE_OSX AND NOT WIN32) # Unix
+if(NOT APPLE AND NOT WIN32) # Unix
 	DeployUnix("hyperiond")
 elseif(WIN32) # Windows
 	DeployWindows("hyperiond")
-endif ()
+endif()
