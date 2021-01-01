@@ -3,6 +3,9 @@
 
 // bonjour wrapper
 #include <HyperionConfig.h>
+
+#include <mdns/mdnsenginewrapper.h>
+
 #ifdef ENABLE_AVAHI
 #include <bonjour/bonjourbrowserwrapper.h>
 #endif
@@ -14,11 +17,15 @@
 
 #include <QMutex>
 
+
 class LedDevice;
 class Hyperion;
+class MdnsEngineWrapper;
+
 #ifdef ENABLE_AVAHI
 class BonjourBrowserWrapper;
 #endif
+
 typedef LedDevice* ( *LedDeviceCreateFuncType ) ( const QJsonObject& );
 typedef std::map<QString,LedDeviceCreateFuncType> LedDeviceRegistry;
 
@@ -147,6 +154,9 @@ private:
 	LedDevice* _ledDevice;
 	// the enable state
 	bool _enabled;
+
+	/// MdDnsEngine instance
+	MdnsEngineWrapper* _mdnsEngine;
 
 #ifdef ENABLE_AVAHI
 	/// Bonjour instance

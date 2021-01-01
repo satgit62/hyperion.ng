@@ -2,10 +2,12 @@
 
 // bonjour wrapper
 #include <HyperionConfig.h>
+#include <mdns/mdnsenginewrapper.h>
+#include <leddevice/LedDeviceMdnsRegister.h>
+
 #ifdef ENABLE_AVAHI
 #include <bonjour/bonjourbrowserwrapper.h>
 #include <leddevice/LedDeviceBonjourRegister.h>
-
 #endif
 
 #include <leddevice/LedDevice.h>
@@ -31,6 +33,7 @@ LedDeviceWrapper::LedDeviceWrapper(Hyperion* hyperion)
 	, _hyperion(hyperion)
 	, _ledDevice(nullptr)
 	, _enabled(false)
+	, _mdnsEngine(MdnsEngineWrapper::getInstance())
 #ifdef ENABLE_AVAHI
 	, _bonjour(BonjourBrowserWrapper::getInstance())
 #endif
@@ -44,6 +47,14 @@ LedDeviceWrapper::LedDeviceWrapper(Hyperion* hyperion)
 	#undef REGISTER
 
 	_hyperion->setNewComponentState(hyperion::COMP_LEDDEVICE, false);
+
+	//Register all LED - Devices configured for mDNS discovery
+	MdnsConfigMap deviceConfig = LedDeviceMdnsRegister::getAllConfigs();
+	MdnsConfigMap::const_iterator deviceIterator;
+	for (deviceIterator = deviceConfig.begin(); deviceIterator != deviceConfig.end(); ++deviceIterator)
+	{
+		QMetaObject::invokeMethod(_mdnsEngine, "browseForServiceType", Qt::BlockingQueuedConnection, Q_ARG(QString, deviceIterator.value().serviceType));
+	}
 
 #ifdef ENABLE_AVAHI
 	//Register all LED-Devices configured for Bonjour discovery
