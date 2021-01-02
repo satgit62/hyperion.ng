@@ -437,7 +437,6 @@ QJsonObject LedDeviceNanoleaf::discover(const QJsonObject& /*params*/)
 
 #ifdef ENABLE_AVAHI
 	discoveryMethod = "mDNS";
-	QVariantList deviceListResponse;
 	QMetaObject::invokeMethod(_bonjour, "getServicesDiscoveredJson", Qt::DirectConnection,
 							   Q_RETURN_ARG(QVariantList, deviceListResponse),
 							   Q_ARG(QString,LedDeviceBonjourRegister::getServiceType(_activeDeviceType)),

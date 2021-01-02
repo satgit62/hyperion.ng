@@ -52,7 +52,7 @@ public:
 	///
 	/// @brief add all device constructors to the map
 	///
-	static int addToDeviceMap(QString name, LedDeviceCreateFuncType funcPtr);
+	static int addToDeviceMap(const QString& name, LedDeviceCreateFuncType funcPtr);
 
 	///
 	/// @brief Return all available device constructors
@@ -84,7 +84,7 @@ public:
 	///
 	/// @brief Get the number of LEDs from device
 	///
-	unsigned int getLedCount() const;
+	int getLedCount() const;
 
 public slots:
 	///

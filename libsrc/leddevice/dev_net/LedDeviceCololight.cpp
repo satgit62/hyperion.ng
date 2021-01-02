@@ -687,7 +687,6 @@ QJsonObject LedDeviceCololight::discover(const QJsonObject& /*params*/)
 	deviceList = QJsonValue::fromVariant(deviceListResponse).toArray();
 
 #ifdef ENABLE_AVAHI
-	QVariantList deviceListResponse;
 	QMetaObject::invokeMethod(_bonjour, "getServicesDiscoveredJson", Qt::DirectConnection,
 		Q_RETURN_ARG(QVariantList, deviceListResponse),
 		Q_ARG(QString, LedDeviceBonjourRegister::getServiceType(_activeDeviceType)),

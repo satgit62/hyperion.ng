@@ -71,7 +71,7 @@ HyperionDaemon::HyperionDaemon(const QString& rootPath, QObject* parent, bool lo
 	  , _instanceManager(new HyperionIManager(rootPath, this, readonlyMode))
 	  , _authManager(new AuthManager(this, readonlyMode))
 #ifndef __APPLE__
-	  , _mDNSEngineWrapper(new MdnsEngineWrapper)
+	  , _mDNSEngineWrapper(new MdnsEngineWrapper())
 #endif
 #ifdef ENABLE_AVAHI
 	  , _bonjourBrowserWrapper(new BonjourBrowserWrapper())

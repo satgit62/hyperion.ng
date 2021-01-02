@@ -49,18 +49,18 @@ LedDeviceWrapper::LedDeviceWrapper(Hyperion* hyperion)
 	_hyperion->setNewComponentState(hyperion::COMP_LEDDEVICE, false);
 
 	//Register all LED - Devices configured for mDNS discovery
-	MdnsConfigMap deviceConfig = LedDeviceMdnsRegister::getAllConfigs();
+	MdnsConfigMap deviceMdnsConfig = LedDeviceMdnsRegister::getAllConfigs();
 	MdnsConfigMap::const_iterator mdnsConfigIterator;
-	for (mdnsConfigIterator = deviceConfig.begin(); mdnsConfigIterator != deviceConfig.end(); ++mdnsConfigIterator)
+	for (mdnsConfigIterator = deviceMdnsConfig.constBegin(); mdnsConfigIterator != deviceMdnsConfig.constEnd(); ++mdnsConfigIterator)
 	{
 		QMetaObject::invokeMethod(_mdnsEngine, "browseForServiceType", Qt::BlockingQueuedConnection, Q_ARG(QByteArray, mdnsConfigIterator.value().serviceType));
 	}
 
 #ifdef ENABLE_AVAHI
 	//Register all LED-Devices configured for Bonjour discovery
-	BonjourConfigMap deviceConfig = LedDeviceBonjourRegister::getAllConfigs();
+	BonjourConfigMap deviceBonjourConfig = LedDeviceBonjourRegister::getAllConfigs();
 	BonjourConfigMap::const_iterator bonjourConfigIterator;
-	for (bonjourConfigIterator = deviceConfig.begin(); bonjourConfigIterator != deviceConfig.end(); ++bonjourConfigIterator)
+	for (bonjourConfigIterator = deviceBonjourConfig.constBegin(); bonjourConfigIterator != deviceBonjourConfig.constEnd(); ++bonjourConfigIterator)
 	{
 		QMetaObject::invokeMethod(_bonjour, "browseForServiceType", Qt::BlockingQueuedConnection,  Q_ARG(QString,bonjourConfigIterator.value().serviceType));
 	}
@@ -111,7 +111,8 @@ QJsonObject LedDeviceWrapper::getLedDeviceSchemas()
 
 	// read the JSON schema from the resource
 	QDir dir(":/leddevices/");
-	QJsonObject result, schemaJson;
+	QJsonObject result;
+	QJsonObject schemaJson;
 
 	for(QString &item : dir.entryList())
 	{
@@ -139,7 +140,7 @@ QJsonObject LedDeviceWrapper::getLedDeviceSchemas()
 	return result;
 }
 
-int LedDeviceWrapper::addToDeviceMap(QString name, LedDeviceCreateFuncType funcPtr)
+int LedDeviceWrapper::addToDeviceMap(const QString& name, LedDeviceCreateFuncType funcPtr)
 {
 	QMutexLocker lock(&_ledDeviceMapLock);
 
@@ -164,7 +165,7 @@ int LedDeviceWrapper::getLatchTime() const
 
 QString LedDeviceWrapper::getActiveDeviceType() const
 {
-	QString value = 0;
+	QString value = nullptr;
 	QMetaObject::invokeMethod(_ledDevice, "getActiveDeviceType", Qt::BlockingQueuedConnection, Q_RETURN_ARG(QString, value));
 	return value;
 }
@@ -176,7 +177,7 @@ QString LedDeviceWrapper::getColorOrder() const
 	return value;
 }
 
-unsigned int LedDeviceWrapper::getLedCount() const
+int LedDeviceWrapper::getLedCount() const
 {
 	int value = 0;
 	QMetaObject::invokeMethod(_ledDevice, "getLedCount", Qt::BlockingQueuedConnection, Q_RETURN_ARG(int, value));

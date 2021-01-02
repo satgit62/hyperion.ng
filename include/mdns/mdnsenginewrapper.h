@@ -39,11 +39,11 @@ public slots:
 
 private slots:
 
-		void onServiceAdded(const QMdnsEngine::Service &service);
-		void onServiceUpdated(const QMdnsEngine::Service &service);
-		void onServiceRemoved(const QMdnsEngine::Service &service);
+		static void onServiceAdded(const QMdnsEngine::Service &service);
+		static void onServiceUpdated(const QMdnsEngine::Service &service);
+		static void onServiceRemoved(const QMdnsEngine::Service &service);
 
-		void onServiceResolved(const QHostAddress& address);
+		static void onServiceResolved(const QHostAddress& address);
 
 private:
 
