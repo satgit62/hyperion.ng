@@ -7,6 +7,13 @@
 #include <qmdnsengine/browser.h>
 #include <qmdnsengine/resolver.h>
 
+//qt includes
+#include <QTimer>
+#include <QJsonArray>
+#include <QJsonObject>
+#include <QJsonDocument>
+#include <QRegularExpression>
+
 namespace {
 } //End of constants
 
@@ -26,8 +33,8 @@ MdnsEngineWrapper::MdnsEngineWrapper(QObject* parent)
 	_cache = new QMdnsEngine::Cache(this);
 
 	//browseForServiceType(QMdnsEngine::MdnsBrowseType);
-	browseForServiceType("_hap._tcp.local.");
-	browseForServiceType("_wled._tcp.local.");
+	//browseForServiceType("_hap._tcp.local.");
+	//browseForServiceType("_wled._tcp.local.");
 
 	//_browser = new QMdnsEngine::Browser(&_server, QMdnsEngine::MdnsBrowseType,_cache, this);
 
@@ -117,4 +124,70 @@ void MdnsEngineWrapper::onServiceResolved(const QHostAddress& address)
 	//	qDebug() << "Record:" << record.name() << " type: " << record.type() << " address: " << record.address() << " port: " << record.port() << " prio: " << record.priority();;
 	//	qDebug() << "Record:" << record.name() << "Attributes: " << record.attributes();
 	//}
+}
+
+QVariantList MdnsEngineWrapper::getServicesDiscoveredJson(const QByteArray& serviceType, const QString& filter) const
+{
+	Debug(Logger::getInstance("mDNS"), "getServicesDiscoveredJson");
+
+	QJsonArray result;
+
+
+	if (_browsedServiceTypes.contains(serviceType))
+	{
+		//ServiceMap services = _servicesResolved[serviceType];
+
+
+		//Debug(Logger::getInstance("BonJour"), "Get services of type [%s], matching name: [%s]", QSTRING_CSTR(serviceType), QSTRING_CSTR(filter));
+
+		//QRegularExpression regEx(filter);
+		//if (!regEx.isValid()) {
+		//	QString errorString = regEx.errorString();
+		//	int errorOffset = regEx.patternErrorOffset();
+
+		//	Error(Logger::getInstance("BonJour"), "Filtering regular expression [%s] error [%d]:[%s]", QSTRING_CSTR(filter), errorOffset, QSTRING_CSTR(errorString));
+		//}
+		//else
+		//{
+		//	ServiceMap::const_iterator i;
+		//	for (i = services.begin(); i != services.end(); ++i)
+		//	{
+		//		QRegularExpressionMatch match = regEx.match(i.key());
+		//		if (match.hasMatch())
+		//		{
+		//			Debug(Logger::getInstance("BonJour"), "Found service [%s], type [%s]", QSTRING_CSTR(i.key()), QSTRING_CSTR(i.value().registeredType));
+
+		//			QJsonObject obj;
+
+		//			obj.insert("id", i.key());
+
+		//			obj.insert("name", i.value().serviceName);
+		//			obj.insert("type", i.value().registeredType);
+		//			obj.insert("domain", i.value().replyDomain);
+		//			obj.insert("address", i.value().address);
+		//			obj.insert("hostname", i.value().hostName);
+		//			obj.insert("port", i.value().port);
+
+		//			qDebug() << "i.value().txt [" << i.value().txt << "]";
+
+		//			QJsonObject objOther;
+		//			QMap <QString, QByteArray>::const_iterator o;
+		//			for (o = i.value().txt.begin(); o != i.value().txt.end(); ++o)
+		//			{
+		//				objOther.insert(o.key(), o.value().data());
+		//			}
+		//			obj.insert("bonjourTxt", objOther);
+
+		//			result << obj;
+		//		}
+		//	}
+		//}
+		Debug(Logger::getInstance("mDNS"), "result: [%s]", QString(QJsonDocument(result).toJson(QJsonDocument::Compact)).toUtf8().constData());
+	}
+	else
+	{
+		Debug(Logger::getInstance("mDNS"), "No servicetype [%s] resolved", QSTRING_CSTR(QString(serviceType)));
+	}
+
+	return result.toVariantList();
 }

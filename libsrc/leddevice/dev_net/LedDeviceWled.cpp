@@ -3,8 +3,11 @@
 
 #include <ssdp/SSDPDiscover.h>
 
-// bonjour wrapper
+// mDNS/bonjour wrapper
 #include <HyperionConfig.h>
+#include <mdns/mdnsenginewrapper.h>
+#include <leddevice/LedDeviceMdnsRegister.h>
+
 #ifdef ENABLE_AVAHI
 #include <bonjour/bonjourbrowserwrapper.h>
 #include <leddevice/LedDeviceBonjourRegister.h>
@@ -48,6 +51,7 @@ LedDeviceWled::LedDeviceWled(const QJsonObject &deviceConfig)
 	: ProviderUdp(deviceConfig)
 	  ,_restApi(nullptr)
 	  ,_apiPort(API_DEFAULT_PORT)
+	  ,_mdnsEngine(MdnsEngineWrapper::getInstance())
 #ifdef ENABLE_AVAHI
 	  , _bonjour(BonjourBrowserWrapper::getInstance())
 #endif
@@ -276,6 +280,14 @@ QJsonObject LedDeviceWled::discover(const QJsonObject& /*params*/)
 
 	QString discoveryMethod("mDNS");
 	QJsonArray deviceList;
+
+	QVariantList deviceListResponse;
+	QMetaObject::invokeMethod(_mdnsEngine, "getServicesDiscoveredJson", Qt::DirectConnection,
+		Q_RETURN_ARG(QVariantList, deviceListResponse),
+		Q_ARG(QByteArray, LedDeviceMdnsRegister::getServiceType(_activeDeviceType)),
+		Q_ARG(QString, LedDeviceMdnsRegister::getServiceNameFilter(_activeDeviceType))
+	);
+	deviceList = QJsonValue::fromVariant(deviceListResponse).toArray();
 
 #ifdef ENABLE_AVAHI
 	

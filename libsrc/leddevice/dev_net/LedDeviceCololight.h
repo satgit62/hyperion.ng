@@ -5,8 +5,9 @@
 #include <leddevice/LedDevice.h>
 #include "ProviderUdp.h"
 
-// bonjour wrapper
+// mDNS/bonjour wrapper
 #include <HyperionConfig.h>
+#include <mdns/mdnsenginewrapper.h>
 #ifdef ENABLE_AVAHI
 #include <bonjour/bonjourbrowserwrapper.h>
 #endif
@@ -320,6 +321,7 @@ private:
 	//Cololights discovered and their response message details
 	QMultiMap<QString, QMap <QString, QString>> _services;
 
+	MdnsEngineWrapper* _mdnsEngine;
 	#ifdef ENABLE_AVAHI
 	/// Bonjour instance
 	BonjourBrowserWrapper* _bonjour;

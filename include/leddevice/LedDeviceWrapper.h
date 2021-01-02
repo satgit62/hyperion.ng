@@ -1,9 +1,8 @@
 #ifndef LEDEVICEWRAPPER_H
 #define LEDEVICEWRAPPER_H
 
-// bonjour wrapper
+// mDNS/bonjour wrapper
 #include <HyperionConfig.h>
-
 #include <mdns/mdnsenginewrapper.h>
 
 #ifdef ENABLE_AVAHI

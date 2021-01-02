@@ -6,8 +6,9 @@
 #include "ProviderRestApi.h"
 #include "ProviderUdp.h"
 
-// bonjour wrapper
+// mDNS/bonjour wrapper
 #include <HyperionConfig.h>
+#include <mdns/mdnsenginewrapper.h>
 #ifdef ENABLE_AVAHI
 #include <bonjour/bonjourbrowserwrapper.h>
 #endif
@@ -160,6 +161,7 @@ private:
 
 	QJsonObject _originalStateProperties;
 
+	MdnsEngineWrapper* _mdnsEngine;
 #ifdef ENABLE_AVAHI
 	/// Bonjour instance
 	BonjourBrowserWrapper* _bonjour;

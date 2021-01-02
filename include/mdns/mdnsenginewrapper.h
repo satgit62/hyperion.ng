@@ -35,7 +35,7 @@ public slots:
 
 
 	void loadService(const QMdnsEngine::Service& service);
-	//QVariantList getServicesDiscoveredJson(const QString &serviceType, const QString &filter = ".*") const;
+	QVariantList getServicesDiscoveredJson(const QByteArray &serviceType, const QString &filter = ".*") const;
 
 private slots:
 

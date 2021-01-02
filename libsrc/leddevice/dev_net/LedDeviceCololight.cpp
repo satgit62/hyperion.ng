@@ -1,7 +1,9 @@
 #include "LedDeviceCololight.h"
 
-// bonjour wrapper
+// mDNS/bonjour wrapper
 #include <HyperionConfig.h>
+#include <mdns/mdnsenginewrapper.h>
+#include <leddevice/LedDeviceMdnsRegister.h>
 #ifdef ENABLE_AVAHI
 #include <bonjour/bonjourbrowserwrapper.h>
 #include <leddevice/LedDeviceBonjourRegister.h>
@@ -53,6 +55,7 @@ LedDeviceCololight::LedDeviceCololight(const QJsonObject& deviceConfig)
 	, _ledBeadCount(0)
 	, _distance(0)
 	, _sequenceNumber(1)
+	, _mdnsEngine(MdnsEngineWrapper::getInstance())
 #ifdef ENABLE_AVAHI
 	, _bonjour(BonjourBrowserWrapper::getInstance())
 #endif
@@ -672,11 +675,18 @@ QJsonObject LedDeviceCololight::discover(const QJsonObject& /*params*/)
 	QJsonObject devicesDiscovered;
 	devicesDiscovered.insert("ledDeviceType", _activeDeviceType);
 
-	QString discoveryMethod("ssdp");
+	QString discoveryMethod("mDNS");
 	QJsonArray deviceList;
 
+	QVariantList deviceListResponse;
+	QMetaObject::invokeMethod(_mdnsEngine, "getServicesDiscoveredJson", Qt::DirectConnection,
+		Q_RETURN_ARG(QVariantList, deviceListResponse),
+		Q_ARG(QByteArray, LedDeviceMdnsRegister::getServiceType(_activeDeviceType)),
+		Q_ARG(QString, LedDeviceMdnsRegister::getServiceNameFilter(_activeDeviceType))
+	);
+	deviceList = QJsonValue::fromVariant(deviceListResponse).toArray();
+
 #ifdef ENABLE_AVAHI
-	discoveryMethod = "mDNS";
 	QVariantList deviceListResponse;
 	QMetaObject::invokeMethod(_bonjour, "getServicesDiscoveredJson", Qt::DirectConnection,
 		Q_RETURN_ARG(QVariantList, deviceListResponse),
@@ -685,7 +695,11 @@ QJsonObject LedDeviceCololight::discover(const QJsonObject& /*params*/)
 	);
 	deviceList = QJsonValue::fromVariant(deviceListResponse).toArray();
 #else
-	deviceList = discover();
+	if (deviceList.isEmpty())
+	{
+		discoveryMethod = "ssdp";
+		deviceList = discover();
+	}
 #endif
 
 	devicesDiscovered.insert("discoveryMethod", discoveryMethod);
