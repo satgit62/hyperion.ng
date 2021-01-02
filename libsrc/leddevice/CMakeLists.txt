@@ -88,8 +88,11 @@ target_link_libraries(leddevice
 	Qt5::Network
 	Qt5::SerialPort
 	ssdp
-	mdns
 )
+
+if(NOT APPLE)
+	target_link_libraries(leddevice mdns)
+endif()
 
 if(WIN32)
 	target_link_libraries(leddevice ws2_32)

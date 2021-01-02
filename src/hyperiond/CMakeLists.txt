@@ -46,7 +46,6 @@ target_link_libraries(hyperiond
 
 # QMdnsEngine is currently not supported under MacOS because no Devs
 if(NOT APPLE)
-	include_directories(${QMDNS_INCLUDE_DIR})
 	target_link_libraries(hyperiond mdns)
 endif()
 

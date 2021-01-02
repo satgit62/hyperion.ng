@@ -38,6 +38,7 @@ if(NOT APPLE)
 
 	set(QMDNS_INCLUDE_DIR "${CMAKE_BINARY_DIR}/include")
 	set(QMDNS_INCLUDE_DIR ${QMDNS_INCLUDE_DIR} PARENT_SCOPE)
+	include_directories(${QMDNS_INCLUDE_DIR})
 
 	if(WIN32)
 		set(QMDNS_LIBRARIES ${CMAKE_BINARY_DIR}/lib/qmdnsengine.lib)
@@ -46,6 +47,8 @@ if(NOT APPLE)
 	endif()
 
 	set(QMDNS_LIBRARIES ${QMDNS_LIBRARIES} PARENT_SCOPE)
+
+	mark_as_advanced (QMDNS_INCLUDE_DIR QMDNS_LIBRARIES)
 endif()
 
 #=============================================================================
