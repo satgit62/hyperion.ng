@@ -1,72 +1,87 @@
 #include <mdns/mdnsenginewrapper.h>
-#include <utils/Logger.h>
-
-#include <qmdnsengine/dns.h>
-#include <qmdnsengine/mdns.h>
-#include <qmdnsengine/server.h>
-#include <qmdnsengine/browser.h>
 #include <qmdnsengine/resolver.h>
+#include <qmdnsengine/record.h>
 
-//qt includes
+//Qt includes
 #include <QTimer>
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QJsonDocument>
 #include <QRegularExpression>
 
+// Utility includes
+#include <utils/Logger.h>
+#include <HyperionConfig.h>
+#include <hyperion/AuthManager.h>
+
 namespace {
+	const bool verbose = false;
 } //End of constants
 
 MdnsEngineWrapper* MdnsEngineWrapper::instance = nullptr;
 
 MdnsEngineWrapper::MdnsEngineWrapper(QObject* parent)
 	: QObject(parent)
+	, _log(Logger::getInstance("MDNS"))
 	, _server(nullptr)
+	, _hostname(nullptr)
+	, _provider(nullptr)
 	, _cache(nullptr)
-
 {
 	MdnsEngineWrapper::instance = this;
 
-	Debug(Logger::getInstance("mDNS"), "");
+	Debug(_log, "");
 
 	_server = new QMdnsEngine::Server(this);
 	_cache = new QMdnsEngine::Cache(this);
 
-	//browseForServiceType(QMdnsEngine::MdnsBrowseType);
-	//browseForServiceType("_hap._tcp.local.");
-	//browseForServiceType("_wled._tcp.local.");
+	// mDNS Provider Test - to be refined
+	_hostname = new QMdnsEngine::Hostname(_server, this);
+	connect(_hostname, &QMdnsEngine::Hostname::hostnameChanged, this, &MdnsEngineWrapper::onHostnameChanged);
 
-	//_browser = new QMdnsEngine::Browser(&_server, QMdnsEngine::MdnsBrowseType,_cache, this);
+	qDebug() << "hostname: " << _hostname->hostname() << " 	isRegistered " << _hostname->isRegistered();
+	_provider = new QMdnsEngine::Provider(_server, _hostname, this);
 
-	//QObject::connect(_browser, &QMdnsEngine::Browser::serviceAdded,
-	//	[](const QMdnsEngine::Service& service) {
-	//		qDebug() << "discovered: " << service.name() << " hostname: " << service.hostname() << " port: " << service.port() << " type: " << service.type();
-	//		qDebug() << "discovered: " << service.name() << " attributes " << service.attributes();
-	//	}
-	//);
+	Debug(_log, "Hostname[%s] ", QSTRING_CSTR(QString(_hostname->hostname())));
 
-	/*
-	QObject::connect(_resolver, &QMdnsEngine::Resolver::resolved,
-		[](const QHostAddress& address) {
-			qDebug() << "resolved to" << address;
-		}
-	);
-	*/
+	QMdnsEngine::Service service;
+	service.setType("_hiperion-flatbuf._tcp.local.");
+	service.setName("My hiperion flatbuffer Service");
+	service.setPort(19400);
 
-	//QObject::connect(_browser, &QMdnsEngine::Browser::serviceAdded, this, &MdnsEngineWrapper::onServiceAdded);
-	//QObject::connect(_browser, &QMdnsEngine::Browser::serviceUpdated, this, &MdnsEngineWrapper::onServiceUpdated);
-	//QObject::connect(_browser, &QMdnsEngine::Browser::serviceRemoved, this, &MdnsEngineWrapper::onServiceRemoved);
+	QByteArray id = AuthManager::getInstance()->getID().toUtf8();
+	const QMap<QByteArray, QByteArray> attributes = { {"id", id},{"version", HYPERION_VERSION} };
 
-	//connect(_browser, &QMdnsEngine::Browser::serviceAdded, this, &MdnsEngineWrapper::loadService);
-	//connect(_browser, &QMdnsEngine::Browser::serviceUpdated, this, &MdnsEngineWrapper::loadService);
+	service.setAttributes(attributes);
+
+	qDebug() << "provide: " << service.name() << " hostname: " << service.hostname() << " port: " << service.port() << " type: " << service.type();
+
+	_provider->update(service);
+
+	browseForServiceType("_hiperion-flatbuf._tcp.local.");
+}
+
+MdnsEngineWrapper::~MdnsEngineWrapper()
+{
+	QMapIterator<QByteArray, QMdnsEngine::Browser*> i(_browsedServiceTypes);
+	while (i.hasNext()) {
+		i.next();
+		QMdnsEngine::Browser* browserPtr = i.value();
+		browserPtr->disconnect();
+		browserPtr->deleteLater();
+	}
+
+	delete _cache;
+	delete _provider;
+	delete _hostname;
+	delete _server;
 }
 
 bool MdnsEngineWrapper::browseForServiceType(const QByteArray& serviceType)
 {
-	Debug(Logger::getInstance("mDNS"), "serviceType [%s]", QSTRING_CSTR(QString(serviceType)));
 	if (!_browsedServiceTypes.contains(serviceType))
 	{
-		Debug(Logger::getInstance("mDNS"), "Start new Browser for serviceType [%s]", QSTRING_CSTR(QString(serviceType)));
+		DebugIf(verbose, _log, "Start new Browser for serviceType [%s]", QSTRING_CSTR(QString(serviceType)));
 		QMdnsEngine::Browser* newBrowser = new QMdnsEngine::Browser(_server, serviceType, _cache, this);
 
 		QObject::connect(newBrowser, &QMdnsEngine::Browser::serviceAdded, this, &MdnsEngineWrapper::onServiceAdded);
@@ -79,115 +94,183 @@ bool MdnsEngineWrapper::browseForServiceType(const QByteArray& serviceType)
 	return false;
 }
 
+void MdnsEngineWrapper::onHostnameChanged(const QByteArray& hostname)
+{
+	DebugIf(verbose, _log, "Hostname changed to Hostname [%s]", QSTRING_CSTR(QString(hostname)));
+}
+
 void MdnsEngineWrapper::onServiceAdded(const QMdnsEngine::Service& service)
 {
-	Debug(Logger::getInstance("mDNS"), "Name: [%s], Hostname[%s] ", QSTRING_CSTR(QString(service.name())), QSTRING_CSTR(QString(service.hostname())));
-
-	//QMdnsEngine::Resolver resolver(&_server, service.name());
+	DebugIf(verbose, _log, "[%s] Name: [%s], Hostname[%s], Port: [%u] ",
+		QSTRING_CSTR(QString(service.type())),
+		QSTRING_CSTR(QString(service.name())),
+		QSTRING_CSTR(QString(service.hostname())), service.port());
+	resolveService(service);
 }
 
 void MdnsEngineWrapper::onServiceUpdated(const QMdnsEngine::Service& service)
 {
-	Debug(Logger::getInstance("mDNS"), "");
+	DebugIf(verbose, _log, "[%s] Name: [%s], Hostname[%s], Port: [%u] ",
+		QSTRING_CSTR(QString(service.type())),
+		QSTRING_CSTR(QString(service.name())),
+		QSTRING_CSTR(QString(service.hostname())), service.port());
+	resolveService(service);
 }
 
-void MdnsEngineWrapper::onServiceRemoved(const QMdnsEngine::Service& service)
+void MdnsEngineWrapper::resolveService(const QMdnsEngine::Service& service)
 {
-	Debug(Logger::getInstance("mDNS"), "");
-}
+	DebugIf(verbose, _log, "[%s] Name: [%s], Hostname[%s], Port: [%u] ",
+		QSTRING_CSTR(QString(service.type())),
+		QSTRING_CSTR(QString(service.name())),
+		QSTRING_CSTR(QString(service.hostname())), service.port());
 
-void MdnsEngineWrapper::loadService(const QMdnsEngine::Service& service)
-{
-	Debug(Logger::getInstance("mDNS"), "");
 	auto* resolver = new QMdnsEngine::Resolver(_server, service.hostname(), _cache, this);
-
 	connect(resolver, &QMdnsEngine::Resolver::resolved, this, &MdnsEngineWrapper::onServiceResolved);
 }
 
 void MdnsEngineWrapper::onServiceResolved(const QHostAddress& address)
 {
-	Debug(Logger::getInstance("mDNS"), "");
-	if (address.protocol() == QAbstractSocket::IPv4Protocol)
-	{
-		qDebug() << "resolved to IP4" << address;
+	switch (address.protocol()) {
+	case QAbstractSocket::IPv4Protocol:
+		DebugIf(verbose, _log, "resolved to IP4 [%s]", QSTRING_CSTR(address.toString()));
+		break;
+	case QAbstractSocket::IPv6Protocol:
+		DebugIf(verbose, _log, "resolved to IP6 [%s]", QSTRING_CSTR(address.toString()));
+		break;
+	default:
+		break;
 	}
+}
 
-	if (address.protocol() == QAbstractSocket::IPv6Protocol)
-	{
-		qDebug() << "resolved to IP6" << address;
-	}
-
-	//QList<QMdnsEngine::Record> records;
-	//_cache->lookupRecords(0, QMdnsEngine::ANY, records);
-	////_cache->lookupRecords(0, QMdnsEngine::TXT, records);
-	//foreach(QMdnsEngine::Record record, records) {
-	//	qDebug() << "Record:" << record.name() << " type: " << record.type() << " address: " << record.address() << " port: " << record.port() << " prio: " << record.priority();;
-	//	qDebug() << "Record:" << record.name() << "Attributes: " << record.attributes();
-	//}
+void MdnsEngineWrapper::onServiceRemoved(const QMdnsEngine::Service& service)
+{
+	DebugIf(verbose, _log, "[%s] Name: [%s], Hostname[%s], Port: [%u] ",
+		QSTRING_CSTR(QString(service.type())),
+		QSTRING_CSTR(QString(service.name())),
+		QSTRING_CSTR(QString(service.hostname())), service.port());
 }
 
 QVariantList MdnsEngineWrapper::getServicesDiscoveredJson(const QByteArray& serviceType, const QString& filter) const
 {
-	Debug(Logger::getInstance("mDNS"), "getServicesDiscoveredJson");
+	Debug(_log, "Get services of type [%s], matching name: [%s]", QSTRING_CSTR(QString(serviceType)), QSTRING_CSTR(filter));
+	//	printCache(nullptr, QMdnsEngine::PTR);
+	//	printCache(nullptr, QMdnsEngine::SRV);
+	//	printCache(nullptr, QMdnsEngine::A);
+	//	printCache(nullptr, QMdnsEngine::TXT);
 
 	QJsonArray result;
 
+	QRegularExpression regEx(filter);
+	if (!regEx.isValid()) {
+		QString errorString = regEx.errorString();
+		int errorOffset = regEx.patternErrorOffset();
 
-	if (_browsedServiceTypes.contains(serviceType))
-	{
-		//ServiceMap services = _servicesResolved[serviceType];
-
-
-		//Debug(Logger::getInstance("BonJour"), "Get services of type [%s], matching name: [%s]", QSTRING_CSTR(serviceType), QSTRING_CSTR(filter));
-
-		//QRegularExpression regEx(filter);
-		//if (!regEx.isValid()) {
-		//	QString errorString = regEx.errorString();
-		//	int errorOffset = regEx.patternErrorOffset();
-
-		//	Error(Logger::getInstance("BonJour"), "Filtering regular expression [%s] error [%d]:[%s]", QSTRING_CSTR(filter), errorOffset, QSTRING_CSTR(errorString));
-		//}
-		//else
-		//{
-		//	ServiceMap::const_iterator i;
-		//	for (i = services.begin(); i != services.end(); ++i)
-		//	{
-		//		QRegularExpressionMatch match = regEx.match(i.key());
-		//		if (match.hasMatch())
-		//		{
-		//			Debug(Logger::getInstance("BonJour"), "Found service [%s], type [%s]", QSTRING_CSTR(i.key()), QSTRING_CSTR(i.value().registeredType));
-
-		//			QJsonObject obj;
-
-		//			obj.insert("id", i.key());
-
-		//			obj.insert("name", i.value().serviceName);
-		//			obj.insert("type", i.value().registeredType);
-		//			obj.insert("domain", i.value().replyDomain);
-		//			obj.insert("address", i.value().address);
-		//			obj.insert("hostname", i.value().hostName);
-		//			obj.insert("port", i.value().port);
-
-		//			qDebug() << "i.value().txt [" << i.value().txt << "]";
-
-		//			QJsonObject objOther;
-		//			QMap <QString, QByteArray>::const_iterator o;
-		//			for (o = i.value().txt.begin(); o != i.value().txt.end(); ++o)
-		//			{
-		//				objOther.insert(o.key(), o.value().data());
-		//			}
-		//			obj.insert("bonjourTxt", objOther);
-
-		//			result << obj;
-		//		}
-		//	}
-		//}
-		Debug(Logger::getInstance("mDNS"), "result: [%s]", QString(QJsonDocument(result).toJson(QJsonDocument::Compact)).toUtf8().constData());
+		Error(_log, "Filtering regular expression [%s] error [%d]:[%s]", QSTRING_CSTR(filter), errorOffset, QSTRING_CSTR(errorString));
 	}
 	else
 	{
-		Debug(Logger::getInstance("mDNS"), "No servicetype [%s] resolved", QSTRING_CSTR(QString(serviceType)));
+		QList<QMdnsEngine::Record> ptrRecords;
+
+		if (_cache->lookupRecords(serviceType, QMdnsEngine::PTR, ptrRecords))
+		{
+			for (int ptrCounter = 0; ptrCounter < ptrRecords.size(); ++ptrCounter)
+			{
+				QByteArray serviceNameFull = ptrRecords.at(ptrCounter).target();
+
+				QRegularExpressionMatch match = regEx.match(serviceNameFull);
+				if (match.hasMatch())
+				{
+					QMdnsEngine::Record srvRecord;
+					if (!_cache->lookupRecord(serviceNameFull, QMdnsEngine::SRV, srvRecord))
+					{
+						Debug(_log, "No SRV record for [%s] found, skip entry", QSTRING_CSTR(QString(serviceNameFull)));
+					}
+					else
+					{
+						QJsonObject obj;
+
+						obj.insert("id", QString(serviceNameFull));
+						obj.insert("nameFull", QString(serviceNameFull));
+						obj.insert("type", QString(serviceType));
+
+						if (serviceNameFull.endsWith("." + serviceType))
+						{
+							QString serviceName = serviceNameFull.left(serviceNameFull.length() - serviceType.length() - 1);
+							obj.insert("name", QString(serviceName));
+						}
+
+						QByteArray hostName = srvRecord.target();
+						obj.insert("hostname", QString(hostName));
+
+						quint16 port = srvRecord.port();
+						obj.insert("port", port);
+
+						QMdnsEngine::Record txtRecord;
+						if (_cache->lookupRecord(serviceNameFull, QMdnsEngine::TXT, txtRecord))
+						{
+							QMap<QByteArray, QByteArray> txtAttributes = txtRecord.attributes();
+
+							QVariantMap txtMap;
+							QMapIterator<QByteArray, QByteArray> i(txtAttributes);
+							while (i.hasNext()) {
+								i.next();
+								txtMap.insert(i.key(), i.value());
+							}
+							obj.insert("txt", QJsonObject::fromVariantMap(txtMap));
+						}
+
+						QMdnsEngine::Record aRecord;
+						if (_cache->lookupRecord(hostName, QMdnsEngine::A, aRecord))
+						{
+							QHostAddress hostAddress = aRecord.address();
+							obj.insert("address", hostAddress.toString());
+						}
+						result << obj;
+					}
+				}
+			}
+			Debug(_log, "result: [%s]", QString(QJsonDocument(result).toJson(QJsonDocument::Compact)).toUtf8().constData());
+		}
+		else
+		{
+			Debug(_log, "No service of type [%s] found", QSTRING_CSTR(QString(serviceType)));
+		}
 	}
 
 	return result.toVariantList();
+}
+
+void MdnsEngineWrapper::printCache(const QByteArray& name, quint16 type) const
+{
+	QList<QMdnsEngine::Record> records;
+	_cache->lookupRecords(name, type, records);
+	foreach(QMdnsEngine::Record record, records)
+	{
+		qDebug() << QMdnsEngine::typeName(record.type()) << "," << record.name() << "], ttl       : " << record.ttl();
+
+		switch (record.type()) {
+		case QMdnsEngine::PTR:
+			qDebug() << QMdnsEngine::typeName(record.type()) << "," << record.name() << ", target    : " << record.target();
+			break;
+
+		case QMdnsEngine::SRV:
+			qDebug() << QMdnsEngine::typeName(record.type()) << "," << record.name() << ", target    : " << record.target();
+			qDebug() << QMdnsEngine::typeName(record.type()) << "," << record.name() << ", port      : " << record.port();
+			qDebug() << QMdnsEngine::typeName(record.type()) << "," << record.name() << ", priority  : " << record.priority();
+			qDebug() << QMdnsEngine::typeName(record.type()) << "," << record.name() << ", weight    : " << record.weight();
+			break;
+		case QMdnsEngine::TXT:
+			qDebug() << QMdnsEngine::typeName(record.type()) << "," << record.name() << ", attributes: " << record.attributes();
+			break;
+
+		case QMdnsEngine::NSEC:
+			qDebug() << QMdnsEngine::typeName(record.type()) << "," << record.name() << ", nextDomNam: " << record.nextDomainName();
+			break;
+
+		case QMdnsEngine::A:
+		case QMdnsEngine::AAAA:
+			qDebug() << QMdnsEngine::typeName(record.type()) << "," << record.name() << ", address   : " << record.address();
+			break;
+		}
+	}
 }
