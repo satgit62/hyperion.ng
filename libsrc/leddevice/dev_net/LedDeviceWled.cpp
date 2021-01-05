@@ -88,17 +88,26 @@ bool LedDeviceWled::init(const QJsonObject &deviceConfig)
 		Debug(_log, "RestoreOrigState  : %d", _isRestoreOrigState);
 
 		//Set hostname as per configuration
-		QString address = deviceConfig[ CONFIG_ADDRESS ].toString();
+		QString host = deviceConfig[ CONFIG_ADDRESS ].toString();
+
+		if (host.endsWith(".local."))
+		{
+			QHostAddress hostAddress;
+			QMetaObject::invokeMethod(_mdnsEngine, "getHostAddress", Qt::DirectConnection,
+				Q_RETURN_ARG(QHostAddress, hostAddress),
+				Q_ARG(QString, host));
+			host = hostAddress.toString();
+		}
 
 		//If host not configured the init fails
-		if ( address.isEmpty() )
+		if ( host.isEmpty() )
 		{
 			this->setInError("No target hostname nor IP defined");
 			return false;
 		}
 		else
 		{
-			QStringList addressparts = QStringUtils::split(address,":", QStringUtils::SplitBehavior::SkipEmptyParts);
+			QStringList addressparts = QStringUtils::split(host,":", QStringUtils::SplitBehavior::SkipEmptyParts);
 			_hostname = addressparts[0];
 			if ( addressparts.size() > 1 )
 			{
@@ -312,6 +321,16 @@ QJsonObject LedDeviceWled::getProperties(const QJsonObject& params)
 	QJsonObject properties;
 
 	QString host = params["host"].toString("");
+
+	if (host.endsWith(".local."))
+	{
+		QHostAddress hostAddress;
+		QMetaObject::invokeMethod(_mdnsEngine, "getHostAddress", Qt::DirectConnection,
+			Q_RETURN_ARG(QHostAddress, hostAddress),
+			Q_ARG(QString, host));
+		host = hostAddress.toString();
+	}
+
 	if ( !host.isEmpty() )
 	{
 		QString filter = params["filter"].toString("");
@@ -351,6 +370,16 @@ void LedDeviceWled::identify(const QJsonObject& params)
 	Debug(_log, "params: [%s]", QString(QJsonDocument(params).toJson(QJsonDocument::Compact)).toUtf8().constData());
 
 	QString host = params["host"].toString("");
+
+	if (host.endsWith(".local."))
+	{
+		QHostAddress hostAddress;
+		QMetaObject::invokeMethod(_mdnsEngine, "getHostAddress", Qt::DirectConnection,
+			Q_RETURN_ARG(QHostAddress, hostAddress),
+			Q_ARG(QString, host));
+		host = hostAddress.toString();
+	}
+
 	if ( !host.isEmpty() )
 	{
 		// Resolve hostname and port (or use default API port)

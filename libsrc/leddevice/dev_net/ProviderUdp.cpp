@@ -13,6 +13,10 @@
 // Local Hyperion includes
 #include "ProviderUdp.h"
 
+// mDNS/bonjour wrapper
+#include <HyperionConfig.h>
+#include <mdns/mdnsenginewrapper.h>
+
 const ushort MAX_PORT = 65535;
 
 ProviderUdp::ProviderUdp(const QJsonObject& deviceConfig)
@@ -20,6 +24,7 @@ ProviderUdp::ProviderUdp(const QJsonObject& deviceConfig)
 	  , _udpSocket(nullptr)
 	  , _port(1)
 	  , _defaultHost("127.0.0.1")
+	  , _mdnsEngine(MdnsEngineWrapper::getInstance())
 {
 	_latchTime_ms = 0;
 }
@@ -38,7 +43,18 @@ bool ProviderUdp::init(const QJsonObject& deviceConfig)
 	{
 		QString host = deviceConfig["host"].toString(_defaultHost);
 
-		if (_address.setAddress(host))
+		if (host.endsWith(".local."))
+		{
+			QMetaObject::invokeMethod(_mdnsEngine, "getHostAddress", Qt::DirectConnection,
+				Q_RETURN_ARG(QHostAddress, _address),
+				Q_ARG(QString, host));
+		}
+		else
+		{
+			_address.setAddress(host);
+		}
+
+		if (!_address.isNull())
 		{
 			Debug(_log, "Successfully parsed %s as an IP-address.", QSTRING_CSTR(_address.toString()));
 		}

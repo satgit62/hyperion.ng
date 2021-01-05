@@ -33,15 +33,20 @@ public:
 
 public slots:
 
+	bool provideServiceType(const QByteArray& serviceType, quint16 servicePort, const QByteArray& serviceName = "");
 	///
 	/// @brief Browse for a service of type
 	///
 	bool browseForServiceType(const QByteArray& serviceType);
-	void resolveService(const QMdnsEngine::Service& service);
+
+	QHostAddress getHostAddress(const QString& hostName);
+	QHostAddress getHostAddress(const QByteArray& hostName);
 
 	QVariantList getServicesDiscoveredJson(const QByteArray& serviceType, const QString& filter = ".*") const;
 
 private slots:
+
+	void resolveService(const QMdnsEngine::Service& service);
 
 	void onHostnameChanged(const QByteArray& hostname);
 
@@ -64,6 +69,9 @@ private:
 	QMdnsEngine::Provider* _provider;
 
 	QMdnsEngine::Cache* _cache;
+
+	/// map of services provided
+	QMap<QByteArray, QMdnsEngine::Provider*> _providedServiceTypes;
 
 	/// map of service names and browsers
 	QMap<QByteArray, QMdnsEngine::Browser*> _browsedServiceTypes;

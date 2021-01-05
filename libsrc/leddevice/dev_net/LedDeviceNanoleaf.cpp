@@ -185,6 +185,15 @@ bool LedDeviceNanoleaf::init(const QJsonObject& deviceConfig)
 		_apiPort = API_DEFAULT_PORT;
 		_authToken = deviceConfig[CONFIG_AUTH_TOKEN].toString();
 
+		if (_hostname.endsWith(".local."))
+		{
+			QHostAddress hostAddress;
+			QMetaObject::invokeMethod(_mdnsEngine, "getHostAddress", Qt::DirectConnection,
+				Q_RETURN_ARG(QHostAddress, hostAddress),
+				Q_ARG(QString, _hostname));
+			_hostname = hostAddress.toString();
+		}
+
 		//If host not configured the init failed
 		if (_hostname.isEmpty())
 		{
@@ -466,6 +475,16 @@ QJsonObject LedDeviceNanoleaf::getProperties(const QJsonObject& params)
 
 	// Get Nanoleaf device properties
 	QString host = params["host"].toString("");
+
+	if (host.endsWith(".local."))
+	{
+		QHostAddress hostAddress;
+		QMetaObject::invokeMethod(_mdnsEngine, "getHostAddress", Qt::DirectConnection,
+			Q_RETURN_ARG(QHostAddress, hostAddress),
+			Q_ARG(QString, host));
+		host = hostAddress.toString();
+	}
+
 	if (!host.isEmpty())
 	{
 		QString authToken = params["token"].toString("");
@@ -507,6 +526,16 @@ void LedDeviceNanoleaf::identify(const QJsonObject& params)
 	Debug(_log, "params: [%s]", QString(QJsonDocument(params).toJson(QJsonDocument::Compact)).toUtf8().constData());
 
 	QString host = params["host"].toString("");
+
+	if (host.endsWith(".local."))
+	{
+		QHostAddress hostAddress;
+		QMetaObject::invokeMethod(_mdnsEngine, "getHostAddress", Qt::DirectConnection,
+			Q_RETURN_ARG(QHostAddress, hostAddress),
+			Q_ARG(QString, host));
+		host = hostAddress.toString();
+	}
+
 	if (!host.isEmpty())
 	{
 		QString authToken = params["token"].toString("");
