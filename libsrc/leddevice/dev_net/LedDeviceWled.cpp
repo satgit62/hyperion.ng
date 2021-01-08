@@ -4,13 +4,9 @@
 #include <ssdp/SSDPDiscover.h>
 
 // mDNS/bonjour wrapper
-#include <HyperionConfig.h>
+#ifndef __APPLE__
 #include <mdns/mdnsenginewrapper.h>
 #include <leddevice/LedDeviceMdnsRegister.h>
-
-#ifdef ENABLE_AVAHI
-#include <bonjour/bonjourbrowserwrapper.h>
-#include <leddevice/LedDeviceBonjourRegister.h>
 #endif
 
 #include <utils/QStringUtils.h>
@@ -56,9 +52,8 @@ LedDeviceWled::LedDeviceWled(const QJsonObject &deviceConfig)
 	: ProviderUdp(deviceConfig)
 	  ,_restApi(nullptr)
 	  ,_apiPort(API_DEFAULT_PORT)
-	  ,_mdnsEngine(MdnsEngineWrapper::getInstance())
-#ifdef ENABLE_AVAHI
-	  , _bonjour(BonjourBrowserWrapper::getInstance())
+#ifndef __APPLE__
+	, _mdnsEngine(MdnsEngineWrapper::getInstance())
 #endif
 {
 	qDebug() << "LedDeviceWled::LedDeviceWled" << QThread::currentThread();
@@ -97,6 +92,7 @@ bool LedDeviceWled::init(const QJsonObject &deviceConfig)
 		//Set hostname as per configuration
 		QString hostname = deviceConfig[ CONFIG_ADDRESS ].toString();
 
+#ifndef __APPLE__
 		if (hostname.endsWith(".local."))
 		{
 			qDebug() << "LedDeviceWled::init" << QThread::currentThread();
@@ -120,6 +116,7 @@ bool LedDeviceWled::init(const QJsonObject &deviceConfig)
 
 			hostname = hostAddress.toString();
 		}
+#endif
 
 		//If host not configured the init fails
 		if ( hostname.isEmpty() )
@@ -312,21 +309,15 @@ QJsonObject LedDeviceWled::discover(const QJsonObject& /*params*/)
 	QString discoveryMethod("mDNS");
 	QJsonArray deviceList;
 
+#ifndef __APPLE__
 	QVariantList deviceListResponse;
-	QMetaObject::invokeMethod(_mdnsEngine, "getServicesDiscoveredJson", Qt::DirectConnection,
-		Q_RETURN_ARG(QVariantList, deviceListResponse),
-		Q_ARG(QByteArray, LedDeviceMdnsRegister::getServiceType(_activeDeviceType)),
-		Q_ARG(QString, LedDeviceMdnsRegister::getServiceNameFilter(_activeDeviceType))
-	);
-	deviceList = QJsonValue::fromVariant(deviceListResponse).toArray();
 
-#ifdef ENABLE_AVAHI
-	QMetaObject::invokeMethod(_bonjour, "getServicesDiscoveredJson", Qt::DirectConnection,
-							   Q_RETURN_ARG(QVariantList, deviceListResponse),
-							   Q_ARG(QString,LedDeviceBonjourRegister::getServiceType(_activeDeviceType)),
-							   Q_ARG(QString, LedDeviceBonjourRegister::getServiceNameFilter(_activeDeviceType))
-							   );
-	deviceList = QJsonValue::fromVariant( deviceListResponse ).toArray();
+	deviceListResponse = _mdnsEngine->getServicesDiscoveredJson(
+		LedDeviceMdnsRegister::getServiceType(_activeDeviceType),
+		LedDeviceMdnsRegister::getServiceNameFilter(_activeDeviceType)
+	);
+
+	deviceList = QJsonValue::fromVariant(deviceListResponse).toArray();
 #endif
 
 	devicesDiscovered.insert("discoveryMethod", discoveryMethod);
@@ -342,23 +333,20 @@ QJsonObject LedDeviceWled::getProperties(const QJsonObject& params)
 	Debug(_log, "params: [%s]", QString(QJsonDocument(params).toJson(QJsonDocument::Compact)).toUtf8().constData() );
 	QJsonObject properties;
 
-	QString host = params["host"].toString("");
+	QString hostName = params["host"].toString("");
 
-	if (host.endsWith(".local."))
+#ifndef __APPLE__
+	if (hostName.endsWith(".local."))
 	{
-		qDebug() << "LedDeviceWled::getProperties" << QThread::currentThread();
-
-		QHostAddress hostAddress = _mdnsEngine->getHostAddress(host);
-
-		host = hostAddress.toString();
+		hostName = _mdnsEngine->getHostAddress(hostName).toString();
 	}
-
-	if ( !host.isEmpty() )
+#endif
+	if ( !hostName.isEmpty() )
 	{
 		QString filter = params["filter"].toString("");
 
 		// Resolve hostname and port (or use default API port)
-		QStringList addressparts = QStringUtils::split(host,":", QStringUtils::SplitBehavior::SkipEmptyParts);
+		QStringList addressparts = QStringUtils::split(hostName,":", QStringUtils::SplitBehavior::SkipEmptyParts);
 		QString apiHost = addressparts[0];
 		int apiPort;
 
@@ -391,21 +379,19 @@ void LedDeviceWled::identify(const QJsonObject& params)
 {
 	Debug(_log, "params: [%s]", QString(QJsonDocument(params).toJson(QJsonDocument::Compact)).toUtf8().constData());
 
-	QString host = params["host"].toString("");
+	QString hostName = params["host"].toString("");
 
-	if (host.endsWith(".local."))
+#ifndef __APPLE__
+	if (hostName.endsWith(".local."))
 	{
-		qDebug() << "LedDeviceWled::identify" << QThread::currentThread();
-
-		QHostAddress hostAddress = _mdnsEngine->getHostAddress(host);
-
-		host = hostAddress.toString();
+		hostName = _mdnsEngine->getHostAddress(hostName).toString();
 	}
+#endif
 
-	if ( !host.isEmpty() )
+	if ( !hostName.isEmpty() )
 	{
 		// Resolve hostname and port (or use default API port)
-		QStringList addressparts = QStringUtils::split(host,":", QStringUtils::SplitBehavior::SkipEmptyParts);
+		QStringList addressparts = QStringUtils::split(hostName,":", QStringUtils::SplitBehavior::SkipEmptyParts);
 		QString apiHost = addressparts[0];
 		int apiPort;
 

@@ -7,10 +7,8 @@
 #include "ProviderUdp.h"
 
 // mDNS/bonjour wrapper
-#include <HyperionConfig.h>
+#ifndef __APPLE__
 #include <mdns/mdnsenginewrapper.h>
-#ifdef ENABLE_AVAHI
-#include <bonjour/bonjourbrowserwrapper.h>
 #endif
 
 ///
@@ -161,10 +159,8 @@ private:
 
 	QJsonObject _originalStateProperties;
 
+#ifndef __APPLE__
 	MdnsEngineWrapper* _mdnsEngine;
-#ifdef ENABLE_AVAHI
-	/// Bonjour instance
-	BonjourBrowserWrapper* _bonjour;
 #endif
 
 };

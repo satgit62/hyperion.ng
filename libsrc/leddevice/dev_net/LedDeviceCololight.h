@@ -6,10 +6,8 @@
 #include "ProviderUdp.h"
 
 // mDNS/bonjour wrapper
-#include <HyperionConfig.h>
+#ifndef __APPLE__
 #include <mdns/mdnsenginewrapper.h>
-#ifdef ENABLE_AVAHI
-#include <bonjour/bonjourbrowserwrapper.h>
 #endif
 
 enum appID {
@@ -321,11 +319,9 @@ private:
 	//Cololights discovered and their response message details
 	QMultiMap<QString, QMap <QString, QString>> _services;
 
+#ifndef __APPLE__
 	MdnsEngineWrapper* _mdnsEngine;
-	#ifdef ENABLE_AVAHI
-	/// Bonjour instance
-	BonjourBrowserWrapper* _bonjour;
-	#endif
+#endif
 
 };
 

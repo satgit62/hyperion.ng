@@ -86,6 +86,7 @@ int LedDevice::open()
 
 int LedDevice::close()
 {
+	Debug(_log, "");
 	_isDeviceReady = false;
 	int retval = 0;
 
@@ -105,6 +106,7 @@ void LedDevice::setInError(const QString& errorMsg)
 
 void LedDevice::enable()
 {
+	Debug(_log, "");
 	if ( !_isEnabled )
 	{
 		_isDeviceInError = false;
@@ -256,6 +258,7 @@ int LedDevice::writeBlack(int numberOfBlack)
 
 bool LedDevice::switchOn()
 {
+	Debug(_log, "");
 	bool rc = false;
 
 	if ( _isOn )
@@ -270,6 +273,7 @@ bool LedDevice::switchOn()
 			{
 				if ( powerOn() )
 				{
+					Debug(_log, "nach powerOn");
 					_isOn = true;
 					rc = true;
 				}

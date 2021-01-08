@@ -1,25 +1,17 @@
-// STL includes
-#include <cstring>
-#include <cstdio>
-#include <iostream>
-#include <exception>
+// Local Hyperion includes
+#include "ProviderUdp.h"
 
-#include <chrono>
-
-// Linux includes
-#include <fcntl.h>
+// mDNS/bonjour wrapper
+#ifndef __APPLE__
+#include <mdns/mdnsenginewrapper.h>
+#endif
 
 #include <QStringList>
 #include <QUdpSocket>
 #include <QHostInfo>
 #include <QThread>
 
-// Local Hyperion includes
-#include "ProviderUdp.h"
-
-// mDNS/bonjour wrapper
-#include <HyperionConfig.h>
-#include <mdns/mdnsenginewrapper.h>
+#include <chrono>
 
 // Constants
 namespace {
@@ -32,14 +24,14 @@ namespace {
 
 } //End of constants
 
-
-
 ProviderUdp::ProviderUdp(const QJsonObject& deviceConfig)
 	: LedDevice(deviceConfig)
 	  , _udpSocket(nullptr)
 	  , _port(1)
 	  , _defaultHost("127.0.0.1")
-	  , _mdnsEngine(MdnsEngineWrapper::getInstance())
+#ifndef __APPLE__
+	, _mdnsEngine(MdnsEngineWrapper::getInstance())
+#endif
 {
 	_latchTime_ms = 0;
 }
@@ -58,6 +50,7 @@ bool ProviderUdp::init(const QJsonObject& deviceConfig)
 	{
 		QString _hostName = deviceConfig["host"].toString(_defaultHost);
 
+#ifndef __APPLE__
 		if (_hostName.endsWith(".local."))
 		{
 			qDebug() << "ProviderUdp::init" << QThread::currentThread();
@@ -82,6 +75,7 @@ bool ProviderUdp::init(const QJsonObject& deviceConfig)
 			_hostName = hostAddress.toString();
 		}
 		else
+#endif
 		{
 			_address.setAddress(_hostName);
 		}

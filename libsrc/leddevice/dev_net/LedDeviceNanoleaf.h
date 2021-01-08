@@ -8,9 +8,8 @@
 
 // mDNS/bonjour wrapper
 #include <HyperionConfig.h>
+#ifndef __APPLE__
 #include <mdns/mdnsenginewrapper.h>
-#ifdef ENABLE_AVAHI
-#include <bonjour/bonjourbrowserwrapper.h>
 #endif
 
 // Qt includes
@@ -205,10 +204,8 @@ private:
 	/// Array of the panel ids.
 	QVector<int> _panelIds;
 
+#ifndef __APPLE__
 	MdnsEngineWrapper* _mdnsEngine;
-#ifdef ENABLE_AVAHI
-	/// Bonjour instance
-	BonjourBrowserWrapper* _bonjour;
 #endif
 };
 

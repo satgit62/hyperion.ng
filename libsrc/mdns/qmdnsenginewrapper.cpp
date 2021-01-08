@@ -11,8 +11,6 @@
 #include <QHostInfo>
 #include <QThread>
 
-//#include <QThread>
-
 // Utility includes
 #include <utils/Logger.h>
 #include <HyperionConfig.h>
@@ -21,6 +19,7 @@
 
 namespace {
 	const bool verbose = false;
+	const bool verboseProvider = false;
 } //End of constants
 
 MdnsEngineWrapper* MdnsEngineWrapper::instance = nullptr;
@@ -35,18 +34,20 @@ MdnsEngineWrapper::MdnsEngineWrapper(QObject* parent)
 {
 	MdnsEngineWrapper::instance = this;
 
+	qRegisterMetaType<QMdnsEngine::Message>("Message");
+
 	_server = new QMdnsEngine::Server(this);
 	_cache = new QMdnsEngine::Cache(this);
 	_hostname = new QMdnsEngine::Hostname(_server, this);
 
 	connect(_hostname, &QMdnsEngine::Hostname::hostnameChanged, this, &MdnsEngineWrapper::onHostnameChanged);
-	DebugIf(verbose, _log, "Hostname [%s], isRegistered [%d]", QSTRING_CSTR(QString(_hostname->hostname())), _hostname->isRegistered());
+	DebugIf(verboseProvider, _log, "Hostname [%s], isRegistered [%d]", QSTRING_CSTR(QString(_hostname->hostname())), _hostname->isRegistered());
 
 	//For Testing
 	provideServiceType("_hiperiond-flatbuf._tcp.local.", 19400, "flatbuffer");
 	provideServiceType("_hiperiond-api._tcp.local.", 19444, "API");
-	provideServiceType("_http._tcp.local.", 8090);
-	provideServiceType("_https._tcp.local.", 8092);
+	//provideServiceType("_http._tcp.local.", 8090);
+	//provideServiceType("_https._tcp.local.", 8092);
 
 	browseForServiceType("_hiperiond-flatbuf._tcp.local.");
 	browseForServiceType("_hiperiond-json._tcp.local.");
@@ -81,9 +82,13 @@ MdnsEngineWrapper::~MdnsEngineWrapper()
 
 bool MdnsEngineWrapper::provideServiceType(const QByteArray& serviceType, quint16 servicePort, const QByteArray& serviceName)
 {
+	DebugIf(verbose, _log, "Start new Provider for serviceType [%s]", QSTRING_CSTR(QString(serviceType)));
+	qDebug() << "\nMdnsEngineWrapper::provideServiceType" << QThread::currentThread();
 	if (!_providedServiceTypes.contains(serviceType))
 	{
-		QMdnsEngine::Provider* newProvider = new QMdnsEngine::Provider(_server, _hostname, this);
+
+
+		QMdnsEngine::Provider* newProvider = new QMdnsEngine::Provider(_server, _hostname);
 
 		QMdnsEngine::Service service;
 		service.setType(serviceType);
@@ -101,11 +106,11 @@ bool MdnsEngineWrapper::provideServiceType(const QByteArray& serviceType, quint1
 		const QMap<QByteArray, QByteArray> attributes = { {"id", id}, {"version", HYPERION_VERSION} };
 		service.setAttributes(attributes);
 
-		DebugIf(verbose, _log, "[%s] Name: [%s], Hostname[%s], Port: [%u] ",
+		DebugIf(verboseProvider, _log, "[%s] Name: [%s], Hostname[%s], Port: [%u] ",
 			QSTRING_CSTR(QString(service.type())),
 			QSTRING_CSTR(QString(service.name())),
 			QSTRING_CSTR(QString(service.hostname())), service.port());
-
+		
 		newProvider->update(service);
 
 		_providedServiceTypes.insert(serviceType, newProvider);
@@ -133,7 +138,7 @@ bool MdnsEngineWrapper::browseForServiceType(const QByteArray& serviceType)
 
 void MdnsEngineWrapper::onHostnameChanged(const QByteArray& hostname)
 {
-	DebugIf(verbose, _log, "Hostname changed to Hostname [%s]", QSTRING_CSTR(QString(hostname)));
+	DebugIf(verboseProvider, _log, "Hostname changed to Hostname [%s]", QSTRING_CSTR(QString(hostname)));
 }
 
 void MdnsEngineWrapper::onServiceAdded(const QMdnsEngine::Service& service)

@@ -2,12 +2,9 @@
 #include "LedDeviceNanoleaf.h"
 
 // mDNS/bonjour wrapper
-#include <HyperionConfig.h>
+#ifndef __APPLE__
 #include <mdns/mdnsenginewrapper.h>
 #include <leddevice/LedDeviceMdnsRegister.h>
-#ifdef ENABLE_AVAHI
-#include <bonjour/bonjourbrowserwrapper.h>
-#include <leddevice/LedDeviceBonjourRegister.h>
 #endif
 
 #include <ssdp/SSDPDiscover.h>
@@ -119,9 +116,8 @@ LedDeviceNanoleaf::LedDeviceNanoleaf(const QJsonObject& deviceConfig)
 	  , _endPos(0)
 	  , _extControlVersion(EXTCTRLVER_V2)
 	  , _panelLedCount(0)
-	  , _mdnsEngine(MdnsEngineWrapper::getInstance())
-#ifdef ENABLE_AVAHI
-	  , _bonjour(BonjourBrowserWrapper::getInstance())
+#ifndef __APPLE__
+	, _mdnsEngine(MdnsEngineWrapper::getInstance())
 #endif
 {
 }
@@ -189,6 +185,7 @@ bool LedDeviceNanoleaf::init(const QJsonObject& deviceConfig)
 		_apiPort = API_DEFAULT_PORT;
 		_authToken = deviceConfig[CONFIG_AUTH_TOKEN].toString();
 
+#ifndef __APPLE__
 		if (_hostName.endsWith(".local."))
 		{
 			qDebug() << "ProviderUdp::init" << QThread::currentThread();
@@ -212,6 +209,7 @@ bool LedDeviceNanoleaf::init(const QJsonObject& deviceConfig)
 
 			_hostName = hostAddress.toString();
 		}
+#endif
 
 		//If host not configured the init failed
 		if (_hostname.isEmpty())
@@ -455,29 +453,22 @@ QJsonObject LedDeviceNanoleaf::discover(const QJsonObject& /*params*/)
 	QString discoveryMethod("mDNS");
 	QJsonArray deviceList;
 
+#ifndef __APPLE__
 	QVariantList deviceListResponse;
-	QMetaObject::invokeMethod(_mdnsEngine, "getServicesDiscoveredJson", Qt::DirectConnection,
-		Q_RETURN_ARG(QVariantList, deviceListResponse),
-		Q_ARG(QByteArray, LedDeviceMdnsRegister::getServiceType(_activeDeviceType)),
-		Q_ARG(QString, LedDeviceMdnsRegister::getServiceNameFilter(_activeDeviceType))
+
+	deviceListResponse = _mdnsEngine->getServicesDiscoveredJson(
+		LedDeviceMdnsRegister::getServiceType(_activeDeviceType),
+		LedDeviceMdnsRegister::getServiceNameFilter(_activeDeviceType)
 	);
+
 	deviceList = QJsonValue::fromVariant(deviceListResponse).toArray();
 
-#ifdef ENABLE_AVAHI
-	discoveryMethod = "mDNS";
-	QMetaObject::invokeMethod(_bonjour, "getServicesDiscoveredJson", Qt::DirectConnection,
-							   Q_RETURN_ARG(QVariantList, deviceListResponse),
-							   Q_ARG(QString,LedDeviceBonjourRegister::getServiceType(_activeDeviceType)),
-							   Q_ARG(QString, LedDeviceBonjourRegister::getServiceNameFilter(_activeDeviceType))
-							   );
-	deviceList = QJsonValue::fromVariant( deviceListResponse ).toArray();
-#else
 	if (deviceList.isEmpty())
+#endif
 	{
 		discoveryMethod = "ssdp";
 		deviceList = discover();
 	}
-#endif
 
 	devicesDiscovered.insert("discoveryMethod", discoveryMethod);
 	devicesDiscovered.insert("devices", deviceList);
@@ -493,24 +484,22 @@ QJsonObject LedDeviceNanoleaf::getProperties(const QJsonObject& params)
 	QJsonObject properties;
 
 	// Get Nanoleaf device properties
-	QString host = params["host"].toString("");
+	QString hostName = params["host"].toString("");
 
-	if (host.endsWith(".local."))
+#ifndef __APPLE__
+	if (hostName.endsWith(".local."))
 	{
-		QHostAddress hostAddress;
-		QMetaObject::invokeMethod(_mdnsEngine, "getHostAddress", Qt::DirectConnection,
-			Q_RETURN_ARG(QHostAddress, hostAddress),
-			Q_ARG(QString, host));
-		host = hostAddress.toString();
+		hostName = _mdnsEngine->getHostAddress(hostName).toString();
 	}
+#endif
 
-	if (!host.isEmpty())
+	if (!hostName.isEmpty())
 	{
 		QString authToken = params["token"].toString("");
 		QString filter = params["filter"].toString("");
 
 		// Resolve hostname and port (or use default API port)
-		QStringList addressparts = QStringUtils::split(host, ":", QStringUtils::SplitBehavior::SkipEmptyParts);
+		QStringList addressparts = QStringUtils::split(hostName, ":", QStringUtils::SplitBehavior::SkipEmptyParts);
 		QString apiHost = addressparts[0];
 		int apiPort;
 
@@ -544,23 +533,21 @@ void LedDeviceNanoleaf::identify(const QJsonObject& params)
 {
 	Debug(_log, "params: [%s]", QString(QJsonDocument(params).toJson(QJsonDocument::Compact)).toUtf8().constData());
 
-	QString host = params["host"].toString("");
+	QString hostName = params["host"].toString("");
 
-	if (host.endsWith(".local."))
+#ifndef __APPLE__
+	if (hostName.endsWith(".local."))
 	{
-		QHostAddress hostAddress;
-		QMetaObject::invokeMethod(_mdnsEngine, "getHostAddress", Qt::DirectConnection,
-			Q_RETURN_ARG(QHostAddress, hostAddress),
-			Q_ARG(QString, host));
-		host = hostAddress.toString();
+		hostName = _mdnsEngine->getHostAddress(hostName).toString();
 	}
+#endif
 
-	if (!host.isEmpty())
+	if (!hostName.isEmpty())
 	{
 		QString authToken = params["token"].toString("");
 
 		// Resolve hostname and port (or use default API port)
-		QStringList addressparts = QStringUtils::split(host, ":", QStringUtils::SplitBehavior::SkipEmptyParts);
+		QStringList addressparts = QStringUtils::split(hostName, ":", QStringUtils::SplitBehavior::SkipEmptyParts);
 		QString apiHost = addressparts[0];
 		int apiPort;
 

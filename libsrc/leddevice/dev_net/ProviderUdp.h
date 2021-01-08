@@ -6,9 +6,11 @@
 
 // Hyperion includes
 #include <utils/Logger.h>
+
 // mDNS/bonjour wrapper
-#include <HyperionConfig.h>
+#ifndef __APPLE__
 #include <mdns/mdnsenginewrapper.h>
+#endif
 
 // Qt includes
 #include <QHostAddress>
@@ -83,7 +85,10 @@ protected:
 	QString      _defaultHost;
 	QString		_hostName;
 
+#ifndef __APPLE__
 	MdnsEngineWrapper* _mdnsEngine;
+#endif
+	
 };
 
 #endif // PROVIDERUDP_H

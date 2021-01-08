@@ -1,12 +1,9 @@
 #include "LedDeviceCololight.h"
 
 // mDNS/bonjour wrapper
-#include <HyperionConfig.h>
+#ifndef __APPLE__
 #include <mdns/mdnsenginewrapper.h>
 #include <leddevice/LedDeviceMdnsRegister.h>
-#ifdef ENABLE_AVAHI
-#include <bonjour/bonjourbrowserwrapper.h>
-#include <leddevice/LedDeviceBonjourRegister.h>
 #endif
 
 #include <utils/QStringUtils.h>
@@ -56,9 +53,8 @@ LedDeviceCololight::LedDeviceCololight(const QJsonObject& deviceConfig)
 	, _ledBeadCount(0)
 	, _distance(0)
 	, _sequenceNumber(1)
+#ifndef __APPLE__
 	, _mdnsEngine(MdnsEngineWrapper::getInstance())
-#ifdef ENABLE_AVAHI
-	, _bonjour(BonjourBrowserWrapper::getInstance())
 #endif
 {
 	_packetFixPart.append(reinterpret_cast<const char*>(PACKET_HEADER), sizeof(PACKET_HEADER));
@@ -679,28 +675,22 @@ QJsonObject LedDeviceCololight::discover(const QJsonObject& /*params*/)
 	QString discoveryMethod("mDNS");
 	QJsonArray deviceList;
 
+#ifndef __APPLE__
 	QVariantList deviceListResponse;
-	QMetaObject::invokeMethod(_mdnsEngine, "getServicesDiscoveredJson", Qt::DirectConnection,
-		Q_RETURN_ARG(QVariantList, deviceListResponse),
-		Q_ARG(QByteArray, LedDeviceMdnsRegister::getServiceType(_activeDeviceType)),
-		Q_ARG(QString, LedDeviceMdnsRegister::getServiceNameFilter(_activeDeviceType))
+
+	deviceListResponse = _mdnsEngine->getServicesDiscoveredJson(
+		LedDeviceMdnsRegister::getServiceType(_activeDeviceType),
+		LedDeviceMdnsRegister::getServiceNameFilter(_activeDeviceType)
 	);
+
 	deviceList = QJsonValue::fromVariant(deviceListResponse).toArray();
 
-#ifdef ENABLE_AVAHI
-	QMetaObject::invokeMethod(_bonjour, "getServicesDiscoveredJson", Qt::DirectConnection,
-		Q_RETURN_ARG(QVariantList, deviceListResponse),
-		Q_ARG(QString, LedDeviceBonjourRegister::getServiceType(_activeDeviceType)),
-		Q_ARG(QString, LedDeviceBonjourRegister::getServiceNameFilter(_activeDeviceType))
-	);
-	deviceList = QJsonValue::fromVariant(deviceListResponse).toArray();
-#else
 	if (deviceList.isEmpty())
+#endif
 	{
 		discoveryMethod = "ssdp";
 		deviceList = discover();
 	}
-#endif
 
 	devicesDiscovered.insert("discoveryMethod", discoveryMethod);
 	devicesDiscovered.insert("devices", deviceList);
@@ -715,20 +705,22 @@ QJsonObject LedDeviceCololight::getProperties(const QJsonObject& params)
 	DebugIf(verbose, _log, "params: [%s]", QString(QJsonDocument(params).toJson(QJsonDocument::Compact)).toUtf8().constData());
 	QJsonObject properties;
 
-	QString host = params["host"].toString("");
+	QString hostName = params["host"].toString("");
 	quint16 apiPort = static_cast<quint16>(params["port"].toInt(API_DEFAULT_PORT));
 
-	if (host.endsWith(".local."))
+#ifndef __APPLE__
+	if (hostName.endsWith(".local."))
 	{
-		host = _mdnsEngine->getHostAddress(host).toString();
+		hostName = _mdnsEngine->getHostAddress(hostName).toString();
 	}
+#endif
 
 	QJsonObject propertiesDetails;
-	if (!host.isEmpty())
+	if (!hostName.isEmpty())
 	{
 		QJsonObject deviceConfig;
 
-		deviceConfig.insert("host", host);
+		deviceConfig.insert("host", hostName);
 		deviceConfig.insert("port", apiPort);
 		if (ProviderUdp::init(deviceConfig))
 		{
@@ -766,19 +758,21 @@ void LedDeviceCololight::identify(const QJsonObject& params)
 {
 	DebugIf(verbose, _log, "params: [%s]", QString(QJsonDocument(params).toJson(QJsonDocument::Compact)).toUtf8().constData());
 
-	QString host = params["host"].toString("");
+	QString hostName = params["host"].toString("");
 	quint16 apiPort = static_cast<quint16>(params["port"].toInt(API_DEFAULT_PORT));
 
-	if (host.endsWith(".local."))
+#ifndef __APPLE__
+	if (hostName.endsWith(".local."))
 	{
-		host = _mdnsEngine->getHostAddress(host).toString();
+		hostName = _mdnsEngine->getHostAddress(hostName).toString();
 	}
+#endif
 
-	if (!host.isEmpty())
+	if (!hostName.isEmpty())
 	{
 		QJsonObject deviceConfig;
 
-		deviceConfig.insert("host", host);
+		deviceConfig.insert("host", hostName);
 		deviceConfig.insert("port", apiPort);
 		if (ProviderUdp::init(deviceConfig))
 		{
