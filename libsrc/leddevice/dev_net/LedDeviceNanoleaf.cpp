@@ -14,9 +14,9 @@
 #include <utils/QStringUtils.h>
 
 // Qt includes
-#include <QEventLoop>
 #include <QNetworkReply>
 #include <QtEndian>
+#include <QThread>
 
 //std includes
 #include <sstream>
@@ -83,6 +83,10 @@ const char SSDP_ID[] = "ssdp:all";
 const char SSDP_FILTER_HEADER[] = "ST";
 const char SSDP_CANVAS[] = "nanoleaf:nl29";
 const char SSDP_LIGHTPANELS[] = "nanoleaf_aurora:light";
+
+// mDNS Hostname resolution
+const int DEFAULT_HOSTNAME_RESOLUTION_RETRIES = 6;
+constexpr std::chrono::milliseconds DEFAULT_HOSTNAME_RESOLUTION_WAIT_TIME{ 500 };
 } //End of constants
 
 // Nanoleaf Panel Shapetypes
@@ -185,13 +189,28 @@ bool LedDeviceNanoleaf::init(const QJsonObject& deviceConfig)
 		_apiPort = API_DEFAULT_PORT;
 		_authToken = deviceConfig[CONFIG_AUTH_TOKEN].toString();
 
-		if (_hostname.endsWith(".local."))
+		if (_hostName.endsWith(".local."))
 		{
-			QHostAddress hostAddress;
-			QMetaObject::invokeMethod(_mdnsEngine, "getHostAddress", Qt::DirectConnection,
-				Q_RETURN_ARG(QHostAddress, hostAddress),
-				Q_ARG(QString, _hostname));
-			_hostname = hostAddress.toString();
+			qDebug() << "ProviderUdp::init" << QThread::currentThread();
+
+			QHostAddress hostAddress = _mdnsEngine->getHostAddress(_hostName);
+
+			int retries = DEFAULT_HOSTNAME_RESOLUTION_RETRIES;
+			while (hostAddress.isNull() && retries > 0)
+			{
+				--retries;
+				Debug(_log, "retries left: [%d], hostAddress: [%s]", retries, QSTRING_CSTR(hostAddress.toString()));
+				QThread::msleep(DEFAULT_HOSTNAME_RESOLUTION_WAIT_TIME.count());
+				hostAddress = _mdnsEngine->getHostAddress(_hostName);
+			}
+			Debug(_log, "getHostAddress finished - retries left: [%d], IP-address [%s]", retries, QSTRING_CSTR(hostAddress.toString()));
+
+			if (retries == 0)
+			{
+				Error(_log, "Resolving IP-address for hostName [%s] failed.", QSTRING_CSTR(_hostName));
+			}
+
+			_hostName = hostAddress.toString();
 		}
 
 		//If host not configured the init failed

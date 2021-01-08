@@ -1,9 +1,7 @@
 #include <mdns/mdnsenginewrapper.h>
 #include <qmdnsengine/resolver.h>
 #include <qmdnsengine/record.h>
-
 #include <qmdnsengine/message.h>
-#include <qmdnsengine/query.h>
 
 //Qt includes
 #include <QJsonArray>
@@ -11,24 +9,18 @@
 #include <QJsonDocument>
 #include <QRegularExpression>
 #include <QHostInfo>
+#include <QThread>
 
-#include <QEventLoop>
+//#include <QThread>
 
 // Utility includes
 #include <utils/Logger.h>
 #include <HyperionConfig.h>
 #include <hyperion/AuthManager.h>
 
-#include <string>
-#include <iomanip>
-#include <iostream>
-
-#if defined(Q_OS_WIN)
-#  include <windows.h>
-#endif
 
 namespace {
-	const bool verbose = true;
+	const bool verbose = false;
 } //End of constants
 
 MdnsEngineWrapper* MdnsEngineWrapper::instance = nullptr;
@@ -40,14 +32,10 @@ MdnsEngineWrapper::MdnsEngineWrapper(QObject* parent)
 	, _hostname(nullptr)
 	, _provider(nullptr)
 	, _cache(nullptr)
-	, mStart(QDateTime::currentDateTime())
 {
 	MdnsEngineWrapper::instance = this;
 
 	_server = new QMdnsEngine::Server(this);
-
-	//connect(_server, &QMdnsEngine::Server::messageReceived, this, &MdnsEngineWrapper::onMessageReceived);
-
 	_cache = new QMdnsEngine::Cache(this);
 	_hostname = new QMdnsEngine::Hostname(_server, this);
 
@@ -56,7 +44,7 @@ MdnsEngineWrapper::MdnsEngineWrapper(QObject* parent)
 
 	//For Testing
 	provideServiceType("_hiperiond-flatbuf._tcp.local.", 19400, "flatbuffer");
-	provideServiceType("_hiperiond-api._tcp.local.", 194444, "API");
+	provideServiceType("_hiperiond-api._tcp.local.", 19444, "API");
 	provideServiceType("_http._tcp.local.", 8090);
 	provideServiceType("_https._tcp.local.", 8092);
 
@@ -173,11 +161,26 @@ void MdnsEngineWrapper::resolveService(const QMdnsEngine::Service& service)
 		QSTRING_CSTR(QString(service.name())),
 		QSTRING_CSTR(QString(service.hostname())), service.port());
 
-	auto* resolver = new QMdnsEngine::Resolver(_server, service.hostname(), _cache, this);
-	connect(resolver, &QMdnsEngine::Resolver::resolved, this, &MdnsEngineWrapper::onServiceResolved);
+	emit resolveHostName(service.hostname());
 }
 
-void MdnsEngineWrapper::onServiceResolved(const QHostAddress& address)
+void MdnsEngineWrapper::resolveHostName(const QByteArray& hostName)
+{
+	DebugIf(verbose, _log, "Hostname[%s]", QSTRING_CSTR(QString(hostName)));
+
+	qRegisterMetaType<QMdnsEngine::Message>("Message");
+	auto* resolver = new QMdnsEngine::Resolver(_server, hostName, _cache);
+	connect(resolver, &QMdnsEngine::Resolver::resolved, this, &MdnsEngineWrapper::onHostNameResolved);
+
+	//qRegisterMetaType<QMdnsEngine::Message>("Message");
+	//QMdnsEngine::Resolver resolver(_server, hostName, _cache);
+	//connect(&resolver, &QMdnsEngine::Resolver::resolved, [](const QHostAddress& hostAddress) {
+	//	qDebug() << "\nMdnsEngineWrapper::getHostAddress" << QThread::currentThread();
+	//	qDebug() << "\nMdnsEngineWrapper::hostAddress" << hostAddress;
+	//});
+}
+
+void MdnsEngineWrapper::onHostNameResolved(const QHostAddress& address)
 {
 	switch (address.protocol()) {
 	case QAbstractSocket::IPv4Protocol:
@@ -208,33 +211,20 @@ QHostAddress MdnsEngineWrapper::getHostAddress(const QByteArray& hostName)
 {
 	Debug(_log, "Resolve IP-address for hostname [%s].", QSTRING_CSTR(QString(hostName)));
 
+	qDebug() << "\nMdnsEngineWrapper::getHostAddress" << QThread::currentThread();
+
 	QHostAddress hostAddress;
 
 	QMdnsEngine::Record aRecord;
 	if (!_cache->lookupRecord(hostName, QMdnsEngine::A, aRecord))
 	{
 		DebugIf(verbose, _log, "IP-address for hostname [%s] not yet in cache, start resolver.", QSTRING_CSTR(QString(hostName)));
-		qRegisterMetaType<QMdnsEngine::Message>("Message");
-
-		auto* resolver = new QMdnsEngine::Resolver(_server, hostName, _cache, this);
-
-		//ToDo Check, if retry is to be at the caller end....
-		QEventLoop loop;
-		loop.connect(resolver, &QMdnsEngine::Resolver::resolved, &loop, &QEventLoop::quit);
-		// Go into the loop until the resolver request is finished.
-		loop.exec();
-
-		DebugIf(verbose, _log, "IP-address for hostname [%s] is now resoleved.", QSTRING_CSTR(QString(hostName)));
-	}
-	
-	if (_cache->lookupRecord(hostName, QMdnsEngine::A, aRecord))
-	{
-		hostAddress = aRecord.address();
-		Debug(_log, "Hostname [%s] translates to IP-address [%s]", QSTRING_CSTR(QString(hostName)), QSTRING_CSTR(hostAddress.toString()));
+		//emit resolveHostName(hostName);
 	}
 	else
 	{
-		Warning(_log, "Resolving IP-address for hostname [%s] failed.", QSTRING_CSTR(QString(hostName)));
+		hostAddress = aRecord.address();
+		Debug(_log, "Hostname [%s] translates to IP-address [%s]", QSTRING_CSTR(QString(hostName)), QSTRING_CSTR(hostAddress.toString()));
 	}
 	return hostAddress;
 }
@@ -359,126 +349,5 @@ void MdnsEngineWrapper::printCache(const QByteArray& name, quint16 type) const
 				break;
 			}
 		}
-	}
-}
-
-void MdnsEngineWrapper::onMessageReceived(const QMdnsEngine::Message& message)
-{
-	double msSince = mStart.msecsTo(QDateTime::currentDateTime());
-
-	std::cout << "[" << std::setfill('0') << std::setw(10) << msSince / 1000
-		<< "] message (" << (message.isResponse() ? "response" : "query")
-		<< ") from " << message.address().toString().toStdString() << std::endl;
-
-	if (message.queries().count()) {
-		std::cout << "  " << message.queries().count() << " query(s):" << std::endl;
-		foreach(const QMdnsEngine::Query & q, message.queries()) {
-			printQuery(q);
-		}
-	}
-
-	if (message.records().count()) {
-		std::cout << "  " << message.records().count() << " record(s):" << std::endl;
-		foreach(const QMdnsEngine::Record & r, message.records()) {
-			printRecord(r);
-			//_cache->addRecord(r);
-		}
-	}
-
-	std::cout << std::endl;
-}
-
-void MdnsEngineWrapper::printColor(const std::string& text) const
-{
-#if defined(Q_OS_WIN)
-	HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-#endif
-
-#if defined(Q_OS_UNIX)
-	std::cout << (mColor ? "\033[0;33m" : "\"");
-#elif defined(Q_OS_WIN)
-	SetConsoleTextAttribute(hConsole, 14);
-#endif
-
-	std::cout << text;
-
-#if defined(Q_OS_UNIX)
-	std::cout << (mColor ? "\033[0m" : "\"");
-#elif defined(Q_OS_WIN)
-	SetConsoleTextAttribute(hConsole, 15);
-#endif
-}
-
-void MdnsEngineWrapper::printQuery(const QMdnsEngine::Query& query) const
-{
-	switch (query.type()) {
-	case QMdnsEngine::A:
-	case QMdnsEngine::AAAA:
-		std::cout << "    - " << (query.type() == QMdnsEngine::A ? "IPv4" : "IPv6")
-			<< " address for ";
-		break;
-	case QMdnsEngine::ANY:
-		std::cout << "    - probing for a record named ";
-		break;
-	case QMdnsEngine::PTR:
-		std::cout << "    - services providing ";
-		break;
-	case QMdnsEngine::SRV:
-		std::cout << "    - service information for ";
-		break;
-	case QMdnsEngine::TXT:
-		std::cout << "    - TXT record for ";
-		break;
-	default:
-		std::cout << "    - [unknown]" << std::endl;
-		return;
-	}
-
-	printColor(query.name().toStdString());
-	std::cout << std::endl;
-}
-void MdnsEngineWrapper::printRecord(const QMdnsEngine::Record& record) const
-{
-	std::string name = record.name().toStdString();
-	std::string target = record.target().toStdString();
-
-	switch (record.type()) {
-	case QMdnsEngine::A:
-	case QMdnsEngine::AAAA:
-		std::cout << "    - address for ";
-		printColor(name);
-		std::cout << " is " << record.address().toString().toStdString() << std::endl;
-		break;
-	case QMdnsEngine::PTR:
-		std::cout << "    - ";
-		printColor(target);
-		std::cout << " provides ";
-		printColor(name);
-		std::cout << std::endl;
-		break;
-	case QMdnsEngine::SRV:
-		std::cout << "    - ";
-		printColor(name);
-		std::cout << " is at ";
-		printColor(target);
-		std::cout << " port ";
-		printColor(std::to_string(record.port()));
-		std::cout << std::endl;
-		break;
-	case QMdnsEngine::TXT:
-		std::cout << "    - ";
-		printColor(name);
-		std::cout << " has the following data:" << std::endl;
-		for (auto i = record.attributes().constBegin(); i != record.attributes().constEnd(); ++i) {
-			std::cout << "        - ";
-			printColor(i.key().toStdString());
-			std::cout << ": ";
-			printColor(i.value().toStdString());
-			std::cout << std::endl;
-		}
-		break;
-	default:
-		std::cout << "    - [unknown]" << std::endl;
-		break;
 	}
 }

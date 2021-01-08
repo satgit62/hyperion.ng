@@ -10,10 +10,11 @@
 #endif
 
 #include <utils/QStringUtils.h>
+#include <utils/WaitTime.h>
+
 #include <QUdpSocket>
 #include <QHostInfo>
 #include <QtEndian>
-#include <QEventLoop>
 
 #include <chrono>
 
@@ -714,15 +715,20 @@ QJsonObject LedDeviceCololight::getProperties(const QJsonObject& params)
 	DebugIf(verbose, _log, "params: [%s]", QString(QJsonDocument(params).toJson(QJsonDocument::Compact)).toUtf8().constData());
 	QJsonObject properties;
 
-	QString apiHostname = params["host"].toString("");
+	QString host = params["host"].toString("");
 	quint16 apiPort = static_cast<quint16>(params["port"].toInt(API_DEFAULT_PORT));
 
+	if (host.endsWith(".local."))
+	{
+		host = _mdnsEngine->getHostAddress(host).toString();
+	}
+
 	QJsonObject propertiesDetails;
-	if (!apiHostname.isEmpty())
+	if (!host.isEmpty())
 	{
 		QJsonObject deviceConfig;
 
-		deviceConfig.insert("host", apiHostname);
+		deviceConfig.insert("host", host);
 		deviceConfig.insert("port", apiPort);
 		if (ProviderUdp::init(deviceConfig))
 		{
@@ -760,14 +766,19 @@ void LedDeviceCololight::identify(const QJsonObject& params)
 {
 	DebugIf(verbose, _log, "params: [%s]", QString(QJsonDocument(params).toJson(QJsonDocument::Compact)).toUtf8().constData());
 
-	QString apiHostname = params["host"].toString("");
+	QString host = params["host"].toString("");
 	quint16 apiPort = static_cast<quint16>(params["port"].toInt(API_DEFAULT_PORT));
 
-	if (!apiHostname.isEmpty())
+	if (host.endsWith(".local."))
+	{
+		host = _mdnsEngine->getHostAddress(host).toString();
+	}
+
+	if (!host.isEmpty())
 	{
 		QJsonObject deviceConfig;
 
-		deviceConfig.insert("host", apiHostname);
+		deviceConfig.insert("host", host);
 		deviceConfig.insert("port", apiPort);
 		if (ProviderUdp::init(deviceConfig))
 		{
@@ -775,9 +786,7 @@ void LedDeviceCololight::identify(const QJsonObject& params)
 			{
 				setEffect(THE_CIRCUS);
 
-				QEventLoop loop;
-				QTimer::singleShot(DEFAULT_IDENTIFY_TIME.count(), &loop, &QEventLoop::quit);
-				loop.exec();
+				wait(DEFAULT_IDENTIFY_TIME);
 
 				setColor(ColorRgb::BLACK);
 			}

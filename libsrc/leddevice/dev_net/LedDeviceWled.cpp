@@ -14,7 +14,8 @@
 #endif
 
 #include <utils/QStringUtils.h>
-#include <QEventLoop>
+#include <utils/WaitTime.h>
+#include <QThread>
 
 #include <chrono>
 
@@ -45,6 +46,10 @@ const int BRI_MAX = 255;
 
 constexpr std::chrono::milliseconds DEFAULT_IDENTIFY_TIME{ 2000 };
 
+// mDNS Hostname resolution
+const int DEFAULT_HOSTNAME_RESOLUTION_RETRIES = 6;
+constexpr std::chrono::milliseconds DEFAULT_HOSTNAME_RESOLUTION_WAIT_TIME{ 500 };
+
 } //End of constants
 
 LedDeviceWled::LedDeviceWled(const QJsonObject &deviceConfig)
@@ -56,6 +61,8 @@ LedDeviceWled::LedDeviceWled(const QJsonObject &deviceConfig)
 	  , _bonjour(BonjourBrowserWrapper::getInstance())
 #endif
 {
+	qDebug() << "LedDeviceWled::LedDeviceWled" << QThread::currentThread();
+
 }
 
 LedDeviceWled::~LedDeviceWled()
@@ -88,26 +95,41 @@ bool LedDeviceWled::init(const QJsonObject &deviceConfig)
 		Debug(_log, "RestoreOrigState  : %d", _isRestoreOrigState);
 
 		//Set hostname as per configuration
-		QString host = deviceConfig[ CONFIG_ADDRESS ].toString();
+		QString hostname = deviceConfig[ CONFIG_ADDRESS ].toString();
 
-		if (host.endsWith(".local."))
+		if (hostname.endsWith(".local."))
 		{
-			QHostAddress hostAddress;
-			QMetaObject::invokeMethod(_mdnsEngine, "getHostAddress", Qt::DirectConnection,
-				Q_RETURN_ARG(QHostAddress, hostAddress),
-				Q_ARG(QString, host));
-			host = hostAddress.toString();
+			qDebug() << "LedDeviceWled::init" << QThread::currentThread();
+
+			QHostAddress hostAddress = _mdnsEngine->getHostAddress(hostname);
+
+			int retries = DEFAULT_HOSTNAME_RESOLUTION_RETRIES;
+			while (hostAddress.isNull() && retries > 0 )
+			{
+				--retries;
+				Debug(_log, "retries left: [%d], hostAddress: [%s]", retries, QSTRING_CSTR(hostAddress.toString()));
+				QThread::msleep(DEFAULT_HOSTNAME_RESOLUTION_WAIT_TIME.count());
+				hostAddress = _mdnsEngine->getHostAddress(hostname);
+			}
+			Debug(_log, "getHostAddress finished - retries left: [%d], IP-address [%s]", retries, QSTRING_CSTR(hostAddress.toString()));
+
+			if (retries == 0)
+			{
+				Error(_log, "Resolving IP-address for hostname [%s] failed.", QSTRING_CSTR(hostname));
+			}
+
+			hostname = hostAddress.toString();
 		}
 
 		//If host not configured the init fails
-		if ( host.isEmpty() )
+		if ( hostname.isEmpty() )
 		{
 			this->setInError("No target hostname nor IP defined");
 			return false;
 		}
 		else
 		{
-			QStringList addressparts = QStringUtils::split(host,":", QStringUtils::SplitBehavior::SkipEmptyParts);
+			QStringList addressparts = QStringUtils::split(hostname,":", QStringUtils::SplitBehavior::SkipEmptyParts);
 			_hostname = addressparts[0];
 			if ( addressparts.size() > 1 )
 			{
@@ -324,10 +346,10 @@ QJsonObject LedDeviceWled::getProperties(const QJsonObject& params)
 
 	if (host.endsWith(".local."))
 	{
-		QHostAddress hostAddress;
-		QMetaObject::invokeMethod(_mdnsEngine, "getHostAddress", Qt::DirectConnection,
-			Q_RETURN_ARG(QHostAddress, hostAddress),
-			Q_ARG(QString, host));
+		qDebug() << "LedDeviceWled::getProperties" << QThread::currentThread();
+
+		QHostAddress hostAddress = _mdnsEngine->getHostAddress(host);
+
 		host = hostAddress.toString();
 	}
 
@@ -373,10 +395,10 @@ void LedDeviceWled::identify(const QJsonObject& params)
 
 	if (host.endsWith(".local."))
 	{
-		QHostAddress hostAddress;
-		QMetaObject::invokeMethod(_mdnsEngine, "getHostAddress", Qt::DirectConnection,
-			Q_RETURN_ARG(QHostAddress, hostAddress),
-			Q_ARG(QString, host));
+		qDebug() << "LedDeviceWled::identify" << QThread::currentThread();
+
+		QHostAddress hostAddress = _mdnsEngine->getHostAddress(host);
+
 		host = hostAddress.toString();
 	}
 
@@ -404,9 +426,7 @@ void LedDeviceWled::identify(const QJsonObject& params)
 		QString request = getOnOffRequest(true) + "," + getLorRequest(1) + "," + getEffectRequest(25);
 		sendStateUpdateRequest(request);
 
-		QEventLoop loop;
-		QTimer::singleShot(DEFAULT_IDENTIFY_TIME.count(), &loop, &QEventLoop::quit);
-		loop.exec();
+		wait(DEFAULT_IDENTIFY_TIME);
 
 		restoreState();
 	}

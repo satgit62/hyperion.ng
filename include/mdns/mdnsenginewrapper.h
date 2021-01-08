@@ -9,18 +9,12 @@
 #include <qmdnsengine/browser.h>
 #include <qmdnsengine/cache.h>
 
-#include <qmdnsengine/message.h>
-#include <qmdnsengine/query.h>
-
 // Qt includes
 #include <QObject>
 #include <QByteArray>
 
 // Utility includes
 #include <utils/Logger.h>
-
-#include <QDateTime>
-#include <string>
 
 class MdnsEngineWrapper : public QObject
 {
@@ -53,26 +47,18 @@ public slots:
 private slots:
 
 	void resolveService(const QMdnsEngine::Service& service);
+	void resolveHostName(const QByteArray& hostName);
 
 	void onHostnameChanged(const QByteArray& hostname);
-
 	void onServiceAdded(const QMdnsEngine::Service& service);
 	void onServiceUpdated(const QMdnsEngine::Service& service);
-
-	void onServiceResolved(const QHostAddress& address);
 	void onServiceRemoved(const QMdnsEngine::Service& service);
 
-	void onMessageReceived(const QMdnsEngine::Message& message);
+	void onHostNameResolved(const QHostAddress& address);
 
 private:
 
 	void printCache(const QByteArray& name = 0, quint16 type = QMdnsEngine::ANY) const;
-
-	void printColor(const std::string& text) const;
-	void printQuery(const QMdnsEngine::Query& query) const;
-	void printRecord(const QMdnsEngine::Record& record) const;
-	QDateTime mStart;
-
 
 	/// The logger instance for mDNS-Service
 	Logger* _log;

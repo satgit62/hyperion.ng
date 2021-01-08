@@ -607,16 +607,19 @@ $(document).ready(function () {
         case "cololight":
         case "wled":
         case "nanoleaf":
+
           discover_device(ledType);
 
-          var hwLedCount = conf_editor.getEditor("root.generalOptions.hardwareLedCount")
-          if (hwLedCount) {
-            hwLedCount.setValue(1);
-          }
+          if (ledType !== window.serverConfig.device.type) {
+            var hwLedCount = conf_editor.getEditor("root.generalOptions.hardwareLedCount")
+            if (hwLedCount) {
+              hwLedCount.setValue(1);
+            }
 
-          var colorOrder = conf_editor.getEditor("root.generalOptions.colorOrder")
-          if (colorOrder) {
-            colorOrder.setValue("rgb");
+            var colorOrder = conf_editor.getEditor("root.generalOptions.colorOrder")
+            if (colorOrder) {
+              colorOrder.setValue("rgb");
+            }
           }
 
           break;

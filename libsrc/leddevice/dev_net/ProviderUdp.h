@@ -81,6 +81,7 @@ protected:
 	QHostAddress _address;
 	quint16       _port;
 	QString      _defaultHost;
+	QString		_hostName;
 
 	MdnsEngineWrapper* _mdnsEngine;
 };

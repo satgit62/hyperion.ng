@@ -3,12 +3,16 @@
 #include <cstdio>
 #include <iostream>
 #include <exception>
+
+#include <chrono>
+
 // Linux includes
 #include <fcntl.h>
 
 #include <QStringList>
 #include <QUdpSocket>
 #include <QHostInfo>
+#include <QThread>
 
 // Local Hyperion includes
 #include "ProviderUdp.h"
@@ -17,7 +21,18 @@
 #include <HyperionConfig.h>
 #include <mdns/mdnsenginewrapper.h>
 
-const ushort MAX_PORT = 65535;
+// Constants
+namespace {
+
+	const ushort MAX_PORT = 65535;
+
+	// mDNS Hostname resolution
+	const int DEFAULT_HOSTNAME_RESOLUTION_RETRIES = 6;
+	constexpr std::chrono::milliseconds DEFAULT_HOSTNAME_RESOLUTION_WAIT_TIME{ 500 };
+
+} //End of constants
+
+
 
 ProviderUdp::ProviderUdp(const QJsonObject& deviceConfig)
 	: LedDevice(deviceConfig)
@@ -41,17 +56,34 @@ bool ProviderUdp::init(const QJsonObject& deviceConfig)
 	// Initialise sub-class
 	if (LedDevice::init(deviceConfig))
 	{
-		QString host = deviceConfig["host"].toString(_defaultHost);
+		QString _hostName = deviceConfig["host"].toString(_defaultHost);
 
-		if (host.endsWith(".local."))
+		if (_hostName.endsWith(".local."))
 		{
-			QMetaObject::invokeMethod(_mdnsEngine, "getHostAddress", Qt::DirectConnection,
-				Q_RETURN_ARG(QHostAddress, _address),
-				Q_ARG(QString, host));
+			qDebug() << "ProviderUdp::init" << QThread::currentThread();
+
+			QHostAddress hostAddress = _mdnsEngine->getHostAddress(_hostName);
+
+			int retries = DEFAULT_HOSTNAME_RESOLUTION_RETRIES;
+			while (hostAddress.isNull() && retries > 0)
+			{
+				--retries;
+				Debug(_log, "retries left: [%d], hostAddress: [%s]", retries, QSTRING_CSTR(hostAddress.toString()));
+				QThread::msleep(DEFAULT_HOSTNAME_RESOLUTION_WAIT_TIME.count());
+				hostAddress = _mdnsEngine->getHostAddress(_hostName);
+			}
+			Debug(_log, "getHostAddress finished - retries left: [%d], IP-address [%s]", retries, QSTRING_CSTR(hostAddress.toString()));
+
+			if (retries == 0)
+			{
+				Error(_log, "Resolving IP-address for hostName [%s] failed.", QSTRING_CSTR(_hostName));
+			}
+
+			_hostName = hostAddress.toString();
 		}
 		else
 		{
-			_address.setAddress(host);
+			_address.setAddress(_hostName);
 		}
 
 		if (!_address.isNull())
@@ -60,15 +92,15 @@ bool ProviderUdp::init(const QJsonObject& deviceConfig)
 		}
 		else
 		{
-			QHostInfo hostInfo = QHostInfo::fromName(host);
+			QHostInfo hostInfo = QHostInfo::fromName(_hostName);
 			if (hostInfo.error() == QHostInfo::NoError)
 			{
 				_address = hostInfo.addresses().first();
-				Debug(_log, "Successfully resolved IP-address (%s) for hostname (%s).", QSTRING_CSTR(_address.toString()), QSTRING_CSTR(host));
+				Debug(_log, "Successfully resolved IP-address (%s) for hostname (%s).", QSTRING_CSTR(_address.toString()), QSTRING_CSTR(_hostName));
 			}
 			else
 			{
-				QString errortext = QString("Failed resolving IP-address for [%1], (%2) %3").arg(host).arg(hostInfo.error()).arg(hostInfo.errorString());
+				QString errortext = QString("Failed resolving IP-address for [%1], (%2) %3").arg(_hostName).arg(hostInfo.error()).arg(hostInfo.errorString());
 				this->setInError(errortext);
 				isInitOK = false;
 			}
@@ -115,6 +147,7 @@ int ProviderUdp::open()
 				Warning(_log, "%s", QSTRING_CSTR(warntext));
 			}
 		}
+
 		// Everything is OK, device is ready
 		_isDeviceReady = true;
 		retval = 0;
