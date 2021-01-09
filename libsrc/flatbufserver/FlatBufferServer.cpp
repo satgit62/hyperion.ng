@@ -6,8 +6,10 @@
 #include <utils/NetOrigin.h>
 #include <utils/GlobalSignals.h>
 
-// bonjour
-#ifdef ENABLE_AVAHI
+// mDNS/bonjour wrapper
+#ifndef __APPLE__
+#include <mdns/mdnsEngineWrapper.h>
+#elif ENABLE_AVAHI
 #include <bonjour/bonjourserviceregister.h>
 #endif
 
@@ -106,7 +108,10 @@ void FlatBufferServer::startServer()
 		else
 		{
 			Info(_log,"Started on port %d", _port);
-#ifdef ENABLE_AVAHI
+#ifndef __APPLE__
+			MdnsEngineWrapper* mdnsEngine = MdnsEngineWrapper::getInstance();
+			mdnsEngine->provideServiceType("_hyperiond-flatbuf._tcp.local.", _port, "flatbuffer");
+#elif ENABLE_AVAHI
 			if(_serviceRegister == nullptr)
 			{
 				_serviceRegister = new BonjourServiceRegister(this);

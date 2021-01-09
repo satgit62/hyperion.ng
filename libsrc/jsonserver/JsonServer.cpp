@@ -6,10 +6,13 @@
 #include <jsonserver/JsonServer.h>
 #include "JsonClientConnection.h"
 
-// bonjour include
-#ifdef ENABLE_AVAHI
+// mDNS/bonjour wrapper
+#ifndef __APPLE__
+#include <mdns/mdnsEngineWrapper.h>
+#elif ENABLE_AVAHI
 #include <bonjour/bonjourserviceregister.h>
 #endif
+
 #include <utils/NetOrigin.h>
 
 // qt includes
@@ -51,7 +54,10 @@ void JsonServer::start()
 	}
 	Info(_log, "Started on port %d", _port);
 
-#ifdef ENABLE_AVAHI
+#ifndef __APPLE__
+	MdnsEngineWrapper* mdnsEngine = MdnsEngineWrapper::getInstance();
+	mdnsEngine->provideServiceType("_hyperiond-json._tcp.local.", _port, "API");
+#elif ENABLE_AVAHI
 	if(_serviceRegister == nullptr)
 	{
 		_serviceRegister = new BonjourServiceRegister(this);

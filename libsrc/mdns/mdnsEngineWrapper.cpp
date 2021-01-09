@@ -44,12 +44,8 @@ MdnsEngineWrapper::MdnsEngineWrapper(QObject* parent)
 	connect(_hostname, &QMdnsEngine::Hostname::hostnameChanged, this, &MdnsEngineWrapper::onHostnameChanged);
 	DebugIf(verboseProvider, _log, "Hostname [%s], isRegistered [%d]", QSTRING_CSTR(QString(_hostname->hostname())), _hostname->isRegistered());
 
-	//For Testing
-	provideServiceType("_hiperiond-flatbuf._tcp.local.", 19400, "flatbuffer");
-	provideServiceType("_hiperiond-api._tcp.local.", 19444, "API");
-
-	browseForServiceType("_hiperiond-flatbuf._tcp.local.");
-	browseForServiceType("_hiperiond-json._tcp.local.");
+	browseForServiceType("_hyperiond-flatbuf._tcp.local.");
+	browseForServiceType("_hyperiond-json._tcp.local.");
 	browseForServiceType("_http._tcp.local.");
 	browseForServiceType("_https._tcp.local.");
 }
