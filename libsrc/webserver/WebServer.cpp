@@ -10,7 +10,7 @@
 
 // mDNS/bonjour wrapper
 #ifndef __APPLE__
-#include <mdns/mdnsenginewrapper.h>
+#include <mdns/mdnsEngineWrapper.h>
 #elif ENABLE_AVAHI
 #include <bonjour/bonjourserviceregister.h>
 #endif

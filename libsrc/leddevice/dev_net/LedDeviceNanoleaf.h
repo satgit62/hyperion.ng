@@ -7,9 +7,8 @@
 #include "ProviderUdp.h"
 
 // mDNS/bonjour wrapper
-#include <HyperionConfig.h>
 #ifndef __APPLE__
-#include <mdns/mdnsenginewrapper.h>
+#include <mdns/mdnsEngineWrapper.h>
 #endif
 
 // Qt includes

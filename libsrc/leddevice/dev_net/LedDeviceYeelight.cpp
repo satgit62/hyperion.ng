@@ -2,7 +2,7 @@
 
 // mDNS/bonjour wrapper
 #ifndef __APPLE__
-#include <mdns/mdnsenginewrapper.h>
+#include <mdns/mdnsEngineWrapper.h>
 #include <leddevice/LedDeviceMdnsRegister.h>
 #endif
 

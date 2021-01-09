@@ -1,4 +1,4 @@
-#include <mdns/mdnsenginewrapper.h>
+#include <mdns/mdnsEngineWrapper.h>
 #include <qmdnsengine/resolver.h>
 #include <qmdnsengine/record.h>
 #include <qmdnsengine/message.h>

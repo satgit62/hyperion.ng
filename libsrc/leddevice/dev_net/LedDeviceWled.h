@@ -8,7 +8,7 @@
 
 // mDNS/bonjour wrapper
 #ifndef __APPLE__
-#include <mdns/mdnsenginewrapper.h>
+#include <mdns/mdnsEngineWrapper.h>
 #endif
 
 ///
