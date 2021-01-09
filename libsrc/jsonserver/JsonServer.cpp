@@ -56,7 +56,12 @@ void JsonServer::start()
 
 #ifndef __APPLE__
 	MdnsEngineWrapper* mdnsEngine = MdnsEngineWrapper::getInstance();
-	mdnsEngine->provideServiceType("_hyperiond-json._tcp.local.", _port, "API");
+	QMetaObject::invokeMethod(mdnsEngine, "provideServiceType", Qt::QueuedConnection,
+		Q_ARG(QByteArray, "_hyperiond-json._tcp.local."),
+		Q_ARG(quint16, _port),
+		Q_ARG(QByteArray, "API")
+	);
+
 #elif ENABLE_AVAHI
 	if(_serviceRegister == nullptr)
 	{

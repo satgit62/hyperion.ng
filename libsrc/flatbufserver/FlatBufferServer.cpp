@@ -110,7 +110,11 @@ void FlatBufferServer::startServer()
 			Info(_log,"Started on port %d", _port);
 #ifndef __APPLE__
 			MdnsEngineWrapper* mdnsEngine = MdnsEngineWrapper::getInstance();
-			mdnsEngine->provideServiceType("_hyperiond-flatbuf._tcp.local.", _port, "flatbuffer");
+			QMetaObject::invokeMethod(mdnsEngine, "provideServiceType", Qt::QueuedConnection,
+				Q_ARG(QByteArray, "_hyperiond-flatbuf._tcp.local."),
+				Q_ARG(quint16, _port),
+				Q_ARG(QByteArray, "flatbuffer")
+			);
 #elif ENABLE_AVAHI
 			if(_serviceRegister == nullptr)
 			{

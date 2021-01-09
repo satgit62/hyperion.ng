@@ -67,11 +67,17 @@ void WebServer::onServerStarted (quint16 port)
 	MdnsEngineWrapper* mdnsEngine = MdnsEngineWrapper::getInstance();
 	if (_useSsl)
 	{
-		mdnsEngine->provideServiceType("_https._tcp.local.", port);
+		QMetaObject::invokeMethod(mdnsEngine, "provideServiceType", Qt::QueuedConnection,
+			Q_ARG(QByteArray, "_https._tcp.local."),
+			Q_ARG(quint16, _port)
+		);
 	}
 	else
 	{
-		mdnsEngine->provideServiceType("_http._tcp.local.", port);
+		QMetaObject::invokeMethod(mdnsEngine, "provideServiceType", Qt::QueuedConnection,
+			Q_ARG(QByteArray, "_http._tcp.local."),
+			Q_ARG(quint16, _port)
+		);
 	}
 #elif ENABLE_AVAHI
 	if(_serviceRegister == nullptr)
