@@ -4,10 +4,9 @@
 // LedDevice includes
 #include <leddevice/LedDevice.h>
 
-// bonjour wrapper
-#include <HyperionConfig.h>
-#ifdef ENABLE_AVAHI
-#include <bonjour/bonjourbrowserwrapper.h>
+// mDNS/bonjour wrapper
+#ifndef __APPLE__
+#include <mdns/mdnsenginewrapper.h>
 #endif
 
 // Qt includes
@@ -632,9 +631,8 @@ private:
 	int _musicModeServerPort;
 	QTcpServer* _tcpMusicModeServer = nullptr;
 
-#ifdef ENABLE_AVAHI
-	/// Bonjour instance
-	BonjourBrowserWrapper* _bonjour;
+#ifndef __APPLE__
+	MdnsEngineWrapper* _mdnsEngine;
 #endif
 
 };

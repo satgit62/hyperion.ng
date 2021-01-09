@@ -1,13 +1,9 @@
 #include <leddevice/LedDeviceWrapper.h>
 
-// bonjour wrapper
-#include <HyperionConfig.h>
+// mDNS/bonjour wrapper
+#ifndef __APPLE__
 #include <mdns/mdnsenginewrapper.h>
 #include <leddevice/LedDeviceMdnsRegister.h>
-
-#ifdef ENABLE_AVAHI
-#include <bonjour/bonjourbrowserwrapper.h>
-#include <leddevice/LedDeviceBonjourRegister.h>
 #endif
 
 #include <leddevice/LedDevice.h>
@@ -33,9 +29,8 @@ LedDeviceWrapper::LedDeviceWrapper(Hyperion* hyperion)
 	, _hyperion(hyperion)
 	, _ledDevice(nullptr)
 	, _enabled(false)
+#ifndef __APPLE__
 	, _mdnsEngine(MdnsEngineWrapper::getInstance())
-#ifdef ENABLE_AVAHI
-	, _bonjour(BonjourBrowserWrapper::getInstance())
 #endif
 {
 	// prepare the device constructor map
@@ -49,20 +44,12 @@ LedDeviceWrapper::LedDeviceWrapper(Hyperion* hyperion)
 	_hyperion->setNewComponentState(hyperion::COMP_LEDDEVICE, false);
 
 	//Register all LED - Devices configured for mDNS discovery
+#ifndef __APPLE__
 	MdnsConfigMap deviceMdnsConfig = LedDeviceMdnsRegister::getAllConfigs();
 	MdnsConfigMap::const_iterator mdnsConfigIterator;
 	for (mdnsConfigIterator = deviceMdnsConfig.constBegin(); mdnsConfigIterator != deviceMdnsConfig.constEnd(); ++mdnsConfigIterator)
 	{
 		QMetaObject::invokeMethod(_mdnsEngine, "browseForServiceType", Qt::BlockingQueuedConnection, Q_ARG(QByteArray, mdnsConfigIterator.value().serviceType));
-	}
-
-#ifdef ENABLE_AVAHI
-	//Register all LED-Devices configured for Bonjour discovery
-	BonjourConfigMap deviceBonjourConfig = LedDeviceBonjourRegister::getAllConfigs();
-	BonjourConfigMap::const_iterator bonjourConfigIterator;
-	for (bonjourConfigIterator = deviceBonjourConfig.constBegin(); bonjourConfigIterator != deviceBonjourConfig.constEnd(); ++bonjourConfigIterator)
-	{
-		QMetaObject::invokeMethod(_bonjour, "browseForServiceType", Qt::BlockingQueuedConnection,  Q_ARG(QString,bonjourConfigIterator.value().serviceType));
 	}
 #endif
 }

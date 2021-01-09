@@ -2,11 +2,8 @@
 #define LEDEVICEWRAPPER_H
 
 // mDNS/bonjour wrapper
-#include <HyperionConfig.h>
+#ifndef __APPLE__
 #include <mdns/mdnsenginewrapper.h>
-
-#ifdef ENABLE_AVAHI
-#include <bonjour/bonjourbrowserwrapper.h>
 #endif
 
 // util
@@ -16,13 +13,11 @@
 
 #include <QMutex>
 
-
 class LedDevice;
 class Hyperion;
-class MdnsEngineWrapper;
 
-#ifdef ENABLE_AVAHI
-class BonjourBrowserWrapper;
+#ifndef __APPLE__
+class MdnsEngineWrapper;
 #endif
 
 typedef LedDevice* ( *LedDeviceCreateFuncType ) ( const QJsonObject& );
@@ -154,13 +149,10 @@ private:
 	// the enable state
 	bool _enabled;
 
-	/// MdDnsEngine instance
+#ifndef __APPLE__
 	MdnsEngineWrapper* _mdnsEngine;
-
-#ifdef ENABLE_AVAHI
-	/// Bonjour instance
-	BonjourBrowserWrapper* _bonjour;
 #endif
+
 };
 
 #endif // LEDEVICEWRAPPER_H
