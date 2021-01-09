@@ -1514,9 +1514,9 @@ async function discover_yeelight_lights() {
           light.host = device.hostname;
           light.port = device.port;
 
-          if (device.bonjourTxt) {
+          if (device.txt) {
             light.name = device.name;
-            light.model = device.bonjourTxt.md;
+            light.model = device.txt.md;
           }
           else {
             light.name = device.other.name;
