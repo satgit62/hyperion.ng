@@ -19,8 +19,10 @@ namespace {
 	const ushort MAX_PORT = 65535;
 
 	// mDNS Hostname resolution
+#ifndef __APPLE__
 	const int DEFAULT_HOSTNAME_RESOLUTION_RETRIES = 6;
 	constexpr std::chrono::milliseconds DEFAULT_HOSTNAME_RESOLUTION_WAIT_TIME{ 500 };
+#endif
 
 } //End of constants
 

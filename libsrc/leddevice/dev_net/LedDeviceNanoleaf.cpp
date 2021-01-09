@@ -81,9 +81,12 @@ const char SSDP_FILTER_HEADER[] = "ST";
 const char SSDP_CANVAS[] = "nanoleaf:nl29";
 const char SSDP_LIGHTPANELS[] = "nanoleaf_aurora:light";
 
+
 // mDNS Hostname resolution
+#ifndef __APPLE__
 const int DEFAULT_HOSTNAME_RESOLUTION_RETRIES = 6;
 constexpr std::chrono::milliseconds DEFAULT_HOSTNAME_RESOLUTION_WAIT_TIME{ 500 };
+#endif
 } //End of constants
 
 // Nanoleaf Panel Shapetypes

@@ -43,8 +43,10 @@ const int BRI_MAX = 255;
 constexpr std::chrono::milliseconds DEFAULT_IDENTIFY_TIME{ 2000 };
 
 // mDNS Hostname resolution
+#ifndef __APPLE__
 const int DEFAULT_HOSTNAME_RESOLUTION_RETRIES = 6;
 constexpr std::chrono::milliseconds DEFAULT_HOSTNAME_RESOLUTION_WAIT_TIME{ 500 };
+#endif
 
 } //End of constants
 
