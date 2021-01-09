@@ -20,15 +20,13 @@
 
 #include <HyperionConfig.h> // Required to determine the cmake options
 
-// mDNS engine
+// mDNS/bonjour wrapper
 #ifndef __APPLE__
-	#include <mdns/mdnsenginewrapper.h>
+#include <mdns/mdnsEngineWrapper.h>
+#elif ENABLE_AVAHI
+#include <bonjour/bonjourserviceregister.h>
 #endif
 
-// bonjour browser
-#ifdef ENABLE_AVAHI
-#include <bonjour/bonjourbrowserwrapper.h>
-#endif
 #include <jsonserver/JsonServer.h>
 #include <webserver/WebServer.h>
 #include "hyperiond.h"
@@ -249,13 +247,14 @@ void HyperionDaemon::freeObjects()
 	// stop Hyperions (non blocking)
 	_instanceManager->stopAll();
 
-#ifdef ENABLE_AVAHI
+	// mDNS/bonjour wrapper
+#ifndef __APPLE__
+	delete _mDNSEngineWrapper;
+#elif ENABLE_AVAHI
 	delete _bonjourBrowserWrapper;
 	_bonjourBrowserWrapper = nullptr;
 #endif
-#ifndef __APPLE__
-	delete _mDNSEngineWrapper;
-#endif
+
 	delete _amlGrabber;
 	delete _dispmanx;
 	delete _fbGrabber;
