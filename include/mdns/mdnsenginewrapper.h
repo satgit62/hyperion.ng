@@ -33,7 +33,7 @@ public:
 
 public slots:
 
-	bool provideServiceType(const QByteArray& serviceType, quint16 servicePort, const QByteArray& serviceName = "");
+	void provideServiceType(const QByteArray& serviceType, quint16 servicePort, const QByteArray& serviceName = "");
 
 	///
 	/// @brief Browse for a service of type

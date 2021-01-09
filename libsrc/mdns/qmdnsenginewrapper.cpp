@@ -80,43 +80,45 @@ MdnsEngineWrapper::~MdnsEngineWrapper()
 	delete _server;
 }
 
-bool MdnsEngineWrapper::provideServiceType(const QByteArray& serviceType, quint16 servicePort, const QByteArray& serviceName)
+void MdnsEngineWrapper::provideServiceType(const QByteArray& serviceType, quint16 servicePort, const QByteArray& serviceName)
 {
 	DebugIf(verbose, _log, "Start new Provider for serviceType [%s]", QSTRING_CSTR(QString(serviceType)));
 	qDebug() << "\nMdnsEngineWrapper::provideServiceType" << QThread::currentThread();
+
+	QMdnsEngine::Provider* provider(nullptr);
+
 	if (!_providedServiceTypes.contains(serviceType))
 	{
-
-
-		QMdnsEngine::Provider* newProvider = new QMdnsEngine::Provider(_server, _hostname);
-
-		QMdnsEngine::Service service;
-		service.setType(serviceType);
-		service.setPort(servicePort);
-
-		QByteArray name("Hyperion");
-		if (!serviceName.isEmpty())
-		{
-			name += "-" + serviceName;
-		}
-		name += "@" + QHostInfo::localHostName().toUtf8();;
-		service.setName(name);
-
-		QByteArray id = AuthManager::getInstance()->getID().toUtf8();
-		const QMap<QByteArray, QByteArray> attributes = { {"id", id}, {"version", HYPERION_VERSION} };
-		service.setAttributes(attributes);
-
-		DebugIf(verboseProvider, _log, "[%s] Name: [%s], Hostname[%s], Port: [%u] ",
-			QSTRING_CSTR(QString(service.type())),
-			QSTRING_CSTR(QString(service.name())),
-			QSTRING_CSTR(QString(service.hostname())), service.port());
-		
-		newProvider->update(service);
-
-		_providedServiceTypes.insert(serviceType, newProvider);
-		return true;
+		provider = new QMdnsEngine::Provider(_server, _hostname);
+		_providedServiceTypes.insert(serviceType, provider);
 	}
-	return false;
+	else
+	{
+		provider = _providedServiceTypes[serviceType];
+	}
+
+	QMdnsEngine::Service service;
+	service.setType(serviceType);
+	service.setPort(servicePort);
+
+	QByteArray name("Hyperion");
+	if (!serviceName.isEmpty())
+	{
+		name += "-" + serviceName;
+	}
+	name += "@" + QHostInfo::localHostName().toUtf8();;
+	service.setName(name);
+
+	QByteArray id = AuthManager::getInstance()->getID().toUtf8();
+	const QMap<QByteArray, QByteArray> attributes = { {"id", id}, {"version", HYPERION_VERSION} };
+	service.setAttributes(attributes);
+
+	DebugIf(verboseProvider, _log, "[%s] Name: [%s], Hostname[%s], Port: [%u] ",
+		QSTRING_CSTR(QString(service.type())),
+		QSTRING_CSTR(QString(service.name())),
+		QSTRING_CSTR(QString(service.hostname())), service.port());
+		
+	provider->update(service);
 }
 
 bool MdnsEngineWrapper::browseForServiceType(const QByteArray& serviceType)
