@@ -232,7 +232,7 @@ QHostAddress MdnsEngineWrapper::getHostAddress(const QByteArray& hostName)
 
 QVariantList MdnsEngineWrapper::getServicesDiscoveredJson(const QByteArray& serviceType, const QString& filter) const
 {
-	Debug(_log, "Get services of type [%s], matching name: [%s]", QSTRING_CSTR(QString(serviceType)), QSTRING_CSTR(filter));
+	DebugIf(verbose,_log, "Get services of type [%s], matching name: [%s]", QSTRING_CSTR(QString(serviceType)), QSTRING_CSTR(filter));
 
 	QJsonArray result;
 
@@ -307,7 +307,7 @@ QVariantList MdnsEngineWrapper::getServicesDiscoveredJson(const QByteArray& serv
 					}
 				}
 			}
-			Debug(_log, "result: [%s]", QString(QJsonDocument(result).toJson(QJsonDocument::Compact)).toUtf8().constData());
+			DebugIf(verbose,_log, "result: [%s]", QString(QJsonDocument(result).toJson(QJsonDocument::Compact)).toUtf8().constData());
 		}
 		else
 		{

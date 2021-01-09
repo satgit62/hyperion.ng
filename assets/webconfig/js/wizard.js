@@ -1517,6 +1517,8 @@ async function discover_yeelight_lights() {
           if (device.txt) {
             light.name = device.name;
             light.model = device.txt.md;
+            //Yeelight does not provide correct API port with mDNS response, use default one
+            light.port = 55443;
           }
           else {
             light.name = device.other.name;
