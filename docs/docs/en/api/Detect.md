@@ -33,7 +33,8 @@ As the data changes (e.g. network adapter IP address change), new updates will b
 Also known as [Apple Bonjour](https://en.wikipedia.org/wiki/Bonjour_(software)) or [Avahi](https://en.wikipedia.org/wiki/Avahi_(software)). Hyperion is detectable through zeroconf.
 
 **Hyperion publishes the following informations:**
-  * **_hyperiond-http._tcp**: Hyperion Webserver (HTTP+Websocket)
+  * **_http._tcp**: Hyperion Webserver (HTTP+Websocket)
+  * **_https._tcp**: Hyperion Webserver (HTTPS+Websocket)
   * **_hyperiond-json._tcp**: Hyperion JSON Server (TcpSocket)
   * **_hyperiond-flatbuf._tcp**: Hyperion Flatbuffers server (Google Flatbuffers)
 

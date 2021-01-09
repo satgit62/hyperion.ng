@@ -312,10 +312,10 @@ You can subscribe to future data updates. Read more about [Session updates](/en/
     {
         "address":"192.168.0.20",
         "domain":"local.",
-        "host":"raspberrypi",
+        "hostname":"raspberrypi",
         "name":"Awwh yeah!!@raspberrypi:8099",
         "port":8090,
-        "type":"_hyperiond-http._tcp."
+        "type":"_http._tcp."
     }
   ] 
 }

@@ -25,9 +25,11 @@
 #include <utils/Process.h>
 #include <utils/JsonUtils.h>
 
-// bonjour wrapper
-#ifdef ENABLE_AVAHI
-#include <bonjour/bonjourbrowserwrapper.h>
+// mDNS/bonjour wrapper
+#ifndef __APPLE__
+#include <mdns/mdnsEngineWrapper.h>
+#elif ENABLE_AVAHI
+#include <bonjour/bonjourserviceregister.h>
 #endif
 
 // ledmapping int <> string transform methods
@@ -551,9 +553,26 @@ void JsonAPI::handleServerInfoCommand(const QJsonObject &message, const QString 
 	info["components"] = component;
 	info["imageToLedMappingType"] = ImageProcessor::mappingTypeToStr(_hyperion->getLedMappingType());
 
-	// add sessions
+	// add sessions, i.e. services provided
 	QJsonArray sessions;
-#ifdef ENABLE_AVAHI
+
+#ifndef __APPLE__
+	MdnsEngineWrapper* mdnsEngine = MdnsEngineWrapper::getInstance();
+	QList<QByteArray> serviceList = mdnsEngine->getServiceTypesProvided();
+
+	QList<QByteArray>::iterator i;
+	for (i = serviceList.begin(); i != serviceList.end(); ++i)
+	{
+		QVariantList serviceDetails = mdnsEngine->getServicesDiscoveredJson(*i, ".*hyperion.*");
+		if (!serviceDetails.isEmpty())
+		{
+			for (const QVariant& v : serviceDetails) {
+				sessions.append(v.toJsonObject());
+
+			}
+		}
+	}
+#elif ENABLE_AVAHI
 //	for (auto session: BonjourBrowserWrapper::getInstance()->getAllServices())
 //	{
 //		if (session.port < 0)
@@ -567,10 +586,10 @@ void JsonAPI::handleServerInfoCommand(const QJsonObject &message, const QString 
 //		item["port"] = session.port;
 //		sessions.append(item);
 //	}
-	BonjourBrowserWrapper::getInstance()->getServicesDiscoveredJson("_hyperiond-http._tcp");
-	info["sessions"] = sessions;
 #endif
-	// add instance info
+	info["sessions"] = sessions;
+
+// add instance info
 	QJsonArray instanceInfo;
 	for (const auto &entry : API::getAllInstanceData())
 	{

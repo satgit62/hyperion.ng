@@ -31,6 +31,8 @@ public:
 	static MdnsEngineWrapper* instance;
 	static MdnsEngineWrapper* getInstance() { return instance; }
 
+	QList<QByteArray> getServiceTypesProvided() const { return _providedServiceTypes.keys(); }
+
 public slots:
 
 	void provideServiceType(const QByteArray& serviceType, quint16 servicePort, const QByteArray& serviceName = "");

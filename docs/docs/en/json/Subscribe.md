@@ -88,7 +88,7 @@ Example response with 2 HTTP server sessions (`_hyperiond-http._tcp`):
             "host":"ubuntu-2",
             "name":"My Hyperion Config@ubuntu:8090",
             "port":8090,
-            "type":"_hyperiond-http._tcp."
+            "type":"_http._tcp."
         },
         {
             "address":"192.168.58.169",
@@ -96,7 +96,7 @@ Example response with 2 HTTP server sessions (`_hyperiond-http._tcp`):
             "host":"ubuntu-2",
             "name":"My Hyperion Config@ubuntu:8099",
             "port":8099,
-            "type":"_hyperiond-http._tcp."
+            "type":"_http._tcp."
         }
    ]
 }

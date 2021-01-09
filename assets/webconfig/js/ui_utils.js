@@ -53,7 +53,7 @@ function updateSessions() {
   if (sess && sess.length) {
     window.wSess = [];
     for (var i = 0; i < sess.length; i++) {
-      if (sess[i].type == "_hyperiond-http._tcp.") {
+      if ( sess[i].type == "_http._tcp." || sess[i].type == "_https._tcp." || sess[i].type == "_hyperiond-http._tcp." ) {
         window.wSess.push(sess[i]);
       }
     }

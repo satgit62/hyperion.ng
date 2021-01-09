@@ -96,7 +96,7 @@ void MdnsEngineWrapper::provideServiceType(const QByteArray& serviceType, quint1
 	service.setType(serviceType);
 	service.setPort(servicePort);
 
-	QByteArray name("Hyperion");
+	QByteArray name("hyperion");
 	if (!serviceName.isEmpty())
 	{
 		name += "-" + serviceName;
@@ -264,10 +264,11 @@ QVariantList MdnsEngineWrapper::getServicesDiscoveredJson(const QByteArray& serv
 					else
 					{
 						QJsonObject obj;
+						QString domain = "local.";
 
 						obj.insert("id", QString(serviceNameFull));
 						obj.insert("nameFull", QString(serviceNameFull));
-						obj.insert("type", QString(serviceType));
+						obj.insert("type", QString(serviceType.left(serviceType.size()-domain.size())));
 
 						if (serviceNameFull.endsWith("." + serviceType))
 						{
@@ -277,6 +278,7 @@ QVariantList MdnsEngineWrapper::getServicesDiscoveredJson(const QByteArray& serv
 
 						QByteArray hostName = srvRecord.target();
 						obj.insert("hostname", QString(hostName));
+						obj.insert("domain", domain);
 
 						quint16 port = srvRecord.port();
 						obj.insert("port", port);
