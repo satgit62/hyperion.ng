@@ -91,6 +91,12 @@ const char SSDP_FILTER[] = "yeelight(.*)";
 const char SSDP_FILTER_HEADER[] = "Location";
 const quint16 SSDP_PORT = 1982;
 
+// mDNS Hostname resolution
+#ifndef __APPLE__
+const int DEFAULT_HOSTNAME_RESOLUTION_RETRIES = 6;
+constexpr std::chrono::milliseconds DEFAULT_HOSTNAME_RESOLUTION_WAIT_TIME{ 500 };
+#endif
+
 } //End of constants
 
 YeelightLight::YeelightLight( Logger *log, const QString &hostname, quint16 port = API_DEFAULT_PORT)
@@ -1085,12 +1091,12 @@ bool LedDeviceYeelight::init(const QJsonObject &deviceConfig)
 		int configuredYeelightsCount = 0;
 		for (const QJsonValueRef light : configuredYeelightLights)
 		{
-			QString host = light.toObject().value("host").toString();
+			QString hostName = light.toObject().value("host").toString();
 			int port = light.toObject().value("port").toInt(API_DEFAULT_PORT);
-			if ( !host.isEmpty() )
+			if ( !hostName.isEmpty() )
 			{
 				QString name = light.toObject().value("name").toString();
-				Debug(_log, "Light [%u] - %s (%s:%d)", configuredYeelightsCount, QSTRING_CSTR(name), QSTRING_CSTR(host), port );
+				Debug(_log, "Light [%u] - %s (%s:%d)", configuredYeelightsCount, QSTRING_CSTR(name), QSTRING_CSTR(hostName), port );
 				++configuredYeelightsCount;
 			}
 		}
@@ -1116,10 +1122,32 @@ bool LedDeviceYeelight::init(const QJsonObject &deviceConfig)
 			_lightsAddressList.clear();
 			for (int j = 0; j < static_cast<int>( configuredLedCount ); ++j)
 			{
-				QString address = configuredYeelightLights[j].toObject().value("host").toString();
+				QString hostName = configuredYeelightLights[j].toObject().value("host").toString();
 				int port = configuredYeelightLights[j].toObject().value("port").toInt(API_DEFAULT_PORT);
 
-				QStringList addressparts = QStringUtils::split(address,":", QStringUtils::SplitBehavior::SkipEmptyParts);
+#ifndef __APPLE__
+				if (hostName.endsWith(".local."))
+				{
+					QHostAddress hostAddress = _mdnsEngine->getHostAddress(hostName);
+
+					int retries = DEFAULT_HOSTNAME_RESOLUTION_RETRIES;
+					while (hostAddress.isNull() && retries > 0)
+					{
+						--retries;
+						QThread::msleep(DEFAULT_HOSTNAME_RESOLUTION_WAIT_TIME.count());
+						hostAddress = _mdnsEngine->getHostAddress(hostName);
+					}
+
+					if (retries == 0)
+					{
+						Error(_log, "Resolving IP-address for hostname [%s] failed.", QSTRING_CSTR(hostName));
+					}
+
+					hostName = hostAddress.toString();
+				}
+#endif
+
+				QStringList addressparts = QStringUtils::split(hostName,":", QStringUtils::SplitBehavior::SkipEmptyParts);
 				QString apiHost = addressparts[0];
 				int apiPort = port;
 

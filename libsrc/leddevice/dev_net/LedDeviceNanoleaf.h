@@ -183,7 +183,7 @@ private:
 	///REST-API wrapper
 	ProviderRestApi* _restApi;
 
-	QString _hostname;
+	QString _hostName;
 	int  _apiPort;
 	QString _authToken;
 

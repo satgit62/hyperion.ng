@@ -89,14 +89,14 @@ bool LedDeviceWled::init(const QJsonObject &deviceConfig)
 		Debug(_log, "RestoreOrigState  : %d", _isRestoreOrigState);
 
 		//Set hostname as per configuration
-		QString hostname = deviceConfig[ CONFIG_ADDRESS ].toString();
+		QString hostName = deviceConfig[ CONFIG_ADDRESS ].toString();
 
 #ifndef __APPLE__
-		if (hostname.endsWith(".local."))
+		if (hostName.endsWith(".local."))
 		{
 			qDebug() << "LedDeviceWled::init" << QThread::currentThread();
 
-			QHostAddress hostAddress = _mdnsEngine->getHostAddress(hostname);
+			QHostAddress hostAddress = _mdnsEngine->getHostAddress(hostName);
 
 			int retries = DEFAULT_HOSTNAME_RESOLUTION_RETRIES;
 			while (hostAddress.isNull() && retries > 0 )
@@ -104,28 +104,28 @@ bool LedDeviceWled::init(const QJsonObject &deviceConfig)
 				--retries;
 				Debug(_log, "retries left: [%d], hostAddress: [%s]", retries, QSTRING_CSTR(hostAddress.toString()));
 				QThread::msleep(DEFAULT_HOSTNAME_RESOLUTION_WAIT_TIME.count());
-				hostAddress = _mdnsEngine->getHostAddress(hostname);
+				hostAddress = _mdnsEngine->getHostAddress(hostName);
 			}
 			Debug(_log, "getHostAddress finished - retries left: [%d], IP-address [%s]", retries, QSTRING_CSTR(hostAddress.toString()));
 
 			if (retries == 0)
 			{
-				Error(_log, "Resolving IP-address for hostname [%s] failed.", QSTRING_CSTR(hostname));
+				Error(_log, "Resolving IP-address for hostname [%s] failed.", QSTRING_CSTR(hostName));
 			}
 
-			hostname = hostAddress.toString();
+			hostName = hostAddress.toString();
 		}
 #endif
 
 		//If host not configured the init fails
-		if ( hostname.isEmpty() )
+		if ( hostName.isEmpty() )
 		{
 			this->setInError("No target hostname nor IP defined");
 			return false;
 		}
 		else
 		{
-			QStringList addressparts = QStringUtils::split(hostname,":", QStringUtils::SplitBehavior::SkipEmptyParts);
+			QStringList addressparts = QStringUtils::split(hostName,":", QStringUtils::SplitBehavior::SkipEmptyParts);
 			_hostname = addressparts[0];
 			if ( addressparts.size() > 1 )
 			{

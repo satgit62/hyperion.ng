@@ -184,7 +184,7 @@ bool LedDeviceNanoleaf::init(const QJsonObject& deviceConfig)
 		// TODO: Allow to handle port dynamically
 
 		//Set hostname as per configuration and_defaultHost default port
-		_hostname = deviceConfig[CONFIG_ADDRESS].toString();
+		_hostName = deviceConfig[CONFIG_ADDRESS].toString();
 		_apiPort = API_DEFAULT_PORT;
 		_authToken = deviceConfig[CONFIG_AUTH_TOKEN].toString();
 
@@ -215,24 +215,24 @@ bool LedDeviceNanoleaf::init(const QJsonObject& deviceConfig)
 #endif
 
 		//If host not configured the init failed
-		if (_hostname.isEmpty())
+		if (_hostName.isEmpty())
 		{
 			this->setInError("No target hostname nor IP defined");
 			isInitOK = false;
 		}
 		else
 		{
-			if (initRestAPI(_hostname, _apiPort, _authToken))
+			if (initRestAPI(_hostName, _apiPort, _authToken))
 			{
 				// Read LedDevice configuration and validate against device configuration
 				if (initLedsConfiguration())
 				{
 					// Set UDP streaming host and port
-					_devConfig["host"] = _hostname;
+					_devConfig["host"] = _hostName;
 					_devConfig["port"] = STREAM_CONTROL_DEFAULT_PORT;
 
 					isInitOK = ProviderUdp::init(_devConfig);
-					Debug(_log, "Hostname/IP  : %s", QSTRING_CSTR(_hostname));
+					Debug(_log, "Hostname/IP  : %s", QSTRING_CSTR(_hostName));
 					Debug(_log, "Port         : %d", _port);
 				}
 			}
