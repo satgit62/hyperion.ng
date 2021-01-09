@@ -29,9 +29,6 @@ LedDeviceWrapper::LedDeviceWrapper(Hyperion* hyperion)
 	, _hyperion(hyperion)
 	, _ledDevice(nullptr)
 	, _enabled(false)
-#ifndef __APPLE__
-	, _mdnsEngine(MdnsEngineWrapper::getInstance())
-#endif
 {
 	// prepare the device constructor map
 	#define REGISTER(className) LedDeviceWrapper::addToDeviceMap(QString(#className).toLower(), LedDevice##className::construct);
@@ -47,9 +44,11 @@ LedDeviceWrapper::LedDeviceWrapper(Hyperion* hyperion)
 #ifndef __APPLE__
 	MdnsConfigMap deviceMdnsConfig = LedDeviceMdnsRegister::getAllConfigs();
 	MdnsConfigMap::const_iterator mdnsConfigIterator;
+
+	MdnsEngineWrapper* mdnsEngine = MdnsEngineWrapper::getInstance();
 	for (mdnsConfigIterator = deviceMdnsConfig.constBegin(); mdnsConfigIterator != deviceMdnsConfig.constEnd(); ++mdnsConfigIterator)
 	{
-		QMetaObject::invokeMethod(_mdnsEngine, "browseForServiceType", Qt::BlockingQueuedConnection, Q_ARG(QByteArray, mdnsConfigIterator.value().serviceType));
+		QMetaObject::invokeMethod(mdnsEngine, "browseForServiceType", Qt::QueuedConnection, Q_ARG(QByteArray, mdnsConfigIterator.value().serviceType));
 	}
 #endif
 }

@@ -6,11 +6,6 @@
 #include "ProviderRestApi.h"
 #include "ProviderUdp.h"
 
-// mDNS/bonjour wrapper
-#ifndef __APPLE__
-#include <mdns/mdnsEngineWrapper.h>
-#endif
-
 ///
 /// Implementation of a WLED-device
 ///
@@ -158,10 +153,6 @@ private:
 	int		_apiPort;
 
 	QJsonObject _originalStateProperties;
-
-#ifndef __APPLE__
-	MdnsEngineWrapper* _mdnsEngine;
-#endif
 
 };
 

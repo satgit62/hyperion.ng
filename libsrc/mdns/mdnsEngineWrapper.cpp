@@ -34,11 +34,12 @@ MdnsEngineWrapper::MdnsEngineWrapper(QObject* parent)
 {
 	MdnsEngineWrapper::instance = this;
 
+	qRegisterMetaType<QMdnsEngine::Service>("Service");
 	qRegisterMetaType<QMdnsEngine::Message>("Message");
 
-	_server = new QMdnsEngine::Server(this);
-	_cache = new QMdnsEngine::Cache(this);
-	_hostname = new QMdnsEngine::Hostname(_server, this);
+	_server = new QMdnsEngine::Server();
+	_cache = new QMdnsEngine::Cache();
+	_hostname = new QMdnsEngine::Hostname(_server);
 
 	connect(_hostname, &QMdnsEngine::Hostname::hostnameChanged, this, &MdnsEngineWrapper::onHostnameChanged);
 	DebugIf(verboseProvider, _log, "Hostname [%s], isRegistered [%d]", QSTRING_CSTR(QString(_hostname->hostname())), _hostname->isRegistered());
@@ -46,8 +47,6 @@ MdnsEngineWrapper::MdnsEngineWrapper(QObject* parent)
 	//For Testing
 	provideServiceType("_hiperiond-flatbuf._tcp.local.", 19400, "flatbuffer");
 	provideServiceType("_hiperiond-api._tcp.local.", 19444, "API");
-	//provideServiceType("_http._tcp.local.", 8090);
-	//provideServiceType("_https._tcp.local.", 8092);
 
 	browseForServiceType("_hiperiond-flatbuf._tcp.local.");
 	browseForServiceType("_hiperiond-json._tcp.local.");
@@ -121,21 +120,20 @@ void MdnsEngineWrapper::provideServiceType(const QByteArray& serviceType, quint1
 	provider->update(service);
 }
 
-bool MdnsEngineWrapper::browseForServiceType(const QByteArray& serviceType)
+void MdnsEngineWrapper::browseForServiceType(const QByteArray& serviceType)
 {
+	qDebug() << "\nMdnsEngineWrapper::browseForServiceType" << QThread::currentThread();
 	if (!_browsedServiceTypes.contains(serviceType))
 	{
 		DebugIf(verbose, _log, "Start new Browser for serviceType [%s]", QSTRING_CSTR(QString(serviceType)));
-		QMdnsEngine::Browser* newBrowser = new QMdnsEngine::Browser(_server, serviceType, _cache, this);
+		QMdnsEngine::Browser* newBrowser = new QMdnsEngine::Browser(_server, serviceType, _cache);
 
 		QObject::connect(newBrowser, &QMdnsEngine::Browser::serviceAdded, this, &MdnsEngineWrapper::onServiceAdded);
 		QObject::connect(newBrowser, &QMdnsEngine::Browser::serviceUpdated, this, &MdnsEngineWrapper::onServiceUpdated);
 		QObject::connect(newBrowser, &QMdnsEngine::Browser::serviceRemoved, this, &MdnsEngineWrapper::onServiceRemoved);
 
 		_browsedServiceTypes.insert(serviceType, newBrowser);
-		return true;
 	}
-	return false;
 }
 
 void MdnsEngineWrapper::onHostnameChanged(const QByteArray& hostname)

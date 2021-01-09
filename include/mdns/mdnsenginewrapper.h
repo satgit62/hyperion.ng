@@ -38,7 +38,7 @@ public slots:
 	///
 	/// @brief Browse for a service of type
 	///
-	bool browseForServiceType(const QByteArray& serviceType);
+	void browseForServiceType(const QByteArray& serviceType);
 
 	QHostAddress getHostAddress(const QString& hostName);
 	QHostAddress getHostAddress(const QByteArray& hostName);

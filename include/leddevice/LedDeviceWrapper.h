@@ -1,11 +1,6 @@
 #ifndef LEDEVICEWRAPPER_H
 #define LEDEVICEWRAPPER_H
 
-// mDNS/bonjour wrapper
-#ifndef __APPLE__
-#include <mdns/mdnsEngineWrapper.h>
-#endif
-
 // util
 #include <utils/Logger.h>
 #include <utils/ColorRgb.h>
@@ -15,10 +10,6 @@
 
 class LedDevice;
 class Hyperion;
-
-#ifndef __APPLE__
-class MdnsEngineWrapper;
-#endif
 
 typedef LedDevice* ( *LedDeviceCreateFuncType ) ( const QJsonObject& );
 typedef std::map<QString,LedDeviceCreateFuncType> LedDeviceRegistry;
@@ -148,10 +139,6 @@ private:
 	LedDevice* _ledDevice;
 	// the enable state
 	bool _enabled;
-
-#ifndef __APPLE__
-	MdnsEngineWrapper* _mdnsEngine;
-#endif
 
 };
 

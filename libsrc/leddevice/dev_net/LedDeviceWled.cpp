@@ -54,9 +54,6 @@ LedDeviceWled::LedDeviceWled(const QJsonObject &deviceConfig)
 	: ProviderUdp(deviceConfig)
 	  ,_restApi(nullptr)
 	  ,_apiPort(API_DEFAULT_PORT)
-#ifndef __APPLE__
-	, _mdnsEngine(MdnsEngineWrapper::getInstance())
-#endif
 {
 	qDebug() << "LedDeviceWled::LedDeviceWled" << QThread::currentThread();
 
@@ -314,7 +311,7 @@ QJsonObject LedDeviceWled::discover(const QJsonObject& /*params*/)
 #ifndef __APPLE__
 	QVariantList deviceListResponse;
 
-	deviceListResponse = _mdnsEngine->getServicesDiscoveredJson(
+	deviceListResponse = MdnsEngineWrapper::getInstance()->getServicesDiscoveredJson(
 		LedDeviceMdnsRegister::getServiceType(_activeDeviceType),
 		LedDeviceMdnsRegister::getServiceNameFilter(_activeDeviceType)
 	);
@@ -340,7 +337,7 @@ QJsonObject LedDeviceWled::getProperties(const QJsonObject& params)
 #ifndef __APPLE__
 	if (hostName.endsWith(".local."))
 	{
-		hostName = _mdnsEngine->getHostAddress(hostName).toString();
+		hostName = MdnsEngineWrapper::getInstance()->getHostAddress(hostName).toString();
 	}
 #endif
 	if ( !hostName.isEmpty() )
@@ -386,7 +383,7 @@ void LedDeviceWled::identify(const QJsonObject& params)
 #ifndef __APPLE__
 	if (hostName.endsWith(".local."))
 	{
-		hostName = _mdnsEngine->getHostAddress(hostName).toString();
+		hostName = MdnsEngineWrapper::getInstance()->getHostAddress(hostName).toString();
 	}
 #endif
 
