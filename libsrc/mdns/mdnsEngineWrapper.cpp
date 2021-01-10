@@ -18,7 +18,7 @@
 
 
 namespace {
-	const bool verbose = false;
+	const bool verbose = true;
 	const bool verboseProvider = false;
 } //End of constants
 
@@ -226,6 +226,37 @@ QHostAddress MdnsEngineWrapper::getHostAddress(const QByteArray& hostName)
 	{
 		hostAddress = aRecord.address();
 		Debug(_log, "Hostname [%s] translates to IP-address [%s]", QSTRING_CSTR(QString(hostName)), QSTRING_CSTR(hostAddress.toString()));
+	}
+	return hostAddress;
+}
+
+QString MdnsEngineWrapper::getHostByService(const QByteArray& serviceName)
+{
+	QString hostAddress;
+	Debug(_log, "Resolve IP-address for service [%s].", QSTRING_CSTR(QString(serviceName)));
+
+	qDebug() << "\nMdnsEngineWrapper::getHostAddress" << QThread::currentThread();
+
+	QMdnsEngine::Record srvRecord;
+	if (!_cache->lookupRecord(serviceName, QMdnsEngine::SRV, srvRecord))
+	{
+		Debug(_log, "No SRV record for [%s] found, skip entry", QSTRING_CSTR(QString(serviceName)));
+	}
+	else
+	{
+		QByteArray hostName = srvRecord.target();
+		quint16 port = srvRecord.port();
+
+		QMdnsEngine::Record aRecord;
+		if (!_cache->lookupRecord(hostName, QMdnsEngine::A, aRecord))
+		{
+			DebugIf(verbose, _log, "IP-address for hostname [%s] not yet in cache, start resolver.", QSTRING_CSTR(QString(hostName)));
+		}
+		else
+		{
+			hostAddress = QString("%1:%2").arg(aRecord.address().toString()).arg(port);
+			Debug(_log, "Service [%s] translates to [%s]", QSTRING_CSTR(QString(serviceName)), QSTRING_CSTR(hostAddress));
+		}
 	}
 	return hostAddress;
 }

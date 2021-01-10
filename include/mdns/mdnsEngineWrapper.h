@@ -45,6 +45,8 @@ public slots:
 	QHostAddress getHostAddress(const QString& hostName);
 	QHostAddress getHostAddress(const QByteArray& hostName);
 
+	QString getHostByService(const QByteArray& serviceName);
+
 	QVariantList getServicesDiscoveredJson(const QByteArray& serviceType, const QString& filter = ".*") const;
 
 private slots:

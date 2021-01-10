@@ -3,9 +3,15 @@
 
 // Qt includes
 #include <QRgb>
+#include <QThread>
 
 // flatbuffer includes
 #include <flatbufserver/FlatBufferConnection.h>
+
+// mDNS/bonjour wrapper
+#ifndef __APPLE__
+#include <mdns/mdnsEngineWrapper.h>
+#endif
 
 // flatbuffer FBS
 #include "hyperion_reply_generated.h"
@@ -19,29 +25,17 @@ FlatBufferConnection::FlatBufferConnection(const QString& origin, const QString 
 	, _log(Logger::getInstance("FLATBUFCONN"))
 	, _registered(false)
 {
-	QStringList parts = address.split(":");
-	if (parts.size() != 2)
-	{
-		throw std::runtime_error(QString("FLATBUFCONNECTION ERROR: Unable to parse address (%1)").arg(address).toStdString());
-	}
-	_host = parts[0];
-
-	bool ok;
-	_port = parts[1].toUShort(&ok);
-	if (!ok)
-	{
-		throw std::runtime_error(QString("FLATBUFCONNECTION ERROR: Unable to parse the port (%1)").arg(parts[1]).toStdString());
-	}
+	_serviceName = address;
 
 	if(!skipReply)
 		connect(&_socket, &QTcpSocket::readyRead, this, &FlatBufferConnection::readData, Qt::UniqueConnection);
 
 	// init connect
-	Info(_log, "Connecting to Hyperion: %s:%d", _host.toStdString().c_str(), _port);
+	Info(_log, "Connecting to Hyperion: %s", QSTRING_CSTR(_serviceName));
 	connectToHost();
 
 	// start the connection timer
-	_timer.setInterval(5000);
+	_timer.setInterval(10000);
 
 	connect(&_timer, &QTimer::timeout, this, &FlatBufferConnection::connectToHost);
 	_timer.start();
@@ -153,6 +147,42 @@ void FlatBufferConnection::clearAll()
 
 void FlatBufferConnection::connectToHost()
 {
+
+	QString hostAddress;
+#ifndef __APPLE__
+	if (_serviceName.endsWith(".local."))
+	{
+		qDebug() << "MessageForwarder::connectToHost" << QThread::currentThread();
+
+		MdnsEngineWrapper* mdnsEngine = MdnsEngineWrapper::getInstance();
+
+		hostAddress = mdnsEngine->getHostByService(_serviceName.toUtf8());
+
+		if (hostAddress.isEmpty())
+		{
+			Error(_log, "Resolving IP-address:Port for service [%s] failed.", QSTRING_CSTR(_serviceName));
+		}
+	}
+#endif
+
+	QStringList parts = hostAddress.split(":");
+	if (parts.size() != 2)
+	{
+		Error(_log, "Unable to parse address (%s)", QSTRING_CSTR(hostAddress));
+		return;
+	}
+
+	bool ok;
+	parts[1].toUShort(&ok);
+	if (!ok)
+	{
+		Error(_log, "Unable to parse port number (%s)", QSTRING_CSTR(parts[1]));
+		return;
+	}
+
+	_host = parts[0];
+	_port = parts[1].toInt();
+
 	// try connection only when
 	if (_socket.state() == QAbstractSocket::UnconnectedState)
 	   _socket.connectToHost(_host, _port);

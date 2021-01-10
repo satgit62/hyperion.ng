@@ -1,5 +1,6 @@
 // STL includes
 #include <stdexcept>
+#include <chrono>
 
 // project includes
 #include <hyperion/MessageForwarder.h>
@@ -10,11 +11,27 @@
 // utils includes
 #include <utils/Logger.h>
 
+// mDNS/bonjour wrapper
+#ifndef __APPLE__
+#include <mdns/mdnsEngineWrapper.h>
+#endif
+
 // qt includes
 #include <QTcpServer>
 #include <QTcpSocket>
+#include <QThread>
 
 #include <flatbufserver/FlatBufferConnection.h>
+
+// Constants
+namespace {
+
+	// mDNS Hostname resolution
+#ifndef __APPLE__
+	const int DEFAULT_HOSTNAME_RESOLUTION_RETRIES = 6;
+	constexpr std::chrono::milliseconds DEFAULT_HOSTNAME_RESOLUTION_WAIT_TIME{ 500 };
+#endif
+}
 
 MessageForwarder::MessageForwarder(Hyperion *hyperion)
 	: QObject()
@@ -187,10 +204,29 @@ void MessageForwarder::addJsonSlave(const QString& slave)
 
 void MessageForwarder::addFlatbufferSlave(const QString& slave)
 {
-	QStringList parts = slave.split(":");
+	QString slaveAddress = slave;
+
+#ifndef __APPLE__
+	if (slave.endsWith(".local."))
+	{
+		qDebug() << "MessageForwarder::addFlatbufferSlave" << QThread::currentThread();
+
+		MdnsEngineWrapper* mdnsEngine = MdnsEngineWrapper::getInstance();
+
+		slaveAddress = mdnsEngine->getHostByService(slave.toUtf8());
+
+		if (slaveAddress.isEmpty())
+		{
+			Error(_log, "Resolving IP-address:Port for service [%s] failed.", QSTRING_CSTR(slave));
+			return;
+		}
+	}
+#endif
+
+	QStringList parts = slaveAddress.split(":");
 	if (parts.size() != 2)
 	{
-		Error(_log, "Unable to parse address (%s)",QSTRING_CSTR(slave));
+		Error(_log, "Unable to parse address (%s)",QSTRING_CSTR(slaveAddress));
 		return;
 	}
 
@@ -206,14 +242,14 @@ void MessageForwarder::addFlatbufferSlave(const QString& slave)
 	const QJsonObject &obj = _hyperion->getSetting(settings::FLATBUFSERVER).object();
 	if(QHostAddress(parts[0]) == QHostAddress::LocalHost && parts[1].toInt() == obj["port"].toInt())
 	{
-		Error(_log, "Loop between Flatbuffer Server and Forwarder! (%s)",QSTRING_CSTR(slave));
+		Error(_log, "Loop between Flatbuffer Server and Forwarder! (%s)",QSTRING_CSTR(slaveAddress));
 		return;
 	}
 
 	if (_forwarder_enabled && !_flatSlaves.contains(slave))
 	{
 		_flatSlaves << slave;
-		FlatBufferConnection* flatbuf = new FlatBufferConnection("Forwarder", slave.toLocal8Bit().constData(), _priority, false);
+		FlatBufferConnection* flatbuf = new FlatBufferConnection("Forwarder", slave, _priority, false);
 		_forwardClients << flatbuf;
 	}
 }
