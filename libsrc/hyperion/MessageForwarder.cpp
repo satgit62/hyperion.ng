@@ -180,7 +180,7 @@ void MessageForwarder::addJsonSlave(const QString& slave)
 #ifndef __APPLE__
 	if (slave.endsWith(".local."))
 	{
-		qDebug() << "MessageForwarder::addFlatbufferSlave" << QThread::currentThread();
+		qDebug() << "MessageForwarder::addJsonSlave" << QThread::currentThread();
 
 		MdnsEngineWrapper* mdnsEngine = MdnsEngineWrapper::getInstance();
 
