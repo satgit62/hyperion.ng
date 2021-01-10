@@ -71,6 +71,53 @@ $(document).ready(function () {
     jsonServer: window.schema.jsonServer
   }, true, true);
 
+  conf_editor_json.on('ready', function () {
+
+    var hyperionServices = window.serverInfo.sessions;
+    console.log("conf_editor_json.on->ready, flatbufferServices: ", hyperionServices);
+
+    console.log("conf_editor_json.on->ready, window.serverConfig.: ", window.serverConfig);
+
+    var forwOptions = conf_editor_forw.getEditor('root.forwarder');
+
+    var enumVals = [];
+    var enumTitelVals = [];
+    var enumDefaultVals = [];
+
+    for (var i = 0; i < hyperionServices.length; i++) {
+
+      if (hyperionServices[i].type === "_hyperiond-json._tcp.") {
+        enumVals.push(hyperionServices[i].nameFull);
+        enumTitelVals.push(hyperionServices[i].name);
+      }
+    }
+
+    console.log("conf_editor_json.on->ready, enumVals: ", enumVals);
+
+
+    var configuredJsonServices = window.serverConfig.forwarder.json;
+
+    //Add json services saved previously, but not discovered
+    for (var i = 0; i < configuredJsonServices.length; i++) {
+      var configuredJsonService = configuredJsonServices[i];
+      if ($.inArray(configuredJsonService, enumVals) == -1) {
+        enumVals.push(configuredJsonService);
+        enumTitelVals.push(configuredJsonService);
+      }
+      enumDefaultVals.push(configuredJsonService);
+    }
+
+    console.log("conf_editor_json.on->ready, enumVals2: ", enumVals);
+    console.log("conf_editor_json.on->ready, enumDefaultVals: ", enumDefaultVals);
+
+    let addSchemaElements = {
+      "uniqueItems": true
+    };
+
+    updateJsonEditorMultiSelection(forwOptions, "json", addSchemaElements, enumVals, enumTitelVals, enumDefaultVals);
+
+  });
+
   conf_editor_json.on('change', function () {
     conf_editor_json.validate().length || window.readOnlyMode ? $('#btn_submit_jsonserver').attr('disabled', true) : $('#btn_submit_jsonserver').attr('disabled', false);
   });
@@ -123,6 +170,53 @@ $(document).ready(function () {
     conf_editor_forw = createJsonEditor('editor_container_forwarder', {
       forwarder: window.schema.forwarder
     }, true, true);
+
+    conf_editor_forw.on('ready', function () {
+
+      var hyperionServices = window.serverInfo.sessions;
+      console.log("conf_editor_forw.on->ready, hyperionServices: ", hyperionServices);
+
+      console.log("conf_editor_forw.on->ready, window.serverConfig.: ", window.serverConfig);
+
+      var forwOptions = conf_editor_forw.getEditor('root.forwarder');
+
+      var enumVals = [];
+      var enumTitelVals = [];
+      var enumDefaultVals = [];
+
+      for (var i = 0; i < hyperionServices.length; i++) {
+
+        if (hyperionServices[i].type === "_hyperiond-flatbuf._tcp.") {
+          enumVals.push(hyperionServices[i].nameFull);
+          enumTitelVals.push(hyperionServices[i].name);
+        }
+      }
+
+      console.log("conf_editor_forw.on->ready, enumVals: ", enumVals);
+
+
+      var configuredFlatbufferServices = window.serverConfig.forwarder.flat;
+
+      //Add flatbuffer services saved previously, but not discovered
+      for (var i = 0; i < configuredFlatbufferServices.length; i++) {
+        var configuredFlatbufferService = configuredFlatbufferServices[i];
+        if ($.inArray(configuredFlatbufferService, enumVals) == -1) {
+          enumVals.push(configuredFlatbufferService);
+          enumTitelVals.push(configuredFlatbufferService);
+        }
+        enumDefaultVals.push(configuredFlatbufferService);
+      }
+
+      console.log("conf_editor_forw.on->ready, enumVals2: ", enumVals);
+      console.log("conf_editor_forw.on->ready, enumDefaultVals: ", enumDefaultVals);
+
+      let addSchemaElements = {
+        "uniqueItems": true
+      };
+
+      updateJsonEditorMultiSelection(forwOptions, "flat", addSchemaElements, enumVals, enumTitelVals, enumDefaultVals);
+      
+    });
 
     conf_editor_forw.on('change', function () {
       conf_editor_forw.validate().length || window.readOnlyMode ? $('#btn_submit_forwarder').attr('disabled', true) : $('#btn_submit_forwarder').attr('disabled', false);

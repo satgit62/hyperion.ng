@@ -2,8 +2,7 @@
 	"type" : "object",
 	"title" : "edt_conf_fw_heading_title",
 	"required" : true,
-	"properties" :
-	{
+	"properties": {
 		"enable": {
 			"type": "boolean",
 			"format": "checkbox",
@@ -12,29 +11,25 @@
 			"default": false,
 			"propertyOrder": 1
 		},
-		"json" :
-		{
-			"type" : "array",
-			"title" : "edt_conf_fw_json_title",
-			"required" : true,
-			"default" : ["127.0.0.1:19446"],
-			"items" : {
-				"type": "string",
-				"title" : "edt_conf_fw_json_itemtitle"
+		"json": {
+			"type": "array",
+			"uniqueItems": true,
+			"format": "select",
+			"title": "edt_conf_fw_json_title",
+			"options": {
+				"infoText": "edt_conf_fw_json_title_info"
 			},
-			"propertyOrder" : 2
+			"propertyOrder": 2
 		},
-		"flat" :
-		{
-			"type" : "array",
-			"title" : "edt_conf_fw_flat_title",
-			"required" : true,
-			"default" : ["127.0.0.1:19401"],
-			"items" : {
-				"type": "string",
-				"title" : "edt_conf_fw_flat_itemtitle"
+		"flat": {
+			"type": "array",
+			"uniqueItems": true,
+			"format": "select",
+			"title": "edt_conf_fw_flat_title",
+			"options": {
+				"infoText": "edt_conf_fw_flat_title_info"
 			},
-			"propertyOrder" : 3
+			"propertyOrder": 3
 		}
 	},
 	"additionalProperties" : false

@@ -490,14 +490,28 @@ function updateJsonEditorSelection(editor, key, addElements, newEnumVals, newTit
   {
     "type": "string",
     "enum": [],
-    "propertyOrder": 1,
     "required": true,
-    "options": { "enum_titles": [] }
+    "options": { "enum_titles": [], "infoText": "" },
+    "propertyOrder": 1
   };
 
   //Add additional elements to overwrite defaults
   for (var item in addElements) {
     newSchema[key][item] = addElements[item];
+  }
+
+  if (orginalProperties) {
+    if (orginalProperties["title"]) {
+      newSchema[key]["title"] = orginalProperties["title"];
+    }
+
+    if (orginalProperties["options"] && orginalProperties["options"]["infoText"]) {
+      newSchema[key]["options"]["infoText"] = orginalProperties["options"]["infoText"];
+    }
+
+    if (orginalProperties["propertyOrder"]) {
+      newSchema[key]["propertyOrder"] = orginalProperties["propertyOrder"];
+    }
   }
 
   if (addCustom) {
@@ -521,8 +535,70 @@ function updateJsonEditorSelection(editor, key, addElements, newEnumVals, newTit
     newSchema[key]["default"] = newDefaultVal;
   }
 
-  editor.original_schema.properties = orginalProperties;
-  editor.schema.properties = newSchema;
+  console.log("updateJsonEditorSelection, newSchema ", newSchema);
+
+  editor.original_schema.properties[key] = orginalProperties;
+  editor.schema.properties[key] = newSchema[key];
+
+  editor.removeObjectProperty(key);
+  delete editor.cached_editors[key];
+  editor.addObjectProperty(key);
+}
+
+function updateJsonEditorMultiSelection(editor, key, addElements, newEnumVals, newTitelVals, newDefaultVal) {
+
+  var orginalProperties = editor.schema.properties[key];
+
+  var newSchema = [];
+  newSchema[key] =
+  {
+    "type": "array",
+    "format": "select",
+    "items": {
+      "type": "string",
+      "enum": [],
+      "options": { "enum_titles": [] },
+    },
+    "options": { "infoText": "" },
+    "default": [],
+    "propertyOrder": 1
+  };
+
+  //Add additional elements to overwrite defaults
+  for (var item in addElements) {
+    newSchema[key][item] = addElements[item];
+  }
+
+  if (orginalProperties) {
+    if (orginalProperties["title"]) {
+      newSchema[key]["title"] = orginalProperties["title"];
+    }
+
+    if (orginalProperties["options"] && orginalProperties["options"]["infoText"]) {
+      newSchema[key]["options"]["infoText"] = orginalProperties["options"]["infoText"];
+    }
+
+    if (orginalProperties["propertyOrder"]) {
+      newSchema[key]["propertyOrder"] = orginalProperties["propertyOrder"];
+    }
+  }
+
+  if (newEnumVals) {
+    newSchema[key]["items"]["enum"] = newEnumVals;
+  }
+
+  if (newTitelVals) {
+    newSchema[key]["items"]["options"]["enum_titles"] = newTitelVals;
+  }
+
+   if (newDefaultVal) {
+    newSchema[key]["default"] = newDefaultVal;
+  }
+
+  console.log("updateJsonEditorMultiSelection, newSchema ", newSchema);
+
+  editor.original_schema.properties[key] = orginalProperties;
+  editor.schema.properties[key] = newSchema[key];
 
   editor.removeObjectProperty(key);
   delete editor.cached_editors[key];
