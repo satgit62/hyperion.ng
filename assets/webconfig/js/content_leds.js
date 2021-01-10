@@ -989,9 +989,6 @@ var updateSelectList = function (ledType, key, discoveryInfo) {
   }
 
   let addSchemaElements = {
-    "title": "edt_dev_spec_devices_discovered_title",
-    "propertyOrder": 1,
-    "options": { "infoText": "edt_dev_spec_devices_discovered_title_info" }
   };
 
   var enumVals = [];
@@ -1060,7 +1057,7 @@ var updateSelectList = function (ledType, key, discoveryInfo) {
           host = device.hostname;
         }
 
-        enumVals.push(host);
+        enumVals.push(device.name);
         if (host !== name) {
           enumTitelVals.push(name + " (" + host + ")");
         }
