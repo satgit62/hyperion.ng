@@ -175,10 +175,29 @@ void MessageForwarder::handlePriorityChanges(quint8 priority)
 
 void MessageForwarder::addJsonSlave(const QString& slave)
 {
-	QStringList parts = slave.split(":");
+	QString slaveAddress = slave;
+
+#ifndef __APPLE__
+	if (slave.endsWith(".local."))
+	{
+		qDebug() << "MessageForwarder::addFlatbufferSlave" << QThread::currentThread();
+
+		MdnsEngineWrapper* mdnsEngine = MdnsEngineWrapper::getInstance();
+
+		slaveAddress = mdnsEngine->getHostByService(slave.toUtf8());
+
+		if (slaveAddress.isEmpty())
+		{
+			Error(_log, "Resolving IP-address:Port for service [%s] failed.", QSTRING_CSTR(slave));
+			return;
+		}
+	}
+#endif
+
+	QStringList parts = slaveAddress.split(":");
 	if (parts.size() != 2)
 	{
-		Error(_log, "Unable to parse address (%s)",QSTRING_CSTR(slave));
+		Error(_log, "Unable to parse address (%s)",QSTRING_CSTR(slaveAddress));
 		return;
 	}
 
@@ -194,12 +213,12 @@ void MessageForwarder::addJsonSlave(const QString& slave)
 	const QJsonObject &obj = _hyperion->getSetting(settings::JSONSERVER).object();
 	if(QHostAddress(parts[0]) == QHostAddress::LocalHost && parts[1].toInt() == obj["port"].toInt())
 	{
-		Error(_log, "Loop between JsonServer and Forwarder! (%s)",QSTRING_CSTR(slave));
+		Error(_log, "Loop between JsonServer and Forwarder! (%s)",QSTRING_CSTR(slaveAddress));
 		return;
 	}
 
-	if (_forwarder_enabled && !_jsonSlaves.contains(slave))
-		_jsonSlaves << slave;
+	if (_forwarder_enabled && !_jsonSlaves.contains(slaveAddress))
+		_jsonSlaves << slaveAddress;
 }
 
 void MessageForwarder::addFlatbufferSlave(const QString& slave)
