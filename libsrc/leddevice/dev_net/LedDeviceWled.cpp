@@ -96,7 +96,8 @@ bool LedDeviceWled::init(const QJsonObject &deviceConfig)
 		{
 			qDebug() << "LedDeviceWled::init" << QThread::currentThread();
 
-			QHostAddress hostAddress = _mdnsEngine->getHostAddress(hostName);
+			MdnsEngineWrapper* mdnsEngine = MdnsEngineWrapper::getInstance();
+			QHostAddress hostAddress = mdnsEngine->getHostAddress(hostName);
 
 			int retries = DEFAULT_HOSTNAME_RESOLUTION_RETRIES;
 			while (hostAddress.isNull() && retries > 0 )
@@ -104,7 +105,7 @@ bool LedDeviceWled::init(const QJsonObject &deviceConfig)
 				--retries;
 				Debug(_log, "retries left: [%d], hostAddress: [%s]", retries, QSTRING_CSTR(hostAddress.toString()));
 				QThread::msleep(DEFAULT_HOSTNAME_RESOLUTION_WAIT_TIME.count());
-				hostAddress = _mdnsEngine->getHostAddress(hostName);
+				hostAddress = mdnsEngine->getHostAddress(hostName);
 			}
 			Debug(_log, "getHostAddress finished - retries left: [%d], IP-address [%s]", retries, QSTRING_CSTR(hostAddress.toString()));
 
