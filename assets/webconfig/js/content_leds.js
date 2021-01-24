@@ -656,6 +656,14 @@ $(document).ready(function () {
           }
           break;
 
+        case "adalight":
+          output = conf_editor.getEditor("root.specificOptions.output").getValue();
+          if (output !== "NONE") {
+            canIdentify = false;
+            canSave = true;
+          }
+          break;
+
         default:
           canIdentify = false;
           canSave = true;
@@ -936,8 +944,9 @@ $(document).ready(function () {
 
         var ledLedConfig = [];
 
-        // TODO: Handle Strip
-        if (devicesProperties[ledType].modelType === "Strip") {
+        debugger;
+
+        if (devicesProperties[ledType][host].modelType === "Strip") {
           ledLedConfig = createClassicLedLayoutSimple(hardwareLedCount / 2, hardwareLedCount / 4, hardwareLedCount / 4, 0, hardwareLedCount / 4 * 3, false);
         }
         else {
@@ -981,8 +990,8 @@ $(document).ready(function () {
 // --------------------- B E G I N ---------------------
 
 // build dynamic enum
-var updateSelectList = function (ledType, key, discoveryInfo) {
-  console.log("updateSelectList() - ledType: ", ledType, " key: ", key, " discoveryInfo: ", discoveryInfo);
+var updateSelectList = function (ledType, discoveryInfo) {
+  console.log("updateSelectList() - ledType: ", ledType, " discoveryInfo: ", discoveryInfo);
 
   if (!discoveryInfo.devices) {
     return;
@@ -991,6 +1000,7 @@ var updateSelectList = function (ledType, key, discoveryInfo) {
   let addSchemaElements = {
   };
 
+  var key;
   var enumVals = [];
   var enumTitelVals = [];
   var enumDefaultVal = "";
@@ -1000,7 +1010,7 @@ var updateSelectList = function (ledType, key, discoveryInfo) {
 
   var devNET = ['atmoorb', 'cololight', 'fadecandy', 'philipshue', 'nanoleaf', 'tinkerforge', 'tpm2net', 'udpe131', 'udpartnet', 'udph801', 'udpraw', 'wled', 'yeelight'];
   var devSerial = ['adalight', 'dmx', 'atmo', 'sedu', 'tpm2', 'karate'];
-  var devHID = ['hyperionusbasp', 'lightpack', 'paintpack', 'rawhid', ];
+  var devHID = ['hyperionusbasp', 'lightpack', 'paintpack', 'rawhid',];
 
 
   if ($.inArray(ledType, devNET) != -1) {
@@ -1012,97 +1022,112 @@ var updateSelectList = function (ledType, key, discoveryInfo) {
   switch (ledTypeGroup) {
 
     case "devNET":
+      key = "hostList";
 
-      var name;
-
-      var discoveryMethod = "ssdp";
-      if (discoveryInfo.discoveryMethod) {
-        discoveryMethod = discoveryInfo.discoveryMethod;
+      if (discoveryInfo.devices.length === 0) {
+        console.log("No Network devices discovered.");
+        conf_editor.getEditor("root.specificOptions." + key).disable();
       }
-
-      for (const device of discoveryInfo.devices) {
+      else {
 
         var name;
-        var host;
-        addCustom = true;
 
-        switch (ledType) {
-          case "nanoleaf":
-            if (discoveryMethod === "ssdp") {
-              name = device.other["nl-devicename"];
-            }
-            else {
+        var discoveryMethod = "ssdp";
+        if (discoveryInfo.discoveryMethod) {
+          discoveryMethod = discoveryInfo.discoveryMethod;
+        }
+
+        for (const device of discoveryInfo.devices) {
+
+          var name;
+          var host;
+          addCustom = true;
+
+          switch (ledType) {
+            case "nanoleaf":
+              if (discoveryMethod === "ssdp") {
+                name = device.other["nl-devicename"];
+              }
+              else {
+                name = device.name;
+              }
+              break;
+            case "cololight":
+              if (discoveryMethod === "ssdp") {
+                name = device.hostname;
+              }
+              else {
+                name = device.name;
+              }
+              break;
+            case "wled":
               name = device.name;
-            }
-            break;
-          case "cololight":
-            if (discoveryMethod === "ssdp") {
-              name = device.hostname;
-            }
-            else {
+              break;
+            default:
               name = device.name;
-            }
-            break;
-          case "wled":
-            name = device.name;
-            break;
-          default:
-            name = device.name;
-        }
-
-        if (discoveryMethod === "ssdp") {
-          host = device.ip;
-        }
-        else {
-          host = device.hostname;
-        }
-
-        enumVals.push(device.name);
-        if (host !== name) {
-          enumTitelVals.push(name + " (" + host + ")");
-        }
-        else {
-          enumTitelVals.push(host);
-        }
-
-        addCustom = true;
-
-        // Select configured device
-        var configuredDeviceType = window.serverConfig.device.type;
-        var configuredHost = window.serverConfig.device.hostList;
-        if (ledType === configuredDeviceType && configuredHost) {
-          enumDefaultVal = configuredHost;
-        }
-      }
-
-      break;
-
-    case "devSerial":
-
-      switch (ledType) {
-
-        case "adalight":
-          for (const device of discoveryInfo.devices) {
-            enumVals.push(device.portName);
-            enumTitelVals.push(device.portName + " (" + device.manufacturer + ")");
           }
+
+          if (discoveryMethod === "ssdp") {
+            host = device.ip;
+          }
+          else {
+            host = device.name;
+          }
+
+          enumVals.push(host);
+          if (host !== name) {
+            enumTitelVals.push(name + " (" + host + ")");
+          }
+          else {
+            enumTitelVals.push(host);
+          }
+
+          addCustom = true;
 
           // Select configured device
           var configuredDeviceType = window.serverConfig.device.type;
-          var configuredOutput = window.serverConfig.device.output;
-          if (ledType === configuredDeviceType && configuredOutput) {
-            enumDefaultVal = configuredOutput;
+          var configuredHost = window.serverConfig.device.hostList;
+          if (ledType === configuredDeviceType && configuredHost) {
+            enumDefaultVal = configuredHost;
           }
+        }
+      }
+      break;
 
-          break;
-        default:
+    case "devSerial":
+      key = "output";
+      if (discoveryInfo.devices.length == 0) {
+        enumVals.push("NONE");
+        enumTitelVals.push($.i18n('edt_dev_spec_devices_discovered_none'));
+      }
+      else {
+        switch (ledType) {
+
+          case "adalight":
+            for (const device of discoveryInfo.devices) {
+              enumVals.push(device.portName);
+              enumTitelVals.push(device.portName + " (" + device.vendorIdentifier + "|" + device.productIdentifier + ") - " + device.manufacturer);
+            }
+
+            // Select configured device
+            var configuredDeviceType = window.serverConfig.device.type;
+            var configuredOutput = window.serverConfig.device.output;
+            if (ledType === configuredDeviceType && configuredOutput) {
+              enumDefaultVal = configuredOutput;
+            }
+
+            break;
+          default:
+        }
       }
       break;
     default:
   }
 
-  var specOpt = conf_editor.getEditor('root.specificOptions'); // get specificOptions of the editor
-  updateJsonEditorSelection(specOpt, key, addSchemaElements, enumVals, enumTitelVals, enumDefaultVal, addCustom);
+  if (enumVals.length > 0) {
+    var specOpt = conf_editor.getEditor('root.specificOptions'); // get specificOptions of the editor
+    updateJsonEditorSelection(specOpt, key, addSchemaElements, enumVals, enumTitelVals, enumDefaultVal, addCustom);
+  }
    
 };
 
@@ -1115,31 +1140,24 @@ async function discover_device(ledType, params) {
 
   console.log("requestLedDeviceDiscovery(), result:", result);
 
+  var discoveryResult;
   if (result && !result.error) {
-    const discoveryResult = result.info;
-
-    // Process devices returned by discovery
-    if (discoveryResult.devices.length == 0) {
-      debugMessage("No device of type " + ledType + " found!");
-    }
-    else {
-      switch (ledType) {
-        case "cololight":
-        case "nanoleaf":
-        case "wled":
-          key = "hostList";
-          propertyOrder = 1;
-
-          break;
-        case "adalight":
-          key = "output";
-          break;
-        default:
-      }
-
-      updateSelectList(ledType, key, discoveryResult);
+    discoveryResult = result.info;
+  }
+  else {
+    discoveryResult = {
+      devices: [],
+      ledDevicetype: ledType
     }
   }
+
+  //mdns test
+  //discoveryResult = { "devices": [{ "address": "192.168.2.165", "domain": "local.", "hostname": "MyHost-2.local.", "id": "ColoLight-D72818._hap._tcp.local.", "name": "ColoLight-D72818", "nameFull": "ColoLight-D72818._hap._tcp.local.", "port": 80, "txt": { "c#": "1", "ci": "5", "ff": "2", "id": "94:96:10:81:B8:43", "md": "LS167", "pv": "1.1", "s#": "1", "sf": "0", "sh": "4t2vFw==" }, "type": "_hap._tcp." }, { "address": "192.168.2.180", "domain": "local.", "hostname": "MyHost-10.local.", "id": "ColoLight-A41690._hap._tcp.local.", "name": "ColoLight-A41690", "nameFull": "ColoLight-A41690._hap._tcp.local.", "port": 80, "txt": { "c#": "1", "ci": "5", "ff": "2", "id": "D6:91:DE:62:39:89", "md": "LS167", "pv": "1.1", "s#": "1", "sf": "0", "sh": "YQRxrA==" }, "type": "_hap._tcp." }], "discoveryMethod": "mDNS", "ledDeviceType": "cololight" };
+  //ssdp test
+  //discoveryResult = { "devices": [{ "domain": "fritz.box", "hostname": "ColoLight-AC67B2D72818", "ip": "192.168.2.165", "mac": "ac:67:b2:d7:28:18", "model": "OD_WE_QUAN", "name": "QUAN", "type": "HKC32" }, { "domain": "fritz.box", "hostname": "MyHost-10", "ip": "192.168.2.180", "mac": "8c:aa:b5:a4:16:90", "model": "OD_WE_QUAN", "name": "QUAN", "type": "HKC32" }], "discoveryMethod": "ssdp", "ledDeviceType": "cololight" };
+
+
+  updateSelectList(ledType, discoveryResult);
 }
 
 async function getProperties_device(ledType, key, params) {
