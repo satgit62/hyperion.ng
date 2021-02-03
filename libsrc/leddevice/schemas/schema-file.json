@@ -10,8 +10,10 @@
 		},
 		"printTimeStamp": {
 			"type": "boolean",
+            "format": "checkbox",
 			"title":"edt_dev_spec_printTimeStamp_title",
 			"default": false,
+		    "required": true,
 			"access" : "advanced",
 			"propertyOrder" : 2
 		},

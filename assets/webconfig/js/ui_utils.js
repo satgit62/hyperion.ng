@@ -433,8 +433,8 @@ function createJsonEditor(container, schema, setconfig, usePanel, arrayre) {
     var text;
     if (key !== null) {
       text = $.i18n("edt_msg_" + key, variables);
-    }
-    //console.log("translate: ", key, variables, "-> ", text);
+      //console.log("translate: ", key, variables, "-> ", text);
+  }
     return text;
   }; 
 
@@ -442,9 +442,9 @@ function createJsonEditor(container, schema, setconfig, usePanel, arrayre) {
     var text;
     if (key !== null) {
         text = $.i18n(key, variables);
+	    //console.log("translateElement - key[", key, "] var[", variables, "]-> ", text);        
     }
-    //console.log("translateElement: ", key, variables, "-> ", text);
-    return text;
+	return text;
   };
 
   var editor = new JSONEditor(document.getElementById(container),
@@ -460,6 +460,7 @@ function createJsonEditor(container, schema, setconfig, usePanel, arrayre) {
       disable_array_delete_all_rows: true,
       disable_array_delete_last_row: true,
       access: storedAccess,
+      form_name_root: 'root',
       schema: {
         title: ' ',
         properties: schema
@@ -473,7 +474,7 @@ function createJsonEditor(container, schema, setconfig, usePanel, arrayre) {
   }
 
   if (setconfig) {
-        for (var key in editor.root.editors) {
+    for (var key in editor.root.editors) {
       editor.getEditor("root." + key).setValue(Object.assign({}, editor.getEditor("root." + key).value, window.serverConfig[key]));
     }
   }
