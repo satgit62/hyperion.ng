@@ -420,7 +420,7 @@ function isJsonString(str) {
   return "";
 }
 
-function createJsonEditor(container, schema, setconfig, usePanel, arrayre) {
+function createJsonEditor(container, schema, setconfig, usePanel, arrayre = undefined) {
   $('#' + container).off();
   $('#' + container).html("");
 
@@ -438,11 +438,11 @@ function createJsonEditor(container, schema, setconfig, usePanel, arrayre) {
     return text;
   }; 
 
-  JSONEditor.defaults.translateElement = function (key, variables) {
+  JSONEditor.defaults.translateProperty = function (key, variables) {
     var text;
     if (key !== null) {
         text = $.i18n(key, variables);
-	    //console.log("translateElement - key[", key, "] var[", variables, "]-> ", text);        
+	    //console.log("translateProperty - key[", key, "] var[", variables, "]-> ", text);        
     }
 	return text;
   };
@@ -464,8 +464,8 @@ function createJsonEditor(container, schema, setconfig, usePanel, arrayre) {
       schema: {
         title: ' ',
         properties: schema
-      }
-    });
+    }
+  });
 
   if (usePanel) {
     $('#' + container + ' .well').first().removeClass('well well-sm');
