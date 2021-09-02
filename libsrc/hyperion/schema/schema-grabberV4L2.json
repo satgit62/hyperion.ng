@@ -2,8 +2,7 @@
 	"type" : "object",
 	"required" : true,
 	"title" : "edt_conf_v4l2_heading_title",
-	"properties":
-	{
+	"properties": {
 		"enable": {
 			"type": "boolean",
 			"format": "checkbox",
@@ -15,12 +14,13 @@
 		"available_devices": {
 			"type": "string",
 			"title": "edt_conf_grabber_discovered_title",
-			"default": "edt_conf_grabber_discovery_inprogress",
+			"enum": [ "NONE" ],
 			"options": {
+				"enum_titles": [ "edt_conf_grabber_discovery_inprogress" ],
 				"infoText": "edt_conf_grabber_discovered_title_info"
 			},
-			"propertyOrder": 2,
-			"required": false
+			"required": true,
+			"propertyOrder": 2
 		},
 		"device": {
 			"type": "string",

@@ -267,9 +267,9 @@ $(document).ready(function () {
           enumDefaultVal = configuredFps;
         }
       } else if (deviceProperties.hasOwnProperty('default') && !jQuery.isEmptyObject(deviceProperties.default.video_input)) {
-          if (deviceProperties.default.video_input.resolution.fps) {
-            enumDefaultVal = deviceProperties.default.video_input.resolution.fps;
-          }
+        if (deviceProperties.default.video_input.resolution.fps) {
+          enumDefaultVal = deviceProperties.default.video_input.resolution.fps;
+        }
       }
       updateJsonEditorSelection(conf_editor_screen, 'root.framegrabber',
         'framerates', addSchemaElements, enumVals, [], enumDefaultVal, false);
@@ -772,10 +772,15 @@ $(document).ready(function () {
 
     switch (type) {
       case "screen":
+
+        //discoveryResult = testmsgScreen();
+        //discoveryResult = { "video_sources": [] };
         discoveredInputSources.screen = discoveryResult.video_sources;
         updateScreenSourcesList(type, discoveredInputSources.screen);
         break;
       case "video":
+        //discoveryResult = testmsgVideo1();
+        //discoveryResult = { "video_sources": [] };
         discoveredInputSources.video = discoveryResult.video_sources;
         updateVideoSourcesList(type, discoveredInputSources.video);
         break;
@@ -794,3 +799,411 @@ $(document).ready(function () {
   }
 
 });
+
+function testmsgVideo1() {
+  return {
+    "sourceType": "video",
+    "video_sources": [
+      {
+        "default": {
+          "properties": {
+            "brightness": 128,
+            "contrast": 128,
+            "hue": 0,
+            "saturation": 128
+          },
+          "video_input": {
+            "formats": {
+              "format": "yuyv",
+              "resolution": {
+                "fps": 25,
+                "height": 480,
+                "width": 640
+              }
+            },
+            "inputIdx": 0,
+            "standards": "PAL"
+          }
+        },
+        "device": "/dev/video0",
+        "device_name": "FHD Capture: FHD Capture",
+        "properties": {
+          "brightness": {
+            "current": 128,
+            "maxValue": 255,
+            "minValue": 0,
+            "step": 1
+          },
+          "contrast": {
+            "current": 128,
+            "maxValue": 255,
+            "minValue": 0,
+            "step": 1
+          },
+          "hue": {
+            "current": 0,
+            "maxValue": 31,
+            "minValue": -32,
+            "step": 1
+          },
+          "saturation": {
+            "current": 128,
+            "maxValue": 255,
+            "minValue": 0,
+            "step": 1
+          }
+        },
+        "type": "v4l2",
+        "video_inputs": [
+          {
+            "formats": [
+              {
+                "format": "YUYV",
+                "resolutions": [
+                  {
+                    "fps": [
+                      60,
+                      30
+                    ],
+                    "height": 480,
+                    "width": 640
+                  },
+                  {
+                    "fps": [
+                      60,
+                      30
+                    ],
+                    "height": 600,
+                    "width": 800
+                  },
+                  {
+                    "fps": [
+                      60,
+                      30
+                    ],
+                    "height": 768,
+                    "width": 1024
+                  },
+                  {
+                    "fps": [
+                      60,
+                      30
+                    ],
+                    "height": 720,
+                    "width": 1280
+                  },
+                  {
+                    "fps": [
+                      60,
+                      30
+                    ],
+                    "height": 960,
+                    "width": 1280
+                  },
+                  {
+                    "fps": [
+                      60,
+                      30
+                    ],
+                    "height": 1024,
+                    "width": 1280
+                  },
+                  {
+                    "fps": [
+                      60,
+                      30
+                    ],
+                    "height": 768,
+                    "width": 1360
+                  },
+                  {
+                    "fps": [
+                      60,
+                      30
+                    ],
+                    "height": 900,
+                    "width": 1400
+                  },
+                  {
+                    "fps": [
+                      60,
+                      30
+                    ],
+                    "height": 900,
+                    "width": 1440
+                  },
+                  {
+                    "fps": [
+                      60,
+                      30
+                    ],
+                    "height": 1080,
+                    "width": 1920
+                  }
+                ]
+              }
+            ],
+            "inputIdx": 0,
+            "name": "Camera 1"
+          }
+        ]
+      }
+    ]
+  }
+};
+
+
+function testmsgVideo() {
+  return {
+    "video_sources": [
+      {
+        "device_name": "usbtv",
+        "device": "/dev/video0",
+        "type": "v4l2",
+        "properties": {
+          "brightness": {
+            "maxValue": 127,
+            "minValue": -128,
+            "step": 1,
+            "current": -120
+          },
+          "contrast": {
+            "maxValue": 255,
+            "minValue": 0,
+            "step": 1,
+            "current": 121
+          },
+          "saturation": {
+            "maxValue": 255,
+            "minValue": 0,
+            "step": 1,
+            "current": 122
+          },
+          "hue": {
+            "maxValue": 127,
+            "minValue": -128,
+            "step": 1,
+            "current": -123
+          },
+        },
+        "video_inputs": [
+          {
+            "name": "s-Video",
+            "inputIdx": 0,
+            "formats": [
+              {
+                "format": "bgr2",
+                "resolutions": [
+                  {
+                    "width": 1920,
+                    "height": 1024,
+                    "fps": [30, 5, 10, 15, 20, 25]
+                  },
+                  {
+                    "width": 100,
+                    "height": 80,
+                    "fps": [30, 5, 10]
+                  }
+                ]
+              },
+              {
+                "format": "i420",
+                "resolutions": [
+                  {
+                    "width": 1920,
+                    "height": 1024,
+                    "fps": [20, 25]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "name": "Composite",
+            "inputIdx": 1,
+            "formats": [
+              {
+                "format": "YUYY",
+                "resolutions": [
+                  {
+                    "width": 1920,
+                    "height": 1024,
+                    "fps": [20, 25]
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "default": {
+          "properties": {
+            "brightness": 128,
+            "contrast": 32,
+            "saturation": 28
+          },
+          "video_input": {
+            "name": "S-Video",
+            "inputIdx": 0,
+            "format": "i420",
+            "resolution": {
+              "width": 1920,
+              "height": 1024,
+              "fps": 25
+            }
+          }
+        }
+      },
+      {
+        "device_name": "Grabber Test",
+        "device": "/dev/video1",
+        "type": "v4l2",
+        "properties": {
+          "brightness": {
+            "maxValue": 127,
+            "minValue": -128,
+            "step": 1,
+            "current": -120
+          },
+          "contrast": {
+            "maxValue": 255,
+            "minValue": 0,
+            "step": 1,
+            "current": 121
+          },
+          "hue": {
+            "maxValue": 127,
+            "minValue": -128,
+            "step": 1,
+            "current": -123
+          },
+        },
+        "video_inputs": [
+          {
+            "name": "S-Video",
+            "inputIdx": 0,
+            "formats": [
+              {
+                "format": "bgr2",
+                "resolutions": [
+                  {
+                    "width": 1920,
+                    "height": 1024,
+                    "fps": [30, 5, 10, 15, 20, 25]
+                  },
+                  {
+                    "width": 100,
+                    "height": 80,
+                    "fps": [30, 5, 10]
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "default": {
+          "video_input": {
+            "name": "S-Video",
+            "format": "bgr2",
+            "resolution": {
+              "width": 1920,
+              "height": 1024,
+              "fps": 30
+            }
+          }
+        }
+      }
+    ]
+  }
+};
+
+function testmsgScreen() {
+  return {
+    "video_sources": [
+      {
+        "device_name": "Screengrabber Test",
+        "device": "...",
+        "type": "Screen",
+        "video_inputs": [
+          {
+            "name": "Display 0",
+            "inputIdx": 0,
+            "formats": [
+              {
+                "resolutions": [
+                  {
+                    "width": 1920,
+                    "height": 1024,
+                    "fps": [1, 5, 10, 15, 20, 25, 30, 40, 50, 60]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "name": "Display 1",
+            "inputIdx": 1,
+            "formats": [
+              {
+                "resolutions": [
+                  {
+                    "width": 1600,
+                    "height": 1500,
+                    "fps": [1, 5, 10, 15, 20, 25, 30, 40, 50, 60]
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "default": {
+          "video_input": {
+            "name": "Display 0",
+            "inputIdx": 0,
+            "resolution": {
+              "width": 1920,
+              "height": 1024,
+              "fps": 30
+            }
+          }
+        }
+      },
+      {
+        "device_name": "X11",
+        "device": "...",
+        "type": "Screen",
+        "video_inputs": [
+          {
+            "name": "Display 0",
+            "inputIdx": 0,
+            "formats": [
+              {
+                "resolutions": [
+                  {
+                    "width": 1920,
+                    "height": 1024,
+                    "fps": [1, 5, 10, 15, 20, 25, 30, 40, 50, 60]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "name": "Display 1",
+            "inputIdx": 1,
+            "formats": [
+              {
+                "resolutions": [
+                  {
+                    "width": 1600,
+                    "height": 1500,
+                    "fps": [1, 5, 10, 15, 20, 25, 30, 40, 50, 60]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+};

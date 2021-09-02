@@ -88,7 +88,7 @@ function loadContent(event, forceRefresh) {
   var tag;
 
   var lastSelectedInstance = getStorage('lastSelectedInstance', false);
-  
+
   if (lastSelectedInstance && (lastSelectedInstance != window.currentHyperionInstance)) {
     if (window.serverInfo.instance[lastSelectedInstance] && window.serverInfo.instance[lastSelectedInstance].running) {
       instanceSwitch(lastSelectedInstance);
@@ -440,19 +440,19 @@ function createJsonEditor(container, schema, setconfig, usePanel, arrayre = unde
     if (key !== null) {
       text = $.i18n("edt_msg_" + key, variables);
       //console.log("translate: ", key, variables, "-> ", text);
-  }
+    }
     return text;
   };
-  
+
   JSONEditor.defaults.translateElement = function (key, variables) {
-  //JSONEditor.defaults.translateProperty = function (key, variables) {
+    //JSONEditor.defaults.translateProperty = function (key, variables) {
 
     var text;
     if (key !== null) {
-        text = $.i18n(key, variables);
+      text = $.i18n(key, variables);
       //console.log("translateProperty - key[", key, "] var[", variables, "]-> ", text);        
     }
-  return text;
+    return text;
   };
 
   var editor = new JSONEditor(document.getElementById(container),
@@ -472,8 +472,8 @@ function createJsonEditor(container, schema, setconfig, usePanel, arrayre = unde
       schema: {
         title: ' ',
         properties: schema
-    }
-  });
+      }
+    });
 
   if (usePanel) {
     $('#' + container + ' .well').first().removeClass('well well-sm');
@@ -527,12 +527,11 @@ function updateJsonEditorSelection(rootEditor, path, key, addElements, newEnumVa
     }
   }
 
+  if (newTitelVals.length === 0) {
+    newTitelVals = [...newEnumVals];
+  }
+
   if (addCustom) {
-
-    if (newTitelVals.length === 0) {
-      newTitelVals = [...newEnumVals];
-    }
-
     if (!!!customText) {
       customText = "edt_conf_enum_custom";
     }
