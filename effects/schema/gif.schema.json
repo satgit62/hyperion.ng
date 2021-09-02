@@ -6,15 +6,20 @@
 	"properties": {
 		"image": {
 			"type": "string",
-			"title":"edt_eff_image",
-			"format" : "url",
-			"options" :
-			{
-				"upload" : true,
-				"auto_upload" : true
+			"title": "edt_eff_image",
+			"format": "url",
+			"options": {
+				"upload": true,
+				"auto_upload": true
 			},
+			"links": [
+				{
+					"href": "{{self}}",
+					"rel": "view"
+				}
+			],
 			"default": "",
-			"propertyOrder" : 1
+			"propertyOrder": 1
 		},
 		"fps": {
 			"type": "integer",
