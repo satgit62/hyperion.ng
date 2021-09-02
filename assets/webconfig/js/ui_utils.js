@@ -587,8 +587,8 @@ function updateJsonEditorMultiSelection(rootEditor, path, key, addElements, newE
   var editor = rootEditor.getEditor(path);
   var orginalProperties = editor.schema.properties[key];
 
-  var orginalWatchFunctions = rootEditor.watchlist[path + "." + key];
-  rootEditor.unwatch(path + "." + key);
+  //var orginalWatchFunctions = rootEditor.watchlist[path + "." + key];
+  //rootEditor.unwatch(path + "." + key);
 
   var newSchema = [];
   newSchema[key] =
@@ -644,12 +644,12 @@ function updateJsonEditorMultiSelection(rootEditor, path, key, addElements, newE
   delete editor.cached_editors[key];
   editor.addObjectProperty(key);
 
-  if (orginalWatchFunctions) {
-    for (var i = 0; i < orginalWatchFunctions.length; i++) {
-      rootEditor.watch(path + "." + key, orginalWatchFunctions[i]);
-    }
-  }
-  rootEditor.notifyWatchers(path + "." + key);
+  //if (orginalWatchFunctions) {
+  //  for (var i = 0; i < orginalWatchFunctions.length; i++) {
+  //    rootEditor.watch(path + "." + key, orginalWatchFunctions[i]);
+  //  }
+  //}
+  //rootEditor.notifyWatchers(path + "." + key);
 }
 
 function updateJsonEditorRange(rootEditor, path, key, minimum, maximum, defaultValue, step, clear) {
