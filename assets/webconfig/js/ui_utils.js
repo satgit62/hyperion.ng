@@ -442,15 +442,17 @@ function createJsonEditor(container, schema, setconfig, usePanel, arrayre = unde
       //console.log("translate: ", key, variables, "-> ", text);
   }
     return text;
-  }; 
+  };
+  
+  JSONEditor.defaults.translateElement = function (key, variables) {
+  //JSONEditor.defaults.translateProperty = function (key, variables) {
 
-  JSONEditor.defaults.translateProperty = function (key, variables) {
     var text;
     if (key !== null) {
         text = $.i18n(key, variables);
-	    //console.log("translateProperty - key[", key, "] var[", variables, "]-> ", text);        
+      //console.log("translateProperty - key[", key, "] var[", variables, "]-> ", text);        
     }
-	return text;
+  return text;
   };
 
   var editor = new JSONEditor(document.getElementById(container),
@@ -1016,36 +1018,6 @@ function createPanel(head, body, footer, type, bodyid, css, panelId) {
     pbody.appendChild(body);
 
   if (typeof footer != 'undefined')
-}
-
-function createPanel(head, body, footer, type, bodyid) {
-  var cont = document.createElement('div');
-  var p = document.createElement('div');
-  var phead = document.createElement('div');
-  var pbody = document.createElement('div');
-  var pfooter = document.createElement('div');
-
-  cont.className = "col-lg-6";
-
-  if (typeof type == 'undefined')
-    type = 'panel-default';
-
-  p.className = 'panel ' + type;
-  phead.className = 'panel-heading';
-  pbody.className = 'panel-body';
-  pfooter.className = 'panel-footer';
-
-  phead.innerHTML = head;
-
-  if (typeof bodyid != 'undefined') {
-    pfooter.style.textAlign = 'right';
-    pbody.setAttribute("id", bodyid);
-  }
-
-  if (typeof body != 'undefined' && body != "")
-    pbody.appendChild(body);
-
-  if (typeof footer != 'undefined')
     pfooter.appendChild(footer);
 
   p.appendChild(phead);
@@ -1172,6 +1144,43 @@ function getReleases(callback) {
       callback(true);
     }
   });
+}
+
+function getSystemInfo() {
+  var sys = window.sysInfo.system;
+  var shy = window.sysInfo.hyperion;
+
+  var info = "Hyperion Server: \n";
+  info += '- Build:           ' + shy.build + '\n';
+  info += '- Build time:      ' + shy.time + '\n';
+  info += '- Git Remote:      ' + shy.gitremote + '\n';
+  info += '- Version:         ' + shy.version + '\n';
+  info += '- UI Lang:         ' + storedLang + ' (BrowserLang: ' + navigator.language + ')\n';
+  info += '- UI Access:       ' + storedAccess + '\n';
+  //info += '- Log lvl:         ' + window.serverConfig.logger.level + '\n';
+  info += '- Avail Capt:      ' + window.serverInfo.grabbers.available + '\n';
+  info += '- Database:        ' + (shy.readOnlyMode ? "ready-only" : "read/write") + '\n';
+
+  info += '\n';
+
+  info += 'Hyperion Server OS: \n';
+  info += '- Distribution:   ' + sys.prettyName + '\n';
+  info += '- Architecture:   ' + sys.architecture + '\n';
+
+  if (sys.cpuModelName)
+    info += '- CPU Model:      ' + sys.cpuModelName + '\n';
+  if (sys.cpuModelType)
+    info += '- CPU Type:       ' + sys.cpuModelType + '\n';
+  if (sys.cpuRevision)
+    info += '- CPU Revision:   ' + sys.cpuRevision + '\n';
+  if (sys.cpuHardware)
+    info += '- CPU Hardware:   ' + sys.cpuHardware + '\n';
+
+  info += '- Kernel:         ' + sys.kernelType + ' (' + sys.kernelVersion + ' (WS: ' + sys.wordSize + '))\n';
+  info += '- Qt Version:     ' + sys.qtVersion + '\n';
+  info += '- Python Version: ' + sys.pyVersion + '\n';
+  info += '- Browser:        ' + navigator.userAgent;
+  return info;
 }
 
 function handleDarkMode() {

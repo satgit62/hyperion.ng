@@ -296,23 +296,6 @@ bool LedDeviceWled::storeState()
 {
 	bool rc = true;
 
-	QString discoveryMethod("mDNS");
-	QJsonArray deviceList;
-
-#ifndef __APPLE__
-	QVariantList deviceListResponse;
-
-	deviceListResponse = MdnsEngineWrapper::getInstance()->getServicesDiscoveredJson(
-		LedDeviceMdnsRegister::getServiceType(_activeDeviceType),
-		LedDeviceMdnsRegister::getServiceNameFilter(_activeDeviceType)
-	);
-
-	deviceList = QJsonValue::fromVariant(deviceListResponse).toArray();
-#endif
-
-	devicesDiscovered.insert("discoveryMethod", discoveryMethod);
-	devicesDiscovered.insert("devices", deviceList);
-
 	if ( _isRestoreOrigState || _isSyncOverwrite )
 	{
 		_restApi->setPath(API_PATH_STATE);
@@ -365,11 +348,26 @@ bool LedDeviceWled::restoreState()
 QJsonObject LedDeviceWled::discover(const QJsonObject& /*params*/)
 {
 	QJsonObject devicesDiscovered;
-	devicesDiscovered.insert("ledDeviceType", _activeDeviceType );
+	devicesDiscovered.insert("ledDeviceType", _activeDeviceType);
 
+	QString discoveryMethod("mDNS");
 	QJsonArray deviceList;
+
+#ifndef __APPLE__
+	QVariantList deviceListResponse;
+
+	deviceListResponse = MdnsEngineWrapper::getInstance()->getServicesDiscoveredJson(
+		LedDeviceMdnsRegister::getServiceType(_activeDeviceType),
+		LedDeviceMdnsRegister::getServiceNameFilter(_activeDeviceType)
+	);
+
+	deviceList = QJsonValue::fromVariant(deviceListResponse).toArray();
+#endif
+
+	devicesDiscovered.insert("discoveryMethod", discoveryMethod);
 	devicesDiscovered.insert("devices", deviceList);
-	DebugIf(verbose, _log, "devicesDiscovered: [%s]", QString(QJsonDocument(devicesDiscovered).toJson(QJsonDocument::Compact)).toUtf8().constData() );
+
+	DebugIf(verbose, _log, "devicesDiscovered: [%s]", QString(QJsonDocument(devicesDiscovered).toJson(QJsonDocument::Compact)).toUtf8().constData());
 
 	return devicesDiscovered;
 }

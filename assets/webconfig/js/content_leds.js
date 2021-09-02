@@ -888,6 +888,7 @@ $(document).ready(function () {
             break;
           default:
             conf_editor.getEditor(specOptPath + "host").disable();
+            conf_editor.getEditor(specOptPath + "host").setValue(val);
             //Trigger getProperties via host value
             conf_editor.notifyWatchers(specOptPath + "host");
             break;
@@ -1007,6 +1008,28 @@ $(document).ready(function () {
         getProperties_device(ledType, host, params);
       }
     });
+
+    JSONEditor.defaults.callbacks = {
+      "button": {
+        "generateToken": function (jseditor, e) {
+          var ledType = $("#leddevices").val();
+          var host = jseditor.jsoneditor.getEditor("root.specificOptions.host").getValue();
+
+          if (host) {
+            // TODO: Implement dialog for token generation
+
+            // TEST ONLY
+            alert("Generate token for " + ledType + " device: " + host);
+            var token = "qZ2cVd8PcAJwGjKQgxIf2wnEEBJaEKCt";
+
+            jseditor.jsoneditor.getEditor("root.specificOptions.token").setValue(token);
+          }
+          else {
+            alert("Hostname/IP-address is missing to generate token for " + ledType + " device");
+          }
+        }
+      }
+    }
 
     //Yeelight
     conf_editor.watch('root.specificOptions.lights', () => {
@@ -1496,6 +1519,12 @@ async function discover_device(ledType, params) {
       ledDevicetype: ledType
     }
   }
+
+    //mdns test
+  //discoveryResult = { "devices": [{ "address": "192.168.2.165", "domain": "local.", "hostname": "MyHost-2.local.", "id": "ColoLight-D72818._hap._tcp.local.", "name": "ColoLight-D72818", "nameFull": "ColoLight-D72818._hap._tcp.local.", "port": 80, "txt": { "c#": "1", "ci": "5", "ff": "2", "id": "94:96:10:81:B8:43", "md": "LS167", "pv": "1.1", "s#": "1", "sf": "0", "sh": "4t2vFw==" }, "type": "_hap._tcp." }, { "address": "192.168.2.180", "domain": "local.", "hostname": "MyHost-10.local.", "id": "ColoLight-A41690._hap._tcp.local.", "name": "ColoLight-A41690", "nameFull": "ColoLight-A41690._hap._tcp.local.", "port": 80, "txt": { "c#": "1", "ci": "5", "ff": "2", "id": "D6:91:DE:62:39:89", "md": "LS167", "pv": "1.1", "s#": "1", "sf": "0", "sh": "YQRxrA==" }, "type": "_hap._tcp." }], "discoveryMethod": "mDNS", "ledDeviceType": "cololight" };
+  //ssdp test
+  //discoveryResult = { "devices": [{ "domain": "fritz.box", "hostname": "ColoLight-AC67B2D72818", "ip": "192.168.2.165", "mac": "ac:67:b2:d7:28:18", "model": "OD_WE_QUAN", "name": "QUAN", "type": "HKC32" }, { "domain": "fritz.box", "hostname": "MyHost-10", "ip": "192.168.2.180", "mac": "8c:aa:b5:a4:16:90", "model": "OD_WE_QUAN", "name": "QUAN", "type": "HKC32" }], "discoveryMethod": "ssdp", "ledDeviceType": "cololight" };
+
 
   updateSelectList(ledType, discoveryResult);
 }

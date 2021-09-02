@@ -30,6 +30,16 @@
       },
       "propertyOrder": 3
     },
+    "tokenGenerationButton": {
+      "title": "edt_dev_auth_key_generation_title",
+      "format": "button",
+      "options": {
+        "button": {
+          "action": "generateToken"
+        }
+      },
+      "propertyOrder": 4
+    },
     "restoreOriginalState": {
       "type": "boolean",
       "format": "checkbox",
@@ -39,7 +49,7 @@
       "options": {
         "infoText": "edt_dev_spec_restoreOriginalState_title_info"
       },
-      "propertyOrder": 4
+      "propertyOrder": 5
     },
     "overwriteBrightness": {
       "type": "boolean",
@@ -48,7 +58,7 @@
       "default": true,
       "required": true,
       "access": "advanced",
-      "propertyOrder": 5
+      "propertyOrder": 6
     },
     "brightness": {
       "type": "integer",
@@ -62,13 +72,13 @@
         }
       },
       "access": "advanced",
-      "propertyOrder": 6
+      "propertyOrder": 7
     },
     "title": {
       "type": "object",
       "title": "edt_dev_spec_panelorganisation_title",
       "access": "advanced",
-      "propertyOrder": 7
+      "propertyOrder": 8
     },
     "panelOrderTopDown": {
       "type": "integer",
@@ -82,7 +92,7 @@
       "minimum": 0,
       "maximum": 1,
       "access": "advanced",
-      "propertyOrder": 8
+      "propertyOrder": 9
     },
     "panelOrderLeftRight": {
       "type": "integer",
@@ -96,7 +106,7 @@
       "minimum": 0,
       "maximum": 1,
       "access": "advanced",
-      "propertyOrder": 9
+      "propertyOrder": 10
     },
     "panelStartPos": {
       "type": "integer",
@@ -105,7 +115,7 @@
       "minimum": 0,
       "default": 0,
       "access": "advanced",
-      "propertyOrder": 10
+      "propertyOrder": 11
     }
   },
   "additionalProperties": true
