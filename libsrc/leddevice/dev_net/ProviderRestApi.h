@@ -37,7 +37,7 @@ public:
 protected:
 	QBasicTimer m_timer;
 	HandleMethod m_method;
-	void timerEvent(QTimerEvent * ev) {
+	void timerEvent(QTimerEvent * ev) override {
 		if (!m_timer.isActive() || ev->timerId() != m_timer.timerId())
 			return;
 		auto reply = static_cast<QNetworkReply*>(parent());
@@ -192,6 +192,13 @@ public:
 	///
 	httpResponse get(const QUrl &url);
 
+	/// @brief Execute PUT request
+	///
+	/// @param[in] body The body of the request in JSON
+	/// @return Response The body of the response in JSON
+	///
+	httpResponse put(const QJsonObject &body);
+
 	///
 	/// @brief Execute PUT request
 	///
@@ -207,7 +214,7 @@ public:
 	/// @param[in] body The body of the request in JSON
 	/// @return Response The body of the response in JSON
 	///
-	httpResponse put(const QUrl &url, const QString &body = "");
+	httpResponse put(const QUrl &url, const QByteArray &body);
 
 	///
 	/// @brief Execute POST request
@@ -233,7 +240,7 @@ private:
 	/// @param[in/out] path to be updated
 	/// @param[in] path, element to be appended
 	///
-	void appendPath (QString &path, const QString &appendPath) const;
+	static void appendPath (QString &path, const QString &appendPath) ;
 
 	Logger* _log;
 

@@ -28,10 +28,17 @@ const bool verbose3 = false;
 const char CONFIG_ADDRESS[] = "host";
 //const char CONFIG_PORT[] = "port";
 const char CONFIG_AUTH_TOKEN[] = "token";
+const char CONFIG_RESTORE_STATE[] = "restoreOriginalState";
+const char CONFIG_BRIGHTNESS[] = "brightness";
+const char CONFIG_BRIGHTNESS_OVERWRITE[] = "overwriteBrightness";
 
 const char CONFIG_PANEL_ORDER_TOP_DOWN[] = "panelOrderTopDown";
 const char CONFIG_PANEL_ORDER_LEFT_RIGHT[] = "panelOrderLeftRight";
 const char CONFIG_PANEL_START_POS[] = "panelStartPos";
+
+const bool DEFAULT_IS_RESTORE_STATE = true;
+const bool DEFAULT_IS_BRIGHTNESS_OVERWRITE = true;
+const int BRI_MAX = 100;
 
 // Panel configuration settings
 const char PANEL_LAYOUT[] = "layout";
@@ -45,9 +52,13 @@ const char PANEL_POS_Y[] = "y";
 
 // List of State Information
 const char STATE_ON[] = "on";
-const char STATE_ONOFF_VALUE[] = "value";
-const char STATE_VALUE_TRUE[] = "true";
-const char STATE_VALUE_FALSE[] = "false";
+const char STATE_BRI[] = "brightness";
+const char STATE_HUE[] = "hue";
+const char STATE_SAT[] = "sat";
+const char STATE_CT[] = "ct";
+const char STATE_COLORMODE[] = "colorMode";
+const QStringList COLOR_MODES {"hs", "ct", "effect"};
+const char STATE_VALUE[] = "value";
 
 // Device Data elements
 const char DEV_DATA_NAME[] = "name";
@@ -56,10 +67,7 @@ const char DEV_DATA_MANUFACTURER[] = "manufacturer";
 const char DEV_DATA_FIRMWAREVERSION[] = "firmwareVersion";
 
 // Nanoleaf Stream Control elements
-//const char STREAM_CONTROL_IP[] = "streamControlIpAddr";
-const char STREAM_CONTROL_PORT[] = "streamControlPort";
-//const char STREAM_CONTROL_PROTOCOL[] = "streamControlProtocol";
-const quint16 STREAM_CONTROL_DEFAULT_PORT = 60222; //Fixed port for Canvas;
+const quint16 STREAM_CONTROL_DEFAULT_PORT = 60222;
 
 // Nanoleaf OpenAPI URLs
 const int API_DEFAULT_PORT = 16021;
@@ -71,6 +79,8 @@ const char API_STATE[] = "state";
 const char API_PANELLAYOUT[] = "panelLayout";
 const char API_EFFECT[] = "effects";
 
+const char API_EFFECT_SELECT[] = "select";
+
 //Nanoleaf Control data stream
 const int STREAM_FRAME_PANEL_NUM_SIZE = 2;
 const int STREAM_FRAME_PANEL_INFO_SIZE = 8;
@@ -78,15 +88,8 @@ const int STREAM_FRAME_PANEL_INFO_SIZE = 8;
 // Nanoleaf ssdp services
 const char SSDP_ID[] = "ssdp:all";
 const char SSDP_FILTER_HEADER[] = "ST";
-const char SSDP_CANVAS[] = "nanoleaf:nl29";
+const char SSDP_NANOLEAF[] = "nanoleaf:nl*";
 const char SSDP_LIGHTPANELS[] = "nanoleaf_aurora:light";
-
-
-// mDNS Hostname resolution
-#ifndef __APPLE__
-const int DEFAULT_HOSTNAME_RESOLUTION_RETRIES = 6;
-constexpr std::chrono::milliseconds DEFAULT_HOSTNAME_RESOLUTION_WAIT_TIME{ 500 };
-#endif
 } //End of constants
 
 // Nanoleaf Panel Shapetypes
@@ -101,7 +104,7 @@ enum SHAPETYPES {
 	TRIANGE_SHAPES = 8,
 	MINI_TRIANGE_SHAPES = 8,
 	SHAPES_CONTROLLER = 12
-	};
+};
 
 // Nanoleaf external control versions
 enum EXTCONTROLVERSIONS {
@@ -147,7 +150,7 @@ bool LedDeviceNanoleaf::init(const QJsonObject& deviceConfig)
 		Info(_log, "Device Nanoleaf does not require rewrites. Refresh time is ignored.");
 	}
 
-	DebugIf(verbose, _log, "deviceConfig: [%s]", QString(QJsonDocument(_devConfig).toJson(QJsonDocument::Compact)).toUtf8().constData());
+	DebugIf(verbose,_log, "deviceConfig: [%s]", QString(QJsonDocument(_devConfig).toJson(QJsonDocument::Compact)).toUtf8().constData());
 
 	bool isInitOK = false;
 
@@ -159,6 +162,14 @@ bool LedDeviceNanoleaf::init(const QJsonObject& deviceConfig)
 		Debug(_log, "ColorOrder   : %s", QSTRING_CSTR(this->getColorOrder()));
 		Debug(_log, "RewriteTime  : %d", this->getRewriteTime());
 		Debug(_log, "LatchTime    : %d", this->getLatchTime());
+
+		_isRestoreOrigState = _devConfig[CONFIG_RESTORE_STATE].toBool(DEFAULT_IS_RESTORE_STATE);
+		_isBrightnessOverwrite = _devConfig[CONFIG_BRIGHTNESS_OVERWRITE].toBool(DEFAULT_IS_BRIGHTNESS_OVERWRITE);
+		_brightness = _devConfig[CONFIG_BRIGHTNESS].toInt(BRI_MAX);
+
+		Debug(_log, "RestoreOrigState  : %d", _isRestoreOrigState);
+		Debug(_log, "Overwrite Brightn.: %d", _isBrightnessOverwrite);
+		Debug(_log, "Set Brightness to : %d", _brightness);
 
 		// Read panel organisation configuration
 		if (deviceConfig[CONFIG_PANEL_ORDER_TOP_DOWN].isString())
@@ -290,7 +301,7 @@ bool LedDeviceNanoleaf::initLedsConfiguration()
 			int panelshapeType = panelObj[PANEL_SHAPE_TYPE].toInt();
 			//int panelOrientation = panelObj[PANEL_ORIENTATION].toInt();
 
-			DebugIf(verbose, _log, "Panel [%d] (%d,%d) - Type: [%d]", panelId, panelX, panelY, panelshapeType);
+			DebugIf(verbose,_log, "Panel [%d] (%d,%d) - Type: [%d]", panelId, panelX, panelY, panelshapeType);
 
 			// Skip Rhythm and Shapes controller panels
 			if (panelshapeType != RHYTM && panelshapeType != SHAPES_CONTROLLER)
@@ -407,24 +418,13 @@ int LedDeviceNanoleaf::open()
 	int retval = -1;
 	_isDeviceReady = false;
 
-	QJsonDocument responseDoc;
-	if (changeToExternalControlMode(responseDoc))
+	if (ProviderUdp::open() == 0)
 	{
-		// Resolve port for Light Panels
-		QJsonObject jsonStreamControllInfo = responseDoc.object();
-		if (!jsonStreamControllInfo.isEmpty())
-		{
-			//Set default streaming port
-			_port = static_cast<uchar>(jsonStreamControllInfo[STREAM_CONTROL_PORT].toInt());
-		}
-
-		if (ProviderUdp::open() == 0)
-		{
-			// Everything is OK, device is ready
-			_isDeviceReady = true;
-			retval = 0;
-		}
+		// Everything is OK, device is ready
+		_isDeviceReady = true;
+		retval = 0;
 	}
+
 	return retval;
 }
 
@@ -435,7 +435,7 @@ QJsonArray LedDeviceNanoleaf::discover()
 	SSDPDiscover discover;
 
 	// Search for Canvas and Light-Panels
-	QString searchTargetFilter = QString("%1|%2").arg(SSDP_CANVAS, SSDP_LIGHTPANELS);
+	QString searchTargetFilter = QString("%1|%2").arg(SSDP_NANOLEAF, SSDP_LIGHTPANELS);
 
 	discover.setSearchFilter(searchTargetFilter, SSDP_FILTER_HEADER);
 	QString searchTarget = SSDP_ID;
@@ -476,14 +476,14 @@ QJsonObject LedDeviceNanoleaf::discover(const QJsonObject& /*params*/)
 	devicesDiscovered.insert("discoveryMethod", discoveryMethod);
 	devicesDiscovered.insert("devices", deviceList);
 
-	//Debug(_log, "devicesDiscovered: [%s]", QString(QJsonDocument(devicesDiscovered).toJson(QJsonDocument::Compact)).toUtf8().constData());
+	DebugIf(verbose,_log, "devicesDiscovered: [%s]", QString(QJsonDocument(devicesDiscovered).toJson(QJsonDocument::Compact)).toUtf8().constData());=======
 
 	return devicesDiscovered;
 }
 
 QJsonObject LedDeviceNanoleaf::getProperties(const QJsonObject& params)
 {
-	Debug(_log, "params: [%s]", QString(QJsonDocument(params).toJson(QJsonDocument::Compact)).toUtf8().constData());
+	DebugIf(verbose,_log, "params: [%s]", QString(QJsonDocument(params).toJson(QJsonDocument::Compact)).toUtf8().constData());
 	QJsonObject properties;
 
 	// Get Nanoleaf device properties
@@ -527,14 +527,14 @@ QJsonObject LedDeviceNanoleaf::getProperties(const QJsonObject& params)
 
 		properties.insert("properties", response.getBody().object());
 
-		Debug(_log, "properties: [%s]", QString(QJsonDocument(properties).toJson(QJsonDocument::Compact)).toUtf8().constData());
+		DebugIf(verbose,_log, "properties: [%s]", QString(QJsonDocument(properties).toJson(QJsonDocument::Compact)).toUtf8().constData());
 	}
 	return properties;
 }
 
 void LedDeviceNanoleaf::identify(const QJsonObject& params)
 {
-	Debug(_log, "params: [%s]", QString(QJsonDocument(params).toJson(QJsonDocument::Compact)).toUtf8().constData());
+	DebugIf(verbose,_log, "params: [%s]", QString(QJsonDocument(params).toJson(QJsonDocument::Compact)).toUtf8().constData());
 
 	QString hostName = params["host"].toString("");
 
@@ -582,15 +582,29 @@ bool LedDeviceNanoleaf::powerOn()
 	{
 		if (changeToExternalControlMode())
 		{
+			QJsonObject newState;
+
+			QJsonObject onValue { {STATE_VALUE, true} };
+			newState.insert(STATE_ON, onValue);
+
+			if ( _isBrightnessOverwrite)
+			{
+				QJsonObject briValue { {STATE_VALUE, _brightness} };
+				newState.insert(STATE_BRI, briValue);
+			}
+
 			//Power-on Nanoleaf device
 			_restApi->setPath(API_STATE);
-			httpResponse response = _restApi->put(getOnOffRequest(true));
+			httpResponse response = _restApi->put(newState);
 			if (response.error())
 			{
 				QString errorReason = QString("Power-on request failed with error: '%1'").arg(response.getErrorReason());
 				this->setInError ( errorReason );
 				on = false;
+			} else {
+				on = true;
 			}
+
 		}
 	}
 	return on;
@@ -601,9 +615,14 @@ bool LedDeviceNanoleaf::powerOff()
 	bool off = true;
 	if (_isDeviceReady)
 	{
-		//Power-off the Nanoleaf device physically		{
+		QJsonObject newState;
+
+		QJsonObject onValue { {STATE_VALUE, false} };
+		newState.insert(STATE_ON, onValue);
+
+		//Power-off the Nanoleaf device physically
 		_restApi->setPath(API_STATE);
-		httpResponse response = _restApi->put(getOnOffRequest(false));
+		httpResponse response = _restApi->put(newState);
 		if (response.error())
 		{
 			QString errorReason = QString("Power-off request failed with error: '%1'").arg(response.getErrorReason());
@@ -614,10 +633,163 @@ bool LedDeviceNanoleaf::powerOff()
 	return off;
 }
 
-QString LedDeviceNanoleaf::getOnOffRequest(bool isOn) const
+bool LedDeviceNanoleaf::storeState()
 {
-	QString state = isOn ? STATE_VALUE_TRUE : STATE_VALUE_FALSE;
-	return QString("{\"%1\":{\"%2\":%3}}").arg(STATE_ON, STATE_ONOFF_VALUE, state);
+	bool rc = true;
+
+	if ( _isRestoreOrigState )
+	{
+		_restApi->setPath(API_STATE);
+
+		httpResponse response = _restApi->get();
+		if ( response.error() )
+		{
+			QString errorReason = QString("Storing device state failed with error: '%1'").arg(response.getErrorReason());
+			setInError(errorReason);
+			rc = false;
+		}
+		else
+		{
+			_originalStateProperties = response.getBody().object();
+			DebugIf(verbose, _log, "state: [%s]", QString(QJsonDocument(_originalStateProperties).toJson(QJsonDocument::Compact)).toUtf8().constData() );
+
+			QJsonObject isOn = _originalStateProperties.value(STATE_ON).toObject();
+			if (!isOn.isEmpty())
+			{
+				_originalIsOn = isOn[STATE_VALUE].toBool();
+			}
+
+			QJsonObject bri = _originalStateProperties.value(STATE_BRI).toObject();
+			if (!bri.isEmpty())
+			{
+				_originalBri = bri[STATE_VALUE].toInt();
+			}
+
+			_originalColorMode = _originalStateProperties[STATE_COLORMODE].toString();
+
+			switch(COLOR_MODES.indexOf(_originalColorMode)) {
+			case 0:
+			{
+				// hs
+				QJsonObject hue = _originalStateProperties.value(STATE_HUE).toObject();
+				if (!hue.isEmpty())
+				{
+					_originalHue = hue[STATE_VALUE].toInt();
+				}
+				QJsonObject sat = _originalStateProperties.value(STATE_SAT).toObject();
+				if (!sat.isEmpty())
+				{
+					_originalSat = sat[STATE_VALUE].toInt();
+				}
+				break;
+			}
+			case 1:
+			{
+				// ct
+				QJsonObject ct = _originalStateProperties.value(STATE_CT).toObject();
+				if (!ct.isEmpty())
+				{
+					_originalCt = ct[STATE_VALUE].toInt();
+				}
+				break;
+			}
+			case 2:
+			{
+				// effect
+				_restApi->setPath(API_EFFECT);
+
+				httpResponse response = _restApi->get();
+				if ( response.error() )
+				{
+					QString errorReason = QString("Storing device state failed with error: '%1'").arg(response.getErrorReason());
+					setInError(errorReason);
+					rc = false;
+				}
+				else
+				{
+					QJsonObject effects = response.getBody().object();
+					DebugIf(verbose, _log, "effects: [%s]", QString(QJsonDocument(_originalStateProperties).toJson(QJsonDocument::Compact)).toUtf8().constData() );
+					_originalEffect = effects[API_EFFECT_SELECT].toString();
+					_originalIsDynEffect = _originalEffect == "*Dynamic*" || _originalEffect == "*Solid*";
+				}
+				break;
+			}
+			default:
+				QString errorReason = QString("Unknown ColorMode: '%1'").arg(_originalColorMode);
+				setInError(errorReason);
+				rc = false;
+				break;
+			}
+		}
+	}
+	return rc;
+}
+
+bool LedDeviceNanoleaf::restoreState()
+{
+	bool rc = true;
+
+	if ( _isRestoreOrigState )
+	{
+		QJsonObject newState;
+		switch(COLOR_MODES.indexOf(_originalColorMode)) {
+		case 0:
+		{	// hs
+			QJsonObject hueValue { {STATE_VALUE, _originalHue} };
+			newState.insert(STATE_HUE, hueValue);
+			QJsonObject satValue { {STATE_VALUE, _originalSat} };
+			newState.insert(STATE_SAT, satValue);
+			break;
+		}
+		case 1:
+		{	// ct
+			QJsonObject ctValue { {STATE_VALUE, _originalCt} };
+			newState.insert(STATE_CT, ctValue);
+			break;
+		}
+		case 2:
+		{	// effect
+			if (!_originalIsDynEffect)
+			{
+				QJsonObject newEffect;
+				newEffect[API_EFFECT_SELECT] = _originalEffect;
+				_restApi->setPath(API_EFFECT);
+				httpResponse response = _restApi->put(newEffect);
+				if ( response.error() )
+				{
+					Warning (_log, "%s restoring effect failed with error: '%s'", QSTRING_CSTR(_activeDeviceType), QSTRING_CSTR(response.getErrorReason()));
+				}
+			} else {
+				Warning (_log, "%s restoring effect failed with error: Cannot restore dynamic or solid effect. Turning device off", QSTRING_CSTR(_activeDeviceType));
+				_originalIsOn = false;
+			}
+			break;
+		}
+		default:
+			Warning (_log, "%s restoring failed with error: Unknown ColorMode", QSTRING_CSTR(_activeDeviceType));
+			rc = false;
+		}
+
+		if (!_originalIsDynEffect)
+		{
+			QJsonObject briValue { {STATE_VALUE, _originalBri} };
+			newState.insert(STATE_BRI, briValue);
+		}
+
+		QJsonObject onValue { {STATE_VALUE, _originalIsOn} };
+		newState.insert(STATE_ON, onValue);
+
+		_restApi->setPath(API_STATE);
+
+		httpResponse response = _restApi->put(newState);
+
+		if ( response.error() )
+		{
+			Warning (_log, "%s restoring state failed with error: '%s'", QSTRING_CSTR(_activeDeviceType), QSTRING_CSTR(response.getErrorReason()));
+			rc = false;
+		}
+	}
+	return rc;
 }
 
 bool LedDeviceNanoleaf::changeToExternalControlMode()
@@ -645,7 +817,6 @@ bool LedDeviceNanoleaf::changeToExternalControlMode(QJsonDocument& resp)
 		resp = response.getBody();
 		success = true;
 	}
-
 	return success;
 }
 

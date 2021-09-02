@@ -16,7 +16,7 @@ install_file()
 }
 
 
-echo "---Hyperion ambient light postinstall ---"
+echo "--- Hyperion ambient light postinstall ---"
 
 #check system
 CPU_RPI=`grep -m1 -c 'BCM2708\|BCM2709\|BCM2710\|BCM2835\|BCM2836\|BCM2837\|BCM2711' /proc/cpuinfo`
@@ -141,8 +141,8 @@ echo "---> or if already used by another service try: ${NET_IP}:8091"
 $REBOOTMESSAGE
 echo "-----------------------------------------------------------------------------"
 echo "Webpage: www.hyperion-project.org"
-echo "Wiki: wiki.hyperion-project.org"
-echo "Forum: forum.hyperion-project.org"
+echo "Forum: www.hyperion-project.org"
+echo "Documenation: docs.hyperion-project.org"
 echo "-----------------------------------------------------------------------------"
 
 

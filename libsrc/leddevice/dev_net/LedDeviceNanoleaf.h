@@ -131,6 +131,25 @@ protected:
 	///
 	bool powerOff() override;
 
+	///
+	/// @brief Store the device's original state.
+	///
+	/// Save the device's state before hyperion color streaming starts allowing to restore state during switchOff().
+	///
+	/// @return True if success
+	///
+	bool storeState() override;
+
+	///
+	/// @brief Restore the device's original state.
+	///
+	/// Restore the device's state as before hyperion color streaming started.
+	/// This includes the on/off state of the device.
+	///
+	/// @return True, if success
+	///
+	bool restoreState() override;
+
 private:
 
 	///
@@ -163,14 +182,6 @@ private:
 	///
 	/// @return True, if success
 	bool changeToExternalControlMode(QJsonDocument& resp);
-
-	///
-	/// @brief Get command to power Nanoleaf device on or off
-	///
-	/// @param isOn True, if to switch on device
-	/// @return Command to switch device on/off
-	///
-	QString getOnOffRequest(bool isOn) const;
 
 	///
 	/// @brief Discover Nanoleaf devices available (for configuration).
@@ -206,6 +217,20 @@ private:
 #ifndef __APPLE__
 	MdnsEngineWrapper* _mdnsEngine;
 #endif
+	QJsonObject _originalStateProperties;
+
+	bool _isBrightnessOverwrite;
+	int _brightness;
+
+	QString _originalColorMode;
+	bool _originalIsOn;
+	int _originalHue;
+	int _originalSat;
+	int _originalCt;
+	int _originalBri;
+	QString _originalEffect;
+	bool _originalIsDynEffect {false};
+
 };
 
 #endif // LEDEVICENANOLEAF_H

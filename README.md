@@ -1,4 +1,4 @@
-![Hyperion](https://raw.githubusercontent.com/hyperion-project/hyperion.ng/master/assets/webconfig/img/hyperion/hyperionlogo.png)
+![Hyperion](doc/logo.png)
 
 [![Latest-Release](https://img.shields.io/github/v/release/hyperion-project/hyperion.ng?include_prereleases)](https://github.com/hyperion-project/hyperion.ng/releases)
 [![GitHub Actions](https://github.com/hyperion-project/hyperion.ng/workflows/Hyperion%20CI%20Build/badge.svg?branch=master)](https://github.com/hyperion-project/hyperion.ng/actions)
@@ -33,10 +33,9 @@ Contributions are welcome! Feel free to join us! We are looking always for peopl
 For an example, you can participate in the translation.<br>
 [![Join Translation](https://img.shields.io/badge/POEditor-translate-green.svg)](https://poeditor.com/join/project/Y4F6vHRFjA)
 
-## Requirements
-Debian 9, Ubuntu 16.04 or higher.
+## Supported Platforms
 
-We provide a macOS Build but we can not support this.
+Find here more details on [supported platforms and configuration sets](doc/development/SupportedPlatforms.md)
 
 ## Documentation
 Covers these topics (WorkInProgress)
@@ -51,7 +50,7 @@ Covers these topics (WorkInProgress)
 Released and unreleased changes at [Changelog.md](CHANGELOG.md)
 
 ## Building
-See [CompileHowto](CompileHowto.md) and [CrossCompileHowto](CrossCompileHowto.md).
+See [CompileHowto](doc/development/CompileHowto.md).
 
 ## Download
 Alpha releases available from the [Hyperion release page](https://github.com/hyperion-project/hyperion.ng/releases)

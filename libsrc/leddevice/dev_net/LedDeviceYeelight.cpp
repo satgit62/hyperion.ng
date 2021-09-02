@@ -246,12 +246,12 @@ int YeelightLight::writeCommand( const QJsonDocument &command, QJsonArray &resul
 			if ( ! _tcpSocket->waitForBytesWritten(WRITE_TIMEOUT.count()) )
 			{
 				QString errorReason = QString ("(%1) %2").arg(_tcpSocket->error()).arg( _tcpSocket->errorString());
-				log ( 2, "Error:", "bytesWritten: [%ll], %s", bytesWritten, QSTRING_CSTR(errorReason));
+				log ( 2, "Error:", "bytesWritten: [%lld], %s", bytesWritten, QSTRING_CSTR(errorReason));
 				this->setInError ( errorReason );
 			}
 			else
 			{
-				log ( 3, "Success:", "Bytes written   [%ll]", bytesWritten );
+				log ( 3, "Success:", "Bytes written   [%lld]", bytesWritten );
 
 				// Avoid to overrun the Yeelight Command Quota
 				qint64 elapsedTime = QDateTime::currentMSecsSinceEpoch() - _lastWriteTime;
@@ -270,7 +270,7 @@ int YeelightLight::writeCommand( const QJsonDocument &command, QJsonArray &resul
 			{
 				do
 				{
-					log ( 3, "Reading:", "Bytes available [%ll]", _tcpSocket->bytesAvailable() );
+					log ( 3, "Reading:", "Bytes available [%lld]", _tcpSocket->bytesAvailable() );
 					while ( _tcpSocket->canReadLine() )
 					{
 						QByteArray response = _tcpSocket->readLine();
@@ -350,7 +350,7 @@ bool YeelightLight::streamCommand( const QJsonDocument &command )
 			{
 				int error = _tcpStreamSocket->error();
 				QString errorReason = QString ("(%1) %2").arg(error).arg( _tcpStreamSocket->errorString());
-				log ( 1, "Error:", "bytesWritten: [%ll], %s", bytesWritten, QSTRING_CSTR(errorReason));
+				log ( 1, "Error:", "bytesWritten: [%lld], %s", bytesWritten, QSTRING_CSTR(errorReason));
 
 				if ( error == QAbstractSocket::RemoteHostClosedError )
 				{
@@ -365,7 +365,7 @@ bool YeelightLight::streamCommand( const QJsonDocument &command )
 			}
 			else
 			{
-				log ( 3, "Success:", "Bytes written   [%ll]", bytesWritten );
+				log ( 3, "Success:", "Bytes written   [%lld]", bytesWritten );
 				rc = true;
 			}
 		}
@@ -968,7 +968,10 @@ void YeelightLight::log(int logLevel, const char* msg, const char* type, ...)
 		va_end(args);
 		std::string s = msg;
 		uint max = 20;
-		s.append(max - s.length(), ' ');
+		if (max > s.length())
+		{
+			s.append(max - s.length(), ' ');
+		}
 
 		Debug( _log, "%d|%15.15s| %s: %s", logLevel, QSTRING_CSTR(_name), s.c_str(), val);
 	}
@@ -1030,10 +1033,9 @@ bool LedDeviceYeelight::init(const QJsonObject &deviceConfig)
 
 		//Get device specific configuration
 
-		bool ok;
 		if ( deviceConfig[ CONFIG_COLOR_MODEL ].isString() )
 		{
-			_outputColorModel = deviceConfig[ CONFIG_COLOR_MODEL ].toString().toInt(&ok,MODEL_RGB);
+			_outputColorModel = deviceConfig[ CONFIG_COLOR_MODEL ].toString(QString(MODEL_RGB)).toInt();
 		}
 		else
 		{
@@ -1042,7 +1044,7 @@ bool LedDeviceYeelight::init(const QJsonObject &deviceConfig)
 
 		if ( deviceConfig[ CONFIG_TRANS_EFFECT ].isString() )
 		{
-			_transitionEffect = static_cast<YeelightLight::API_EFFECT>( deviceConfig[ CONFIG_TRANS_EFFECT ].toString().toInt(&ok, YeelightLight::API_EFFECT_SMOOTH) );
+			_transitionEffect = static_cast<YeelightLight::API_EFFECT>( deviceConfig[ CONFIG_TRANS_EFFECT ].toString(QString(YeelightLight::API_EFFECT_SMOOTH)).toInt() );
 		}
 		else
 		{
@@ -1059,7 +1061,7 @@ bool LedDeviceYeelight::init(const QJsonObject &deviceConfig)
 
 		if (  deviceConfig[ CONFIG_DEBUGLEVEL ].isString() )
 		{
-			_debuglevel = deviceConfig[ CONFIG_DEBUGLEVEL ].toString().toInt();
+			_debuglevel = deviceConfig[ CONFIG_DEBUGLEVEL ].toString(QString("0")).toInt();
 		}
 		else
 		{
@@ -1425,21 +1427,21 @@ QJsonObject LedDeviceYeelight::discover(const QJsonObject& /*params*/)
 		deviceList = discover();
 	}
 
-
 	devicesDiscovered.insert("devices", deviceList);
 
-	//Debug(_log, "devicesDiscovered: [%s]", QString(QJsonDocument(devicesDiscovered).toJson(QJsonDocument::Compact)).toUtf8().constData() );
+	DebugIf(verbose,_log, "devicesDiscovered: [%s]", QString(QJsonDocument(devicesDiscovered).toJson(QJsonDocument::Compact)).toUtf8().constData() );
 
 	return devicesDiscovered;
 }
 
 QJsonObject LedDeviceYeelight::getProperties(const QJsonObject& params)
 {
-	Debug(_log, "params: [%s]", QString(QJsonDocument(params).toJson(QJsonDocument::Compact)).toUtf8().constData() );
+	DebugIf(verbose,_log, "params: [%s]", QString(QJsonDocument(params).toJson(QJsonDocument::Compact)).toUtf8().constData() );
 	QJsonObject properties;
 
 	QString hostName = params["hostname"].toString("");
 	quint16 apiPort = static_cast<quint16>( params["port"].toInt(API_DEFAULT_PORT) );
+
 	Debug (_log, "apiHost [%s], apiPort [%d]", QSTRING_CSTR(hostName), apiPort);
 
 #ifndef __APPLE__
@@ -1467,7 +1469,7 @@ QJsonObject LedDeviceYeelight::getProperties(const QJsonObject& params)
 
 void LedDeviceYeelight::identify(const QJsonObject& params)
 {
-	Debug(_log, "params: [%s]", QString(QJsonDocument(params).toJson(QJsonDocument::Compact)).toUtf8().constData() );
+	DebugIf(verbose,_log,  "params: [%s]", QString(QJsonDocument(params).toJson(QJsonDocument::Compact)).toUtf8().constData() );
 
 	QString hostName = params["hostname"].toString("");
 	quint16 apiPort = static_cast<quint16>( params["port"].toInt(API_DEFAULT_PORT) );

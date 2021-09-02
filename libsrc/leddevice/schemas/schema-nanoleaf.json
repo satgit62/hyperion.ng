@@ -5,7 +5,11 @@
     "hostList": {
       "type": "string",
       "title": "edt_dev_spec_devices_discovered_title",
-      "options": { "infoText": "edt_dev_spec_devices_discovered_title_info" },
+      "enum": [ "NONE" ],
+      "options": {
+        "enum_titles": [ "edt_dev_spec_devices_discovery_inprogress" ],
+        "infoText": "edt_dev_spec_devices_discovered_title_info"
+      },
       "required": true,
       "propertyOrder": 1
     },
@@ -24,23 +28,47 @@
       "options": {
         "infoText": "edt_dev_auth_key_title_info"
       },
-      "propertyOrder": 4
+      "propertyOrder": 3
     },
-    "tokenGenerationButton": {
-      "title": "edt_dev_auth_key_generation_title",
-      "format": "button",
+    "restoreOriginalState": {
+      "type": "boolean",
+      "format": "checkbox",
+      "title": "edt_dev_spec_restoreOriginalState_title",
+      "default": true,
+      "required": true,
       "options": {
-        "button": {
-          "action": "generateToken"
-        }
+        "infoText": "edt_dev_spec_restoreOriginalState_title_info"
       },
       "propertyOrder": 4
+    },
+    "overwriteBrightness": {
+      "type": "boolean",
+      "format": "checkbox",
+      "title": "edt_dev_spec_brightnessOverwrite_title",
+      "default": true,
+      "required": true,
+      "access": "advanced",
+      "propertyOrder": 5
+    },
+    "brightness": {
+      "type": "integer",
+      "title": "edt_dev_spec_brightness_title",
+      "default": 100,
+      "minimum": 1,
+      "maximum": 100,
+      "options": {
+        "dependencies": {
+          "overwriteBrightness": true
+        }
+      },
+      "access": "advanced",
+      "propertyOrder": 6
     },
     "title": {
       "type": "object",
       "title": "edt_dev_spec_panelorganisation_title",
       "access": "advanced",
-      "propertyOrder": 5
+      "propertyOrder": 7
     },
     "panelOrderTopDown": {
       "type": "integer",
@@ -54,7 +82,7 @@
       "minimum": 0,
       "maximum": 1,
       "access": "advanced",
-      "propertyOrder": 6
+      "propertyOrder": 8
     },
     "panelOrderLeftRight": {
       "type": "integer",
@@ -68,7 +96,7 @@
       "minimum": 0,
       "maximum": 1,
       "access": "advanced",
-      "propertyOrder": 7
+      "propertyOrder": 9
     },
     "panelStartPos": {
       "type": "integer",
@@ -77,7 +105,7 @@
       "minimum": 0,
       "default": 0,
       "access": "advanced",
-      "propertyOrder": 8
+      "propertyOrder": 10
     }
   },
   "additionalProperties": true

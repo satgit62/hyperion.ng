@@ -79,7 +79,7 @@ HyperionDaemon::HyperionDaemon(const QString& rootPath, QObject* parent, bool lo
 	  , _webserver(nullptr)
 	  , _sslWebserver(nullptr)
 	  , _jsonServer(nullptr)
-	  , _v4l2Grabber(nullptr)
+	  , _videoGrabber(nullptr)
 	  , _dispmanx(nullptr)
 	  , _x11Grabber(nullptr)
 	  , _xcbGrabber(nullptr)
@@ -102,8 +102,8 @@ HyperionDaemon::HyperionDaemon(const QString& rootPath, QObject* parent, bool lo
 	qRegisterMetaType<QMap<quint8, QJsonObject>>("QMap<quint8,QJsonObject>");
 	qRegisterMetaType<std::vector<ColorRgb>>("std::vector<ColorRgb>");
 
-	// init settings
-	_settingsManager = new SettingsManager(0, this, readonlyMode);
+	// init settings, this settingsManager accesses global settings which are independent from instances
+	_settingsManager = new SettingsManager(GLOABL_INSTANCE_ID, this, readonlyMode);
 
 	// set inital log lvl if the loglvl wasn't overwritten by arg
 	if (!logLvlOverwrite)
@@ -131,9 +131,8 @@ HyperionDaemon::HyperionDaemon(const QString& rootPath, QObject* parent, bool lo
 	//Cleaning up Hyperion before quit
 	connect(parent, SIGNAL(aboutToQuit()), this, SLOT(freeObjects()));
 
-	// pipe settings changes and component state changes from HyperionIManager to Daemon
+	// pipe settings changes from HyperionIManager to Daemon
 	connect(_instanceManager, &HyperionIManager::settingsChanged, this, &HyperionDaemon::settingsChanged);
-	connect(_instanceManager, &HyperionIManager::compStateChangeRequest, this, &HyperionDaemon::compStateChangeRequest);
 
 	// listen for setting changes of framegrabber and v4l2
 	connect(this, &HyperionDaemon::settingsChanged, this, &HyperionDaemon::handleSettingsUpdate);
@@ -151,7 +150,7 @@ HyperionDaemon::HyperionDaemon(const QString& rootPath, QObject* parent, bool lo
 	// init system capture (framegrabber)
 	handleSettingsUpdate(settings::SYSTEMCAPTURE, getSetting(settings::SYSTEMCAPTURE));
 
-	// init v4l2 capture
+	// init v4l2 && media foundation capture
 	handleSettingsUpdate(settings::V4L2, getSetting(settings::V4L2));
 
 	// ---- network services -----
@@ -261,16 +260,15 @@ void HyperionDaemon::freeObjects()
 	delete _osxGrabber;
 	delete _qtGrabber;
 	delete _dxGrabber;
-	delete _v4l2Grabber;
+	delete _videoGrabber;
 
-	_v4l2Grabber = nullptr;
-
-	_amlGrabber = nullptr;
-	_dispmanx = nullptr;
-	_fbGrabber = nullptr;
-	_osxGrabber = nullptr;
-	_qtGrabber = nullptr;
-	_dxGrabber = nullptr;
+	_videoGrabber = nullptr;
+	_amlGrabber  = nullptr;
+	_dispmanx    = nullptr;
+	_fbGrabber   = nullptr;
+	_osxGrabber  = nullptr;
+	_qtGrabber   = nullptr;
+	_dxGrabber   = nullptr;
 }
 
 void HyperionDaemon::startNetworkServices()
@@ -367,20 +365,18 @@ void HyperionDaemon::handleSettingsUpdate(settings::type settingsType, const QJs
 
 		_grabber_width = grabberConfig["width"].toInt(96);
 		_grabber_height = grabberConfig["height"].toInt(96);
-		_grabber_frequency = grabberConfig["frequency_Hz"].toInt(10);
+		_grabber_pixelDecimation = grabberConfig["pixelDecimation"].toInt(GrabberWrapper::DEFAULT_PIXELDECIMATION);
+		_grabber_frequency = grabberConfig["fps"].toInt(GrabberWrapper::DEFAULT_RATE_HZ);
 
 		_grabber_cropLeft = grabberConfig["cropLeft"].toInt(0);
 		_grabber_cropRight = grabberConfig["cropRight"].toInt(0);
 		_grabber_cropTop = grabberConfig["cropTop"].toInt(0);
 		_grabber_cropBottom = grabberConfig["cropBottom"].toInt(0);
 
-		_grabber_ge2d_mode = grabberConfig["ge2d_mode"].toInt(0);
-		_grabber_device = grabberConfig["amlogic_grabber"].toString("amvideocap0");
-
 		#ifdef ENABLE_OSX
-		QString type = "osx";
+		QString type = grabberConfig["device"].toString("osx");
 		#else
-		QString type = grabberConfig["type"].toString("auto");
+		QString type = grabberConfig["device"].toString("auto");
 		#endif
 
 		// auto eval of type
@@ -398,9 +394,10 @@ void HyperionDaemon::handleSettingsUpdate(settings::type settingsType, const QJs
 				{
 					type = "amlogic";
 
-					if (!QFile::exists("/dev/" + _grabber_device))
+					QString amlDevice ("/dev/amvideocap0");
+					if (!QFile::exists(amlDevice))
 					{
-						Error(_log, "grabber device '%s' for type amlogic not found!", QSTRING_CSTR(_grabber_device));
+						Error(_log, "grabber device '%s' for type amlogic not found!", QSTRING_CSTR(amlDevice));
 					}
 				}
 				else
@@ -504,27 +501,30 @@ void HyperionDaemon::handleSettingsUpdate(settings::type settingsType, const QJs
 					createGrabberFramebuffer(grabberConfig);
 				}
 				#ifdef ENABLE_FB
-				_fbGrabber->tryStart();
+					_fbGrabber->handleSettingsUpdate(settings::SYSTEMCAPTURE, getSetting(settings::SYSTEMCAPTURE));
+					_fbGrabber->tryStart();
 				#endif
 			}
 			else if (type == "dispmanx")
 			{
 				if (_dispmanx == nullptr)
 				{
-					createGrabberDispmanx();
+					createGrabberDispmanx(grabberConfig);
 				}
 				#ifdef ENABLE_DISPMANX
-				_dispmanx->tryStart();
+					_dispmanx->handleSettingsUpdate(settings::SYSTEMCAPTURE, getSetting(settings::SYSTEMCAPTURE));
+					_dispmanx->tryStart();
 				#endif
 			}
 			else if (type == "amlogic")
 			{
 				if (_amlGrabber == nullptr)
 				{
-					createGrabberAmlogic();
+					createGrabberAmlogic(grabberConfig);
 				}
 				#ifdef ENABLE_AMLOGIC
-				_amlGrabber->tryStart();
+					_amlGrabber->handleSettingsUpdate(settings::SYSTEMCAPTURE, getSetting(settings::SYSTEMCAPTURE));
+					_amlGrabber->tryStart();
 				#endif
 			}
 			else if (type == "osx")
@@ -534,7 +534,8 @@ void HyperionDaemon::handleSettingsUpdate(settings::type settingsType, const QJs
 					createGrabberOsx(grabberConfig);
 				}
 				#ifdef ENABLE_OSX
-				_osxGrabber->tryStart();
+					_osxGrabber->handleSettingsUpdate(settings::SYSTEMCAPTURE, getSetting(settings::SYSTEMCAPTURE));
+					_osxGrabber->tryStart();
 				#endif
 			}
 			else if (type == "x11")
@@ -544,7 +545,8 @@ void HyperionDaemon::handleSettingsUpdate(settings::type settingsType, const QJs
 					createGrabberX11(grabberConfig);
 				}
 				#ifdef ENABLE_X11
-				_x11Grabber->tryStart();
+					_x11Grabber->handleSettingsUpdate(settings::SYSTEMCAPTURE, getSetting(settings::SYSTEMCAPTURE));
+					_x11Grabber->tryStart();
 				#endif
 			}
 			else if (type == "xcb")
@@ -554,7 +556,8 @@ void HyperionDaemon::handleSettingsUpdate(settings::type settingsType, const QJs
 					createGrabberXcb(grabberConfig);
 				}
 				#ifdef ENABLE_XCB
-				_xcbGrabber->tryStart();
+					_xcbGrabber->handleSettingsUpdate(settings::SYSTEMCAPTURE, getSetting(settings::SYSTEMCAPTURE));
+					_xcbGrabber->tryStart();
 				#endif
 			}
 			else if (type == "qt")
@@ -564,7 +567,8 @@ void HyperionDaemon::handleSettingsUpdate(settings::type settingsType, const QJs
 					createGrabberQt(grabberConfig);
 				}
 				#ifdef ENABLE_QT
-				_qtGrabber->tryStart();
+					_qtGrabber->handleSettingsUpdate(settings::SYSTEMCAPTURE, getSetting(settings::SYSTEMCAPTURE));
+					_qtGrabber->tryStart();
 				#endif
 			}
 			else if (type == "dx")
@@ -574,7 +578,8 @@ void HyperionDaemon::handleSettingsUpdate(settings::type settingsType, const QJs
 					createGrabberDx(grabberConfig);
 				}
 				#ifdef ENABLE_DX
-				_dxGrabber->tryStart();
+					_dxGrabber->handleSettingsUpdate(settings::SYSTEMCAPTURE, getSetting(settings::SYSTEMCAPTURE));
+					_dxGrabber->tryStart();
 				#endif
 			}
 			else
@@ -588,11 +593,8 @@ void HyperionDaemon::handleSettingsUpdate(settings::type settingsType, const QJs
 	else if (settingsType == settings::V4L2)
 	{
 
-#if defined(ENABLE_CEC) || defined(ENABLE_V4L2)
-		const QJsonObject& grabberConfig = config.object();
-#endif
-
 #ifdef ENABLE_CEC
+		const QJsonObject& grabberConfig = config.object();
 		if (_cecHandler != nullptr && grabberConfig["cecDetection"].toBool(false))
 		{
 			QMetaObject::invokeMethod(_cecHandler, "start", Qt::QueuedConnection);
@@ -603,54 +605,35 @@ void HyperionDaemon::handleSettingsUpdate(settings::type settingsType, const QJs
 		}
 #endif
 
-		if (_v4l2Grabber != nullptr)
+#if defined(ENABLE_V4L2) || defined(ENABLE_MF)
+		if (_videoGrabber == nullptr)
 		{
-			return;
+			_videoGrabber = new VideoWrapper();
+			_videoGrabber->handleSettingsUpdate(settings::V4L2, getSetting(settings::V4L2));
+
+#if defined(ENABLE_MF)
+			Debug(_log, "Media Foundation grabber created");
+#elif defined(ENABLE_V4L2)
+			Debug(_log, "V4L2 grabber created");
+#endif
+
+			// connect to HyperionDaemon signal
+			connect(this, &HyperionDaemon::videoMode, _videoGrabber, &VideoWrapper::setVideoMode);
+			connect(this, &HyperionDaemon::settingsChanged, _videoGrabber, &VideoWrapper::handleSettingsUpdate);
 		}
-
-#ifdef ENABLE_V4L2
-		_v4l2Grabber = new V4L2Wrapper(
-			grabberConfig["device"].toString("auto"),
-			grabberConfig["width"].toInt(0),
-			grabberConfig["height"].toInt(0),
-			grabberConfig["fps"].toInt(15),
-			grabberConfig["input"].toInt(-1),
-			parseVideoStandard(grabberConfig["standard"].toString("no-change")),
-			parsePixelFormat(grabberConfig["pixelFormat"].toString("no-change")),
-			grabberConfig["sizeDecimation"].toInt(8));
-
-		_v4l2Grabber->setSignalThreshold(
-			grabberConfig["redSignalThreshold"].toDouble(0.0) / 100.0,
-			grabberConfig["greenSignalThreshold"].toDouble(0.0) / 100.0,
-			grabberConfig["blueSignalThreshold"].toDouble(0.0) / 100.0);
-		_v4l2Grabber->setCropping(
-			grabberConfig["cropLeft"].toInt(0),
-			grabberConfig["cropRight"].toInt(0),
-			grabberConfig["cropTop"].toInt(0),
-			grabberConfig["cropBottom"].toInt(0));
-
-		_v4l2Grabber->setCecDetectionEnable(grabberConfig["cecDetection"].toBool(true));
-		_v4l2Grabber->setSignalDetectionEnable(grabberConfig["signalDetection"].toBool(true));
-		_v4l2Grabber->setSignalDetectionOffset(
-			grabberConfig["sDHOffsetMin"].toDouble(0.25),
-			grabberConfig["sDVOffsetMin"].toDouble(0.25),
-			grabberConfig["sDHOffsetMax"].toDouble(0.75),
-			grabberConfig["sDVOffsetMax"].toDouble(0.75));
-		Debug(_log, "V4L2 grabber created");
-
-		// connect to HyperionDaemon signal
-		connect(this, &HyperionDaemon::videoMode, _v4l2Grabber, &V4L2Wrapper::setVideoMode);
-		connect(this, &HyperionDaemon::settingsChanged, _v4l2Grabber, &V4L2Wrapper::handleSettingsUpdate);
 #else
 		Debug(_log, "The v4l2 grabber is not supported on this platform");
 #endif
 	}
 }
 
-void HyperionDaemon::createGrabberDispmanx()
+void HyperionDaemon::createGrabberDispmanx(const QJsonObject& /*grabberConfig*/)
 {
 #ifdef ENABLE_DISPMANX
-	_dispmanx = new DispmanxWrapper(_grabber_width, _grabber_height, _grabber_frequency);
+	_dispmanx = new DispmanxWrapper(
+		_grabber_frequency,
+		_grabber_pixelDecimation
+		);
 	_dispmanx->setCropping(_grabber_cropLeft, _grabber_cropRight, _grabber_cropTop, _grabber_cropBottom);
 
 	// connect to HyperionDaemon signal
@@ -663,10 +646,13 @@ void HyperionDaemon::createGrabberDispmanx()
 #endif
 }
 
-void HyperionDaemon::createGrabberAmlogic()
+void HyperionDaemon::createGrabberAmlogic(const QJsonObject& /*grabberConfig*/)
 {
 #ifdef ENABLE_AMLOGIC
-	_amlGrabber = new AmlogicWrapper(_grabber_width, _grabber_height);
+	_amlGrabber = new AmlogicWrapper(
+		_grabber_frequency,
+		_grabber_pixelDecimation
+		);
 	_amlGrabber->setCropping(_grabber_cropLeft, _grabber_cropRight, _grabber_cropTop, _grabber_cropBottom);
 
 	// connect to HyperionDaemon signal
@@ -679,13 +665,14 @@ void HyperionDaemon::createGrabberAmlogic()
 #endif
 }
 
-void HyperionDaemon::createGrabberX11(const QJsonObject& grabberConfig)
+void HyperionDaemon::createGrabberX11(const QJsonObject& /*grabberConfig*/)
 {
 #ifdef ENABLE_X11
 	_x11Grabber = new X11Wrapper(
-		_grabber_cropLeft, _grabber_cropRight, _grabber_cropTop, _grabber_cropBottom,
-		grabberConfig["pixelDecimation"].toInt(8),
-		_grabber_frequency);
+		_grabber_frequency,
+		_grabber_pixelDecimation,
+		_grabber_cropLeft, _grabber_cropRight, _grabber_cropTop, _grabber_cropBottom
+		);
 	_x11Grabber->setCropping(_grabber_cropLeft, _grabber_cropRight, _grabber_cropTop, _grabber_cropBottom);
 
 	// connect to HyperionDaemon signal
@@ -698,13 +685,14 @@ void HyperionDaemon::createGrabberX11(const QJsonObject& grabberConfig)
 #endif
 }
 
-void HyperionDaemon::createGrabberXcb(const QJsonObject& grabberConfig)
+void HyperionDaemon::createGrabberXcb(const QJsonObject& /*grabberConfig*/)
 {
 #ifdef ENABLE_XCB
 	_xcbGrabber = new XcbWrapper(
-		_grabber_cropLeft, _grabber_cropRight, _grabber_cropTop, _grabber_cropBottom,
-		grabberConfig["pixelDecimation"].toInt(8),
-		_grabber_frequency);
+		_grabber_frequency,
+		_grabber_pixelDecimation,
+		_grabber_cropLeft, _grabber_cropRight, _grabber_cropTop, _grabber_cropBottom
+		);
 	_xcbGrabber->setCropping(_grabber_cropLeft, _grabber_cropRight, _grabber_cropTop, _grabber_cropBottom);
 
 	// connect to HyperionDaemon signal
@@ -721,10 +709,11 @@ void HyperionDaemon::createGrabberQt(const QJsonObject& grabberConfig)
 {
 #ifdef ENABLE_QT
 	_qtGrabber = new QtWrapper(
-		_grabber_cropLeft, _grabber_cropRight, _grabber_cropTop, _grabber_cropBottom,
-		grabberConfig["pixelDecimation"].toInt(8),
-		grabberConfig["display"].toInt(0),
-		_grabber_frequency);
+		_grabber_frequency,
+		grabberConfig["input"].toInt(0),
+		_grabber_pixelDecimation,
+		_grabber_cropLeft, _grabber_cropRight, _grabber_cropTop, _grabber_cropBottom
+		);
 
 	// connect to HyperionDaemon signal
 	connect(this, &HyperionDaemon::videoMode, _qtGrabber, &QtWrapper::setVideoMode);
@@ -740,10 +729,11 @@ void HyperionDaemon::createGrabberDx(const QJsonObject& grabberConfig)
 {
 #ifdef ENABLE_DX
 	_dxGrabber = new DirectXWrapper(
-		_grabber_cropLeft, _grabber_cropRight, _grabber_cropTop, _grabber_cropBottom,
-		grabberConfig["pixelDecimation"].toInt(8),
+		_grabber_frequency,
 		grabberConfig["display"].toInt(0),
-		_grabber_frequency);
+		_grabber_pixelDecimation,
+		_grabber_cropLeft, _grabber_cropRight, _grabber_cropTop, _grabber_cropBottom
+		);
 
 	// connect to HyperionDaemon signal
 	connect(this, &HyperionDaemon::videoMode, _dxGrabber, &DirectXWrapper::setVideoMode);
@@ -759,9 +749,14 @@ void HyperionDaemon::createGrabberFramebuffer(const QJsonObject& grabberConfig)
 {
 #ifdef ENABLE_FB
 	// Construct and start the framebuffer grabber if the configuration is present
+
+	int fbIdx = grabberConfig["input"].toInt(0);
+	QString devicePath = QString("/dev/fb%1").arg(fbIdx);
 	_fbGrabber = new FramebufferWrapper(
-		grabberConfig["device"].toString("/dev/fb0"),
-		_grabber_width, _grabber_height, _grabber_frequency);
+		_grabber_frequency,
+		devicePath,
+		_grabber_pixelDecimation
+		);
 	_fbGrabber->setCropping(_grabber_cropLeft, _grabber_cropRight, _grabber_cropTop, _grabber_cropBottom);
 	// connect to HyperionDaemon signal
 	connect(this, &HyperionDaemon::videoMode, _fbGrabber, &FramebufferWrapper::setVideoMode);
@@ -773,13 +768,16 @@ void HyperionDaemon::createGrabberFramebuffer(const QJsonObject& grabberConfig)
 #endif
 }
 
-void HyperionDaemon::createGrabberOsx(const QJsonObject& grabberConfig)
+	void HyperionDaemon::createGrabberOsx(const QJsonObject& grabberConfig)
 {
 #ifdef ENABLE_OSX
 	// Construct and start the osx grabber if the configuration is present
 	_osxGrabber = new OsxWrapper(
-		grabberConfig["display"].toInt(0),
-		_grabber_width, _grabber_height, _grabber_frequency);
+		_grabber_frequency,
+		grabberConfig["input"].toInt(0),
+		_grabber_pixelDecimation
+		);
+	_osxGrabber->setCropping(_grabber_cropLeft, _grabber_cropRight, _grabber_cropTop, _grabber_cropBottom);
 
 	// connect to HyperionDaemon signal
 	connect(this, &HyperionDaemon::videoMode, _osxGrabber, &OsxWrapper::setVideoMode);
@@ -802,9 +800,9 @@ void HyperionDaemon::createCecHandler()
 	thread->start();
 
 	connect(_cecHandler, &CECHandler::cecEvent, [&](CECEvent event) {
-		if (_v4l2Grabber != nullptr)
+		if (_videoGrabber != nullptr)
 		{
-			_v4l2Grabber->handleCecEvent(event);
+			_videoGrabber->handleCecEvent(event);
 		}
 	});
 

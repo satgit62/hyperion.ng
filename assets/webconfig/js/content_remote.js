@@ -1,10 +1,13 @@
 $(document).ready(function () {
   performTranslation();
 
+  // update instance listing
+  updateHyperionInstanceListing();
+
   var oldEffects = [];
   var cpcolor = '#B500FF';
   var mappingList = window.serverSchema.properties.color.properties.imageToLedMappingType.enum;
-  var duration = 0;
+  var duration = ENDLESS;
   var rgb = { r: 255, g: 0, b: 0 };
   var lastImgData = "";
   var lastFileName = "";
@@ -197,7 +200,9 @@ $(document).ready(function () {
     });
 
     for (const comp of components) {
-      if (comp.name === "ALL")
+      if (comp.name === "ALL" || (comp.name === "FORWARDER" && window.currentHyperionInstance != 0) ||
+        (comp.name === "GRABBER" && !window.serverConfig.framegrabber.enable) ||
+        (comp.name === "V4L" && !window.serverConfig.grabberV4L2.enable))
         continue;
 
       const enable_style = (comp.enabled ? "checked" : "");
@@ -205,9 +210,10 @@ $(document).ready(function () {
 
       if ($("#" + comp_btn_id).length === 0) {
         var d = '<span style="display:block;margin:3px">'
-          + '<input id="' + comp_btn_id + '"' + enable_style + ' type="checkbox"'
+          + '<label class="checkbox-inline">'
+          + '<input id = "' + comp_btn_id + '"' + enable_style + ' type = "checkbox"'
           + 'data-toggle="toggle" data-onstyle="success" data-on="' + $.i18n('general_btn_on') + '" data-off="' + $.i18n('general_btn_off') + '">'
-          + '&nbsp;&nbsp;&nbsp;<label>' + $.i18n('general_comp_' + comp.name) + '</label>'
+          + $.i18n('general_comp_' + comp.name) + '</label > '
           + '</span>';
 
         $('#componentsbutton').append(d);
@@ -215,7 +221,6 @@ $(document).ready(function () {
         $(`#${comp_btn_id}`).bootstrapToggle((hyperionEnabled ? "enable" : "disable"));
         $(`#${comp_btn_id}`).change(e => {
           requestSetComponentState(e.currentTarget.id.split('_').pop(), e.currentTarget.checked);
-          //console.log(e.currentTarget.checked)
         });
       }
     }
@@ -226,6 +231,7 @@ $(document).ready(function () {
       var components = window.comps;
       var hyperionEnabled = component.enabled;
       for (const comp of components) {
+
         if (comp.name === "ALL")
           continue;
 

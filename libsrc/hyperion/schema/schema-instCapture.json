@@ -1,15 +1,22 @@
 {
-	"type": "object",
-	"required": true,
-	"title": "edt_conf_instCapture_heading_title",
+	"type" : "object",
+	"required" : true,
+	"title" : "edt_conf_instC_heading_title",
 	"properties": {
 		"systemEnable": {
 			"type": "boolean",
 			"format": "checkbox",
 			"required": true,
 			"title": "edt_conf_instC_systemEnable_title",
-			"default": true,
+			"default": false,
 			"propertyOrder": 1
+		},
+		"systemGrabberDevice": {
+			"type": "string",
+			"required": true,
+			"title": "edt_conf_instC_screen_grabber_device_title",
+			"default": "NONE",
+			"propertyOrder": 2
 		},
 		"systemPriority": {
 			"type": "integer",
@@ -18,7 +25,7 @@
 			"minimum": 100,
 			"maximum": 253,
 			"default": 250,
-			"propertyOrder": 2
+			"propertyOrder": 3
 		},
 		"v4lEnable": {
 			"type": "boolean",
@@ -26,7 +33,14 @@
 			"required": true,
 			"title": "edt_conf_instC_v4lEnable_title",
 			"default": false,
-			"propertyOrder": 3
+			"propertyOrder": 4
+		},
+		"v4lGrabberDevice": {
+			"type": "string",
+			"required": true,
+			"title": "edt_conf_instC_video_grabber_device_title",
+			"default": "NONE",
+			"propertyOrder": 5
 		},
 		"v4lPriority": {
 			"type": "integer",
@@ -35,8 +49,8 @@
 			"minimum": 100,
 			"maximum": 253,
 			"default": 240,
-			"propertyOrder": 4
+			"propertyOrder": 6
 		}
 	},
-	"additionalProperties": false
+	"additionalProperties" : false
 }

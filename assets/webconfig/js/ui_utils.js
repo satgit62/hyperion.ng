@@ -53,7 +53,7 @@ function updateSessions() {
   if (sess && sess.length) {
     window.wSess = [];
     for (var i = 0; i < sess.length; i++) {
-      if ( sess[i].type == "_http._tcp." || sess[i].type == "_https._tcp." || sess[i].type == "_hyperiond-http._tcp." ) {
+      if (sess[i].type == "_http._tcp." || sess[i].type == "_https._tcp." || sess[i].type == "_hyperiond-http._tcp.") {
         window.wSess.push(sess[i]);
       }
     }
@@ -67,7 +67,7 @@ function updateSessions() {
 
 function validateDuration(d) {
   if (typeof d === "undefined" || d < 0)
-    return 0;
+    return ENDLESS;
   else
     return d *= 1000;
 }
@@ -88,12 +88,14 @@ function loadContent(event, forceRefresh) {
   var tag;
 
   var lastSelectedInstance = getStorage('lastSelectedInstance', false);
-
-  if (lastSelectedInstance && (lastSelectedInstance != window.currentHyperionInstance))
-    if (typeof (window.serverInfo.instance[lastSelectedInstance].running) !== 'undefined' && window.serverInfo.instance[lastSelectedInstance].running)
+  
+  if (lastSelectedInstance && (lastSelectedInstance != window.currentHyperionInstance)) {
+    if (window.serverInfo.instance[lastSelectedInstance] && window.serverInfo.instance[lastSelectedInstance].running) {
       instanceSwitch(lastSelectedInstance);
-    else
+    } else {
       removeStorage('lastSelectedInstance', false);
+    }
+  }
 
   if (typeof event != "undefined") {
     tag = event.currentTarget.hash;
@@ -126,12 +128,13 @@ function getInstanceNameByIndex(index) {
 }
 
 function updateHyperionInstanceListing() {
-  var data = window.serverInfo.instance.filter(entry => entry.running);
-  $('#hyp_inst_listing').html("");
-  for (var key in data) {
-    var currInstMarker = (data[key].instance == window.currentHyperionInstance) ? "component-on" : "";
+  if (window.serverInfo.instance) {
+    var data = window.serverInfo.instance.filter(entry => entry.running);
+    $('#hyp_inst_listing').html("");
+    for (var key in data) {
+      var currInstMarker = (data[key].instance == window.currentHyperionInstance) ? "component-on" : "";
 
-    var html = '<li id="hyperioninstance_' + data[key].instance + '"> \
+      var html = '<li id="hyperioninstance_' + data[key].instance + '"> \
       <a>  \
         <div>  \
           <i class="fa fa-circle fa-fw '+ currInstMarker + '"></i> \
@@ -140,15 +143,16 @@ function updateHyperionInstanceListing() {
       </a> \
     </li> '
 
-    if (data.length - 1 > key)
-      html += '<li class="divider"></li>'
+      if (data.length - 1 > key)
+        html += '<li class="divider"></li>'
 
-    $('#hyp_inst_listing').append(html);
+      $('#hyp_inst_listing').append(html);
 
-    $('#hyperioninstance_' + data[key].instance).off().on("click", function (e) {
-      var inst = e.currentTarget.id.split("_")[1]
-      instanceSwitch(inst)
-    });
+      $('#hyperioninstance_' + data[key].instance).off().on("click", function (e) {
+        var inst = e.currentTarget.id.split("_")[1]
+        instanceSwitch(inst)
+      });
+    }
   }
 }
 
@@ -160,28 +164,24 @@ function initLanguageSelection() {
 
   var langLocale = storedLang;
 
-  // If no language has been set, resolve browser locale
-  if (langLocale === 'auto') {
-    langLocale = $.i18n().locale.substring(0, 2);
-  }
-
-  // Resolve text for language code
-  var langText = 'Please Select';
-
   //Test, if language is supported by hyperion
   var langIdx = availLang.indexOf(langLocale);
   if (langIdx > -1) {
     langText = availLangText[langIdx];
-  }
-  else {
+  } else {
     // If language is not supported by hyperion, try fallback language
     langLocale = $.i18n().options.fallbackLocale.substring(0, 2);
     langIdx = availLang.indexOf(langLocale);
     if (langIdx > -1) {
       langText = availLangText[langIdx];
+    } else {
+      langLocale = 'en';
+      langIdx = availLang.indexOf(langLocale);
+      if (langIdx > -1) {
+        langText = availLangText[langIdx];
+      }
     }
   }
-  //console.log("langLocale: ", langLocale, "langText: ", langText);
 
   $('#language-select').prop('title', langText);
   $("#language-select").val(langIdx);
@@ -189,19 +189,17 @@ function initLanguageSelection() {
 }
 
 function updateUiOnInstance(inst) {
-  if (inst != 0) {
-    var currentURL = $(location).attr("href");
-    if (currentURL.indexOf('#conf_network') != -1 || currentURL.indexOf('#update') != -1 || currentURL.indexOf('#conf_webconfig') != -1 || currentURL.indexOf('#conf_grabber') != -1 || currentURL.indexOf('#conf_logging') != -1)
-      $("#hyperion_global_setting_notify").fadeIn("fast");
-    else
-      $("#hyperion_global_setting_notify").attr("style", "display:none");
-
-    $("#dashboard_active_instance_friendly_name").html($.i18n('dashboard_active_instance') + ': ' + window.serverInfo.instance[inst].friendly_name);
-    $("#dashboard_active_instance").removeAttr("style");
-  }
-  else {
-    $("#hyperion_global_setting_notify").fadeOut("fast");
-    $("#dashboard_active_instance").attr("style", "display:none");
+  $("#active_instance_friendly_name").text(window.serverInfo.instance[inst].friendly_name);
+  if (window.serverInfo.instance.filter(entry => entry.running).length > 1) {
+    $('#btn_hypinstanceswitch').toggle(true);
+    $('#active_instance_dropdown').prop('disabled', false);
+    $('#active_instance_dropdown').css('cursor', 'pointer');
+    $("#active_instance_dropdown").css("pointer-events", "auto");
+  } else {
+    $('#btn_hypinstanceswitch').toggle(false);
+    $('#active_instance_dropdown').prop('disabled', true);
+    $("#active_instance_dropdown").css('cursor', 'default');
+    $("#active_instance_dropdown").css("pointer-events", "none");
   }
 }
 
@@ -259,17 +257,17 @@ function showInfoDialog(type, header, message) {
     $('#id_footer').html('<button type="button" class="btn btn-danger" data-dismiss="modal">' + $.i18n('general_btn_ok') + '</button>');
   }
   else if (type == "select") {
-    $('#id_body').html('<img style="margin-bottom:20px" src="img/hyperion/hyperionlogo.png" alt="Redefine ambient light!">');
+    $('#id_body').html('<img style="margin-bottom:20px" id="id_logo" src="img/hyperion/logo_positiv.png" alt="Redefine ambient light!">');
     $('#id_footer').html('<button type="button" id="id_btn_saveset" class="btn btn-primary" data-dismiss="modal"><i class="fa fa-fw fa-save"></i>' + $.i18n('general_btn_saveandreload') + '</button>');
     $('#id_footer').append('<button type="button" class="btn btn-danger" data-dismiss="modal"><i class="fa fa-fw fa-close"></i>' + $.i18n('general_btn_cancel') + '</button>');
   }
   else if (type == "iswitch") {
-    $('#id_body').html('<img style="margin-bottom:20px" src="img/hyperion/hyperionlogo.png" alt="Redefine ambient light!">');
+    $('#id_body').html('<img style="margin-bottom:20px" id="id_logo" src="img/hyperion/logo_positiv.png" alt="Redefine ambient light!">');
     $('#id_footer').html('<button type="button" id="id_btn_saveset" class="btn btn-primary" data-dismiss="modal"><i class="fa fa-fw fa-exchange"></i>' + $.i18n('general_btn_iswitch') + '</button>');
     $('#id_footer').append('<button type="button" class="btn btn-danger" data-dismiss="modal"><i class="fa fa-fw fa-close"></i>' + $.i18n('general_btn_cancel') + '</button>');
   }
   else if (type == "uilock") {
-    $('#id_body').html('<img src="img/hyperion/hyperionlogo.png" alt="Redefine ambient light!">');
+    $('#id_body').html('<img id="id_logo" src="img/hyperion/logo_positiv.png" alt="Redefine ambient light!">');
     $('#id_footer').html('<b>' + $.i18n('InfoDialog_nowrite_foottext') + '</b>');
   }
   else if (type == "import") {
@@ -291,24 +289,29 @@ function showInfoDialog(type, header, message) {
   }
   else if (type == "changePassword") {
     $('#id_body_rename').html('<i style="margin-bottom:20px" class="fa fa-key modal-icon-edit"><br>');
-    $('#id_body_rename').append('<h4>' + header + '</h4>');
-    $('#id_body_rename').append('<input class="form-control" id="oldPw" placeholder="Old" type="text"> <br />');
-    $('#id_body_rename').append('<input class="form-control" id="newPw" placeholder="New" type="text">');
-    $('#id_footer_rename').html('<button type="button" id="id_btn_ok" class="btn btn-success" data-dismiss-modal="#modal_dialog_rename" disabled><i class="fa fa-fw fa-save"></i>' + $.i18n('general_btn_ok') + '</button>');
+    $('#id_body_rename').append('<h4>' + header + '</h4><br>');
+    $('#id_body_rename').append('<div class="row"><div class="col-md-4"><p class="text-left">' + $.i18n('infoDialog_username_text') +
+      '</p></div><div class="col-md-8"><input class="form-control" id="username" type="text" value="Hyperion" disabled></div></div><br>');
+    $('#id_body_rename').append('<div class="row"><div class="col-md-4"><p class="text-left">' + $.i18n('infoDialog_password_current_text') +
+      '</p></div><div class="col-md-8"><input class="form-control" id="current-password" placeholder="Old" type="password" autocomplete="current-password"></div></div><br>');
+    $('#id_body_rename').append('<div class="row"><div class="col-md-4"><p class="text-left">' + $.i18n('infoDialog_password_new_text') +
+      '</p></div><div class="col-md-8"><input class="form-control" id="new-password" placeholder="New" type="password" autocomplete="new-password"></div></div>');
+    $('#id_body_rename').append('<div class="bs-callout bs-callout-info"><span>' + $.i18n('infoDialog_password_minimum_length') + '</span></div>');
+    $('#id_footer_rename').html('<button type="button" id="id_btn_ok" class="btn btn-success" data-dismiss-modal="#modal_dialog_rename" disabled><i class="fa fa-fw fa-save"></i>' + $.i18n('general_btn_ok') + '</button></div>');
     $('#id_footer_rename').append('<button type="button" class="btn btn-danger" data-dismiss="modal"><i class="fa fa-fw fa-close"></i>' + $.i18n('general_btn_cancel') + '</button>');
   }
   else if (type == "checklist") {
-    $('#id_body').html('<img style="margin-bottom:20px" src="img/hyperion/hyperionlogo.png" alt="Redefine ambient light!">');
+    $('#id_body').html('<img style="margin-bottom:20px" id="id_logo" src="img/hyperion/logo_positiv.png" alt="Redefine ambient light!">');
     $('#id_body').append('<h4 style="font-weight:bold;text-transform:uppercase;">' + $.i18n('infoDialog_checklist_title') + '</h4>');
     $('#id_body').append(header);
     $('#id_footer').html('<button type="button" class="btn btn-primary" data-dismiss="modal">' + $.i18n('general_btn_ok') + '</button>');
   }
   else if (type == "newToken") {
-    $('#id_body').html('<img style="margin-bottom:20px" src="img/hyperion/hyperionlogo.png" alt="Redefine ambient light!">');
+    $('#id_body').html('<img style="margin-bottom:20px" id="id_logo" src="img/hyperion/logo_positiv.png" alt="Redefine ambient light!">');
     $('#id_footer').html('<button type="button" class="btn btn-primary" data-dismiss="modal">' + $.i18n('general_btn_ok') + '</button>');
   }
   else if (type == "grantToken") {
-    $('#id_body').html('<img style="margin-bottom:20px" src="img/hyperion/hyperionlogo.png" alt="Redefine ambient light!">');
+    $('#id_body').html('<img style="margin-bottom:20px" id="id_logo" src="img/hyperion/logo_positiv.png" alt="Redefine ambient light!">');
     $('#id_footer').html('<button type="button" class="btn btn-primary" data-dismiss="modal" id="tok_grant_acc">' + $.i18n('general_btn_grantAccess') + '</button>');
     $('#id_footer').append('<button type="button" class="btn btn-danger" data-dismiss="modal" id="tok_deny_acc">' + $.i18n('general_btn_denyAccess') + '</button>');
   }
@@ -321,6 +324,9 @@ function showInfoDialog(type, header, message) {
   if (type == "select" || type == "iswitch")
     $('#id_body').append('<select id="id_select" class="form-control" style="margin-top:10px;width:auto;"></select>');
 
+  if (getStorage("darkMode", false) == "on")
+    $('#id_logo').attr("src", 'img/hyperion/logo_negativ.png');
+
   $(type == "renInst" || type == "changePassword" ? "#modal_dialog_rename" : "#modal_dialog").modal({
     backdrop: "static",
     keyboard: false,
@@ -329,7 +335,7 @@ function showInfoDialog(type, header, message) {
 
   $(document).on('click', '[data-dismiss-modal]', function () {
     var target = $(this).attr('data-dismiss-modal');
-    $.find(target).modal.hide();
+    $(target).modal('hide'); // lgtm [js/xss-through-dom]
   });
 }
 
@@ -482,9 +488,13 @@ function createJsonEditor(container, schema, setconfig, usePanel, arrayre = unde
   return editor;
 }
 
-function updateJsonEditorSelection(editor, key, addElements, newEnumVals, newTitelVals, newDefaultVal, addCustom) {
 
+function updateJsonEditorSelection(rootEditor, path, key, addElements, newEnumVals, newTitelVals, newDefaultVal, addSelect, addCustom, addCustomAsFirst, customText) {
+  var editor = rootEditor.getEditor(path);
   var orginalProperties = editor.schema.properties[key];
+
+  var orginalWatchFunctions = rootEditor.watchlist[path + "." + key];
+  rootEditor.unwatch(path + "." + key);
 
   var newSchema = [];
   newSchema[key] =
@@ -516,13 +526,33 @@ function updateJsonEditorSelection(editor, key, addElements, newEnumVals, newTit
   }
 
   if (addCustom) {
-    newEnumVals.push("custom");
-    newTitelVals.push("edt_conf_enum_custom");
+
+    if (newTitelVals.length === 0) {
+      newTitelVals = [...newEnumVals];
+    }
+
+    if (!!!customText) {
+      customText = "edt_conf_enum_custom";
+    }
+
+    if (addCustomAsFirst) {
+      newEnumVals.unshift("CUSTOM");
+      newTitelVals.unshift(customText);
+    } else {
+      newEnumVals.push("CUSTOM");
+      newTitelVals.push(customText);
+    }
 
     if (newSchema[key].options.infoText) {
       var customInfoText = newSchema[key].options.infoText + "_custom";
       newSchema[key].options.infoText = customInfoText;
     }
+  }
+
+  if (addSelect) {
+    newEnumVals.unshift("SELECT");
+    newTitelVals.unshift("edt_conf_enum_please_select");
+    newDefaultVal = "SELECT";
   }
 
   if (newEnumVals) {
@@ -536,19 +566,28 @@ function updateJsonEditorSelection(editor, key, addElements, newEnumVals, newTit
     newSchema[key]["default"] = newDefaultVal;
   }
 
-  console.log("updateJsonEditorSelection, newSchema ", newSchema);
-
   editor.original_schema.properties[key] = orginalProperties;
   editor.schema.properties[key] = newSchema[key];
+  rootEditor.validator.schema.properties[editor.key].properties[key] = newSchema[key];
 
   editor.removeObjectProperty(key);
   delete editor.cached_editors[key];
   editor.addObjectProperty(key);
+
+  if (orginalWatchFunctions) {
+    for (var i = 0; i < orginalWatchFunctions.length; i++) {
+      rootEditor.watch(path + "." + key, orginalWatchFunctions[i]);
+    }
+  }
+  rootEditor.notifyWatchers(path + "." + key);
 }
 
-function updateJsonEditorMultiSelection(editor, key, addElements, newEnumVals, newTitelVals, newDefaultVal) {
-
+function updateJsonEditorMultiSelection(rootEditor, path, key, addElements, newEnumVals, newTitelVals, newDefaultVal) {
+  var editor = rootEditor.getEditor(path);
   var orginalProperties = editor.schema.properties[key];
+
+  var orginalWatchFunctions = rootEditor.watchlist[path + "." + key];
+  rootEditor.unwatch(path + "." + key);
 
   var newSchema = [];
   newSchema[key] =
@@ -592,18 +631,68 @@ function updateJsonEditorMultiSelection(editor, key, addElements, newEnumVals, n
     newSchema[key]["items"]["options"]["enum_titles"] = newTitelVals;
   }
 
-   if (newDefaultVal) {
+  if (newDefaultVal) {
     newSchema[key]["default"] = newDefaultVal;
   }
 
-  console.log("updateJsonEditorMultiSelection, newSchema ", newSchema);
-
   editor.original_schema.properties[key] = orginalProperties;
   editor.schema.properties[key] = newSchema[key];
+  rootEditor.validator.schema.properties[editor.key].properties[key] = newSchema[key];
 
   editor.removeObjectProperty(key);
   delete editor.cached_editors[key];
   editor.addObjectProperty(key);
+
+  if (orginalWatchFunctions) {
+    for (var i = 0; i < orginalWatchFunctions.length; i++) {
+      rootEditor.watch(path + "." + key, orginalWatchFunctions[i]);
+    }
+  }
+  rootEditor.notifyWatchers(path + "." + key);
+}
+
+function updateJsonEditorRange(rootEditor, path, key, minimum, maximum, defaultValue, step, clear) {
+  var editor = rootEditor.getEditor(path);
+
+  //Preserve current value when updating range
+  var currentValue = rootEditor.getEditor(path + "." + key).getValue();
+
+  var orginalProperties = editor.schema.properties[key];
+  var newSchema = [];
+  newSchema[key] = orginalProperties;
+
+  if (clear) {
+    delete newSchema[key]["minimum"];
+    delete newSchema[key]["maximum"];
+    delete newSchema[key]["default"];
+    delete newSchema[key]["step"];
+  }
+
+  if (typeof minimum !== "undefined") {
+    newSchema[key]["minimum"] = minimum;
+  }
+  if (typeof maximum !== "undefined") {
+    newSchema[key]["maximum"] = maximum;
+  }
+  if (typeof defaultValue !== "undefined") {
+    newSchema[key]["default"] = defaultValue;
+    currentValue = defaultValue;
+  }
+
+  if (typeof step !== "undefined") {
+    newSchema[key]["step"] = step;
+  }
+
+  editor.original_schema.properties[key] = orginalProperties;
+  editor.schema.properties[key] = newSchema[key];
+  rootEditor.validator.schema.properties[editor.key].properties[key] = newSchema[key];
+
+  editor.removeObjectProperty(key);
+  delete editor.cached_editors[key];
+  editor.addObjectProperty(key);
+
+  // Restore current (new default) value for new range
+  rootEditor.getEditor(path + "." + key).setValue(currentValue);
 }
 
 function buildWL(link, linkt, cl) {
@@ -788,14 +877,57 @@ function createRow(id) {
   return el;
 }
 
-function createOptPanel(phicon, phead, bodyid, footerid) {
+function createOptPanel(phicon, phead, bodyid, footerid, css, panelId) {
   phead = '<i class="fa ' + phicon + ' fa-fw"></i>' + phead;
+
   var pfooter = document.createElement('button');
   pfooter.className = "btn btn-primary";
   pfooter.setAttribute("id", footerid);
   pfooter.innerHTML = '<i class="fa fa-fw fa-save"></i>' + $.i18n('general_button_savesettings');
 
-  return createPanel(phead, "", pfooter, "panel-default", bodyid);
+  return createPanel(phead, "", pfooter, "panel-default", bodyid, css, panelId);
+}
+
+function compareTwoValues(key1, key2, order = 'asc') {
+  return function innerSort(a, b) {
+    if (!a.hasOwnProperty(key1) || !b.hasOwnProperty(key1)) {
+      // property key1 doesn't exist on either object
+      return 0;
+    }
+
+    const varA1 = (typeof a[key1] === 'string')
+      ? a[key1].toUpperCase() : a[key1];
+    const varB1 = (typeof b[key1] === 'string')
+      ? b[key1].toUpperCase() : b[key1];
+
+    let comparison = 0;
+    if (varA1 > varB1) {
+      comparison = 1;
+    } else {
+      if (varA1 < varB1) {
+        comparison = -1;
+      } else {
+        if (!a.hasOwnProperty(key2) || !b.hasOwnProperty(key2)) {
+          // property key2 doesn't exist on either object
+          return 0;
+        }
+
+        const varA2 = (typeof a[key2] === 'string')
+          ? a[key2].toUpperCase() : a[key2];
+        const varB2 = (typeof b[key1] === 'string')
+          ? b[key2].toUpperCase() : b[key2];
+
+        if (varA2 > varB2) {
+          comparison = 1;
+        } else {
+          comparison = -1;
+        }
+      }
+    }
+    return (
+      (order === 'desc') ? (comparison * -1) : comparison
+    );
+  };
 }
 
 function sortProperties(list) {
@@ -810,7 +942,7 @@ function sortProperties(list) {
   });
 }
 
-function createHelpTable(list, phead) {
+function createHelpTable(list, phead, panelId) {
   var table = document.createElement('table');
   var thead = document.createElement('thead');
   var tbody = document.createElement('tbody');
@@ -849,7 +981,41 @@ function createHelpTable(list, phead) {
   table.appendChild(thead);
   table.appendChild(tbody);
 
-  return createPanel(phead, table);
+  return createPanel(phead, table, undefined, undefined, undefined, undefined, panelId);
+}
+
+function createPanel(head, body, footer, type, bodyid, css, panelId) {
+  var cont = document.createElement('div');
+  var p = document.createElement('div');
+  var phead = document.createElement('div');
+  var pbody = document.createElement('div');
+  var pfooter = document.createElement('div');
+
+  cont.className = "col-lg-6";
+
+  if (typeof type == 'undefined')
+    type = 'panel-default';
+
+  p.className = 'panel ' + type;
+  if (typeof panelId != 'undefined') {
+    p.setAttribute("id", panelId);
+  }
+
+  phead.className = 'panel-heading ' + css;
+  pbody.className = 'panel-body';
+  pfooter.className = 'panel-footer';
+
+  phead.innerHTML = head;
+
+  if (typeof bodyid != 'undefined') {
+    pfooter.style.textAlign = 'right';
+    pbody.setAttribute("id", bodyid);
+  }
+
+  if (typeof body != 'undefined' && body != "")
+    pbody.appendChild(body);
+
+  if (typeof footer != 'undefined')
 }
 
 function createPanel(head, body, footer, type, bodyid) {
@@ -1017,9 +1183,70 @@ function handleDarkMode() {
 
   setStorage("darkMode", "on", false);
   $('#btn_darkmode_icon').removeClass('fa fa-moon-o');
-  $('#btn_darkmode_icon').addClass('fa fa-sun-o');
+  $('#btn_darkmode_icon').addClass('mdi mdi-white-balance-sunny');
+  $('#navbar_brand_logo').attr("src", 'img/hyperion/logo_negativ.png');
 }
 
+function isAccessLevelCompliant(accessLevel) {
+  var isOK = true;
+  if (accessLevel) {
+    if (accessLevel === 'system') {
+      isOK = false;
+    }
+    else if (accessLevel === 'advanced' && storedAccess === 'default') {
+      isOK = false;
+    }
+    else if (accessLevel === 'expert' && storedAccess !== 'expert') {
+      isOK = false;
+    }
+  }
+  return isOK
+}
+
+function showInputOptions(path, elements, state) {
+  for (var i = 0; i < elements.length; i++) {
+    $('[data-schemapath="root.' + path + '.' + elements[i] + '"]').toggle(state);
+  }
+}
+
+function showInputOptionForItem(editor, path, item, state) {
+  var accessLevel = editor.schema.properties[path].properties[item].access;
+  // Enable element only, if access level compliant
+  if (!state || isAccessLevelCompliant(accessLevel)) {
+    showInputOptions(path, [item], state);
+  }
+}
+
+function showInputOptionsForKey(editor, item, showForKeys, state) {
+  var elements = [];
+  var keysToshow = [];
+
+  if (Array.isArray(showForKeys)) {
+    keysToshow = showForKeys;
+  } else {
+    if (typeof showForKeys === 'string') {
+      keysToshow.push(showForKeys);
+    } else {
+      return
+    }
+  }
+
+  for (var key in editor.schema.properties[item].properties) {
+    if ($.inArray(key, keysToshow) === -1) {
+      var accessLevel = editor.schema.properties[item].properties[key].access;
+
+      //Always disable all elements, but only enable elements, if access level compliant
+      if (!state || isAccessLevelCompliant(accessLevel)) {
+        elements.push(key);
+      }
+    }
+  }
+  showInputOptions(item, elements, state);
+}
+
+function encodeHTML(s) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+}
 
 /**
  * Module for displaying "Waiting for..." dialog using Bootstrap

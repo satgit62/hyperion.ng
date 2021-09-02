@@ -1,5 +1,3 @@
-var instNameInit = false
-
 $(document).ready(function () {
   var darkModeOverwrite = getStorage("darkModeOverwrite", true);
 
@@ -24,12 +22,8 @@ $(document).ready(function () {
   $(window.hyperion).on("cmd-serverinfo", function (event) {
     window.serverInfo = event.response.info;
 
-    window.readOnlyMode = window.sysInfo.hyperion.readOnlyMode;
-
     // comps
     window.comps = event.response.info.components
-
-    $(window.hyperion).trigger("ready");
 
     window.comps.forEach(function (obj) {
       if (obj.name == "ALL") {
@@ -46,19 +40,13 @@ $(document).ready(function () {
       $('#btn_hypinstanceswitch').toggle(true)
     else
       $('#btn_hypinstanceswitch').toggle(false)
-    // update listing at button
-    updateHyperionInstanceListing()
-    if (!instNameInit) {
-      window.currentHyperionInstanceName = getInstanceNameByIndex(0);
-      instNameInit = true;
-    }
 
     updateSessions();
   }); // end cmd-serverinfo
 
   // Update language selection
   $("#language-select").on('changed.bs.select', function (e, clickedIndex, isSelected, previousValue) {
-    var newLang = availLang[clickedIndex - 1];
+    var newLang = availLang[clickedIndex];
     if (newLang !== storedLang) {
       setStorage("langcode", newLang);
       reload();
@@ -114,29 +102,34 @@ $(document).ready(function () {
 
   $(window.hyperion).one("cmd-authorize-getTokenList", function (event) {
     tokenList = event.response.info;
-    requestServerInfo();
   });
 
   $(window.hyperion).on("cmd-sysinfo", function (event) {
-    requestServerInfo();
     window.sysInfo = event.response.info;
 
     window.currentVersion = window.sysInfo.hyperion.version;
     window.currentChannel = window.sysInfo.hyperion.channel;
+    window.readOnlyMode = window.sysInfo.hyperion.readOnlyMode;
   });
 
   $(window.hyperion).one("cmd-config-getschema", function (event) {
     window.serverSchema = event.response.info;
-    requestServerConfig();
+    window.schema = window.serverSchema.properties;
+
     requestTokenInfo();
     requestGetPendingTokenRequests();
 
-    window.schema = window.serverSchema.properties;
+    //Switch to last selected instance and load related config
+    var lastSelectedInstance = getStorage('lastSelectedInstance', false);
+    if (!window.serverInfo.instance[lastSelectedInstance]) {
+      lastSelectedInstance = 0;
+    }
+    instanceSwitch(lastSelectedInstance);
+
   });
 
   $(window.hyperion).on("cmd-config-getconfig", function (event) {
     window.serverConfig = event.response.info;
-    requestSysInfo();
 
     window.showOptHelp = window.serverConfig.general.showOptHelp;
   });
@@ -164,6 +157,8 @@ $(document).ready(function () {
     if (event.response.hasOwnProperty('info'))
       setStorage("loginToken", event.response.info.token, true);
 
+    requestSysInfo();
+    requestServerInfo();
     requestServerConfigSchema();
   });
 
@@ -307,6 +302,18 @@ $(document).ready(function () {
     loadContent(e);
     window.scrollTo(0, 0);
   });
+
+  $(window).scroll(function() {
+    if ($(window).scrollTop() > 65)
+      $("#navbar_brand_logo").css("display", "none");
+    else
+      $("#navbar_brand_logo").css("display", "");
+  });
+
+  $('#side-menu li a, #side-menu li ul li a').click(function() {
+    $('#side-menu').find('.active').toggleClass('inactive'); // find all active classes and set inactive;
+    $(this).addClass('active');
+  });
 });
 
 function suppressDefaultPwWarning() {
@@ -341,3 +348,31 @@ $("#btn_darkmode").off().on("click", function (e) {
     location.reload();
   }
 });
+
+// Menuitem toggle;
+function SwitchToMenuItem(target, item) {
+  document.getElementById(target).click(); // Get <a href menu item;
+  let sidebar = $('#side-menu');  // Get sidebar menu;
+  sidebar.find('.active').toggleClass('inactive'); // find all active classes and set inactive;
+  sidebar.find('.in').removeClass("in"); // Find all collapsed menu items and close it by remove "in" class;
+  $('#' + target).removeClass('inactive'); // Remove inactive state by classname;
+  $('#' + target).addClass('active'); // Add active state by classname;
+  let cl_object = $('#' + target).closest('ul'); // Find closest ul sidemenu header;
+  cl_object.addClass('in'); // Add class "in" to expand header in sidebar menu;
+  if (item) { // Jump to div "item" if available. Time limit 3 seconds
+    function scrollTo(counter) {
+      if(counter < 30) {
+        setTimeout(function() {
+          counter++;
+          if ($('#' + item).length)
+            $('#' + item)[0].scrollIntoView();
+          else
+            scrollTo(counter);
+        }, 100);
+      }
+    }
+
+    scrollTo(0);
+  }
+};
+

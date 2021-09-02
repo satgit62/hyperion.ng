@@ -5,6 +5,7 @@
 #include <QEventLoop>
 #include <QNetworkReply>
 #include <QByteArray>
+#include <QJsonObject>
 
 //std includes
 #include <iostream>
@@ -15,7 +16,12 @@ namespace {
 
 const QChar ONE_SLASH = '/';
 
-constexpr std::chrono::milliseconds DEFAULT_REST_TIMEOUT{ 200 };
+const int HTTP_STATUS_NO_CONTENT = 204;
+const int HTTP_STATUS_BAD_REQUEST = 400;
+const int HTTP_STATUS_UNAUTHORIZED = 401;
+const int HTTP_STATUS_NOT_FOUND = 404;
+
+constexpr std::chrono::milliseconds DEFAULT_REST_TIMEOUT{ 400 };
 
 } //End of constants
 
@@ -62,7 +68,7 @@ void ProviderRestApi::appendPath ( const QString &path )
 	appendPath (_path, path );
 }
 
-void ProviderRestApi::appendPath ( QString& path, const QString &appendPath) const
+void ProviderRestApi::appendPath ( QString& path, const QString &appendPath)
 {
 	if ( !appendPath.isEmpty() && appendPath != ONE_SLASH )
 	{
@@ -121,15 +127,13 @@ httpResponse ProviderRestApi::get()
 
 httpResponse ProviderRestApi::get(const QUrl &url)
 {
-	Debug(_log, "GET: [%s]", QSTRING_CSTR( url.toString() ));
-
 	// Perform request
 	QNetworkRequest request(url);
 	QNetworkReply* reply = _networkManager->get(request);
 
 	// Connect requestFinished signal to quit slot of the loop.
 	QEventLoop loop;
-	loop.connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+	QEventLoop::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
 
 	ReplyTimeout::set(reply, DEFAULT_REST_TIMEOUT.count());
 
@@ -139,6 +143,10 @@ httpResponse ProviderRestApi::get(const QUrl &url)
 	httpResponse response;
 	if(reply->operation() == QNetworkAccessManager::GetOperation)
 	{
+		if(reply->error() != QNetworkReply::NoError)
+		{
+			Debug(_log, "GET: [%s]", QSTRING_CSTR( url.toString() ));
+		}
 		response = getResponse(reply );
 	}
 	// Free space.
@@ -147,20 +155,24 @@ httpResponse ProviderRestApi::get(const QUrl &url)
 	return response;
 }
 
-httpResponse ProviderRestApi::put(const QString &body)
+httpResponse ProviderRestApi::put(const QJsonObject &body)
 {
-	return put( getUrl(), body );
+	return put( getUrl(), QJsonDocument(body).toJson(QJsonDocument::Compact));
 }
 
-httpResponse ProviderRestApi::put(const QUrl &url, const QString &body)
+httpResponse ProviderRestApi::put(const QString &body)
 {
-	Debug(_log, "PUT: [%s] [%s]", QSTRING_CSTR( url.toString() ), QSTRING_CSTR( body ) );
+	return put( getUrl(), body.toUtf8() );
+}
+
+httpResponse ProviderRestApi::put(const QUrl &url, const QByteArray &body)
+{
 	// Perform request
 	QNetworkRequest request(url);
-	QNetworkReply* reply = _networkManager->put(request, body.toUtf8());
+	QNetworkReply* reply = _networkManager->put(request, body);
 	// Connect requestFinished signal to quit slot of the loop.
 	QEventLoop loop;
-	loop.connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+	QEventLoop::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
 
 	ReplyTimeout::set(reply, DEFAULT_REST_TIMEOUT.count());
 
@@ -170,6 +182,10 @@ httpResponse ProviderRestApi::put(const QUrl &url, const QString &body)
 	httpResponse response;
 	if(reply->operation() == QNetworkAccessManager::PutOperation)
 	{
+		if(reply->error() != QNetworkReply::NoError)
+		{
+			Debug(_log, "PUT: [%s] [%s]", QSTRING_CSTR( url.toString() ),body.constData() );
+		}
 		response = getResponse(reply);
 	}
 	// Free space.
@@ -185,14 +201,11 @@ httpResponse ProviderRestApi::getResponse(QNetworkReply* const &reply)
 
 	int httpStatusCode = reply->attribute( QNetworkRequest::HttpStatusCodeAttribute ).toInt();
 	response.setHttpStatusCode(httpStatusCode);
-
-	Debug(_log, "Reply.httpStatusCode [%d]", httpStatusCode );
-
 	response.setNetworkReplyError(reply->error());
 
 	if(reply->error() == QNetworkReply::NoError)
 	{
-		if ( httpStatusCode != 204 ){
+		if ( httpStatusCode != HTTP_STATUS_NO_CONTENT ){
 			QByteArray replyData = reply->readAll();
 
 			if ( !replyData.isEmpty())
@@ -221,18 +234,19 @@ httpResponse ProviderRestApi::getResponse(QNetworkReply* const &reply)
 	}
 	else
 	{
+		Debug(_log, "Reply.httpStatusCode [%d]", httpStatusCode );
 		QString errorReason;
 		if ( httpStatusCode > 0 ) {
 			QString httpReason = reply->attribute( QNetworkRequest::HttpReasonPhraseAttribute ).toString();
 			QString advise;
 			switch ( httpStatusCode ) {
-			case 400:
+			case HTTP_STATUS_BAD_REQUEST:
 				advise = "Check Request Body";
 				break;
-			case 401:
+			case HTTP_STATUS_UNAUTHORIZED:
 				advise = "Check Authentication Token (API Key)";
 				break;
-			case 404:
+			case HTTP_STATUS_NOT_FOUND:
 				advise = "Check Resource given";
 				break;
 			default:
