@@ -19,7 +19,7 @@
 				"enum_titles": [ "edt_conf_grabber_discovery_inprogress" ],
 				"infoText": "edt_conf_grabber_discovered_title_info"
 			},
-			"required": true,
+			"required": false,
 			"propertyOrder": 2
 		},
 		"device": {
