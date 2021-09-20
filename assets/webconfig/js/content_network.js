@@ -1,6 +1,8 @@
 $(document).ready(function () {
   performTranslation();
 
+  var BOBLIGHT_ENABLED = window.comps.find(element => element.name == "BOBLIGHTSERVER");
+
   var conf_editor_net = null;
   var conf_editor_json = null;
   var conf_editor_proto = null;
@@ -30,9 +32,11 @@ $(document).ready(function () {
     $('#conf_cont_proto').append(createHelpTable(window.schema.protoServer.properties, $.i18n("edt_conf_pbs_heading_title"), "protoServerHelpPanelId"));
 
     //boblight
-    $('#conf_cont').append(createRow('conf_cont_bobl'))
-    $('#conf_cont_bobl').append(createOptPanel('fa-sitemap', $.i18n("edt_conf_bobls_heading_title"), 'editor_container_boblightserver', 'btn_submit_boblightserver', 'panel-system'));
-    $('#conf_cont_bobl').append(createHelpTable(window.schema.boblightServer.properties, $.i18n("edt_conf_bobls_heading_title"), "boblightServerHelpPanelId"));
+    if (BOBLIGHT_ENABLED) {
+      $('#conf_cont').append(createRow('conf_cont_bobl'))
+      $('#conf_cont_bobl').append(createOptPanel('fa-sitemap', $.i18n("edt_conf_bobls_heading_title"), 'editor_container_boblightserver', 'btn_submit_boblightserver', 'panel-system'));
+      $('#conf_cont_bobl').append(createHelpTable(window.schema.boblightServer.properties, $.i18n("edt_conf_bobls_heading_title"), "boblightServerHelpPanelId"));
+    }
 
     //forwarder
     if (storedAccess != 'default') {
@@ -170,25 +174,27 @@ $(document).ready(function () {
   });
 
   //boblight
-  conf_editor_bobl = createJsonEditor('editor_container_boblightserver', {
-    boblightServer: window.schema.boblightServer
-  }, true, true);
+  if (BOBLIGHT_ENABLED) {
+    conf_editor_bobl = createJsonEditor('editor_container_boblightserver', {
+      boblightServer: window.schema.boblightServer
+    }, true, true);
 
-  conf_editor_bobl.on('change', function () {
-    var boblightServerEnable = conf_editor_bobl.getEditor("root.boblightServer.enable").getValue();
-    if (boblightServerEnable) {
-      showInputOptionsForKey(conf_editor_bobl, "boblightServer", "enable", true);
-      $('#boblightServerHelpPanelId').show();
-    } else {
-      showInputOptionsForKey(conf_editor_bobl, "boblightServer", "enable", false);
-      $('#boblightServerHelpPanelId').hide();
-    }
-    conf_editor_bobl.validate().length || window.readOnlyMode ? $('#btn_submit_boblightserver').attr('disabled', true) : $('#btn_submit_boblightserver').attr('disabled', false);
-  });
+    conf_editor_bobl.on('change', function () {
+      var boblightServerEnable = conf_editor_bobl.getEditor("root.boblightServer.enable").getValue();
+      if (boblightServerEnable) {
+        showInputOptionsForKey(conf_editor_bobl, "boblightServer", "enable", true);
+        $('#boblightServerHelpPanelId').show();
+      } else {
+        showInputOptionsForKey(conf_editor_bobl, "boblightServer", "enable", false);
+        $('#boblightServerHelpPanelId').hide();
+      }
+      conf_editor_bobl.validate().length || window.readOnlyMode ? $('#btn_submit_boblightserver').attr('disabled', true) : $('#btn_submit_boblightserver').attr('disabled', false);
+    });
 
-  $('#btn_submit_boblightserver').off().on('click', function () {
-    requestWriteConfig(conf_editor_bobl.getValue());
-  });
+    $('#btn_submit_boblightserver').off().on('click', function () {
+      requestWriteConfig(conf_editor_bobl.getValue());
+    });
+  }
 
   if (storedAccess != 'default') {
     //forwarder
@@ -266,7 +272,9 @@ $(document).ready(function () {
     createHint("intro", $.i18n('conf_network_json_intro'), "editor_container_jsonserver");
     createHint("intro", $.i18n('conf_network_fbs_intro'), "editor_container_fbserver");
     createHint("intro", $.i18n('conf_network_proto_intro'), "editor_container_protoserver");
-    createHint("intro", $.i18n('conf_network_bobl_intro'), "editor_container_boblightserver");
+    if (BOBLIGHT_ENABLED) {
+      createHint("intro", $.i18n('conf_network_bobl_intro'), "editor_container_boblightserver");
+    }
     createHint("intro", $.i18n('conf_network_forw_intro'), "editor_container_forwarder");
     createHint("intro", $.i18n('conf_network_tok_intro'), "tok_desc_cont");
   }
@@ -334,3 +342,4 @@ $(document).ready(function () {
 
   removeOverlay();
 });
+
