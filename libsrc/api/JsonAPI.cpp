@@ -100,8 +100,6 @@ void JsonAPI::initialize()
 {
 	// init API, REQUIRED!
 	API::init();
-	// REMOVE when jsonCB is migrated
-	handleInstanceSwitch(0);
 
 	// setup auth interface
 	connect(this, &API::onPendingTokenRequest, this, &JsonAPI::newPendingTokenRequest);
