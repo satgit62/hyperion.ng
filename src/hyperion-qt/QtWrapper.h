@@ -55,5 +55,6 @@ private:
 	/// The grabber for creating screenshots
 	QtGrabber _grabber;
 
-	Image<ColorRgb>  _screenshot;
+protected:
+	QExplicitlySharedDataPointer<Image<ColorRgb>> _screenshot;
 };

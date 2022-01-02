@@ -4,7 +4,9 @@
 
 // Hyperion-utils includes
 #include <utils/ColorRgb.h>
-#include <hyperion/Grabber.h>
+
+// grabber includes
+#include <grabber/Grabber.h>
 
 class QScreen;
 
@@ -14,7 +16,6 @@ class QScreen;
 class QtGrabber : public Grabber
 {
 public:
-
 	QtGrabber(int display=0, int cropLeft=0, int cropRight=0, int cropTop=0, int cropBottom=0);
 
 	~QtGrabber() override;
@@ -26,7 +27,7 @@ public:
 	/// @param[out] image  The snapped screenshot (should be initialized with correct width and
 	/// height)
 	///
-	int grabFrame(Image<ColorRgb> & image);
+	int grabFrame(Image<ColorRgb> *image);
 
 	///
 	/// @brief Set a new video mode

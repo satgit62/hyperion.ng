@@ -6,9 +6,11 @@ find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Core Network Widgets REQUIRED)
 # The following I do not understand completely...
 # libQtCore.so uses some hardcoded library path inside which are incorrect after copying the file RPi file system
 # Therefore, an extra path is needed on which to find the required libraries
-IF ( EXISTS ${CMAKE_FIND_ROOT_PATH}/lib/arm-linux-gnueabihf )
-	LINK_DIRECTORIES(${LINK_DIRECTORIES} ${CMAKE_FIND_ROOT_PATH}/lib/arm-linux-gnueabihf)
-ENDIF()
+if(CMAKE_HOST_UNIX AND NOT APPLE)
+	if ( EXISTS ${CMAKE_FIND_ROOT_PATH}/lib/arm-linux-gnueabihf )
+		LINK_DIRECTORIES(${LINK_DIRECTORIES} ${CMAKE_FIND_ROOT_PATH}/lib/arm-linux-gnueabihf)
+	endif()
+endif()
 
 set(hyperion-remote_HEADERS
 	JsonConnection.h)

@@ -1,17 +1,25 @@
-#include <hyperion/Grabber.h>
-#include <hyperion/GrabberWrapper.h>
+#include <grabber/Grabber.h>
+#include <grabber/GrabberWrapper.h>
+
+#include <QTimer>
+
+const int Grabber::DEFAULT_RATE_HZ = 25;
+const int Grabber::DEFAULT_MIN_GRAB_RATE_HZ = 1;
+const int Grabber::DEFAULT_MAX_GRAB_RATE_HZ = 30;
+const int Grabber::DEFAULT_PIXELDECIMATION = 8;
 
 Grabber::Grabber(const QString& grabberName, int cropLeft, int cropRight, int cropTop, int cropBottom)
 	: _grabberName(grabberName)
 	, _log(Logger::getInstance(_grabberName.toUpper()))
-	, _useImageResampler(true)
+	, _imageResampler(nullptr)
+	, _useImageResampler(false)
 	, _videoMode(VideoMode::VIDEO_2D)
 	, _videoStandard(VideoStandard::NO_CHANGE)
-	, _pixelDecimation(GrabberWrapper::DEFAULT_PIXELDECIMATION)
+	, _pixelDecimation(Grabber::DEFAULT_PIXELDECIMATION)
 	, _flipMode(FlipMode::NO_CHANGE)
 	, _width(0)
 	, _height(0)
-	, _fps(GrabberWrapper::DEFAULT_RATE_HZ)
+	, _fps(Grabber::DEFAULT_RATE_HZ)
 	, _fpsSoftwareDecimation(0)
 	, _input(-1)
 	, _cropLeft(0)
@@ -21,7 +29,17 @@ Grabber::Grabber(const QString& grabberName, int cropLeft, int cropRight, int cr
 	, _isEnabled(true)
 	, _isDeviceInError(false)
 {
-	Grabber::setCropping(cropLeft, cropRight, cropTop, cropBottom);
+
+}
+
+void Grabber::start()
+{
+	// TODO
+}
+
+void Grabber::stop()
+{
+	// TODO
 }
 
 void Grabber::setEnabled(bool enable)
@@ -63,8 +81,7 @@ bool Grabber::setPixelDecimation(int pixelDecimation)
 		_pixelDecimation = pixelDecimation;
 		if ( _useImageResampler )
 		{
-			_imageResampler.setHorizontalPixelDecimation(pixelDecimation);
-			_imageResampler.setVerticalPixelDecimation(pixelDecimation);
+			_imageResampler.setPixelDecimation(pixelDecimation);
 		}
 
 		return true;
@@ -99,14 +116,14 @@ void Grabber::setCropping(int cropLeft, int cropRight, int cropTop, int cropBott
 	_cropTop    = cropTop;
 	_cropBottom = cropBottom;
 
-	if ( _useImageResampler )
+	if (_useImageResampler)
 	{
 		_imageResampler.setCropping(cropLeft, cropRight, cropTop, cropBottom);
 	}
-	else
-	{
-		_imageResampler.setCropping(0, 0, 0, 0);
-	}
+	// else
+	// {
+	// 	_imageResampler.setCropping(0, 0, 0, 0);
+	// }
 
 	if (cropLeft > 0 || cropRight > 0 || cropTop > 0 || cropBottom > 0)
 	{

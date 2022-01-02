@@ -4,62 +4,6 @@
 #include <QObject>
 #include <QJsonObject>
 
-#ifdef ENABLE_DISPMANX
-	#include <grabber/DispmanxWrapper.h>
-#else
-	typedef QObject DispmanxWrapper;
-#endif
-
-#if defined(ENABLE_V4L2) || defined(ENABLE_MF)
-	#include <grabber/VideoWrapper.h>
-#else
-	typedef QObject VideoWrapper;
-#endif
-
-#ifdef ENABLE_FB
-	#include <grabber/FramebufferWrapper.h>
-#else
-	typedef QObject FramebufferWrapper;
-#endif
-
-#ifdef ENABLE_AMLOGIC
-	#include <grabber/AmlogicWrapper.h>
-#else
-	typedef QObject AmlogicWrapper;
-#endif
-
-#ifdef ENABLE_OSX
-	#include <grabber/OsxWrapper.h>
-#else
-	typedef QObject OsxWrapper;
-#endif
-
-#ifdef ENABLE_X11
-	#include <grabber/X11Wrapper.h>
-#else
-	typedef QObject X11Wrapper;
-#endif
-
-#ifdef ENABLE_XCB
-	#include <grabber/XcbWrapper.h>
-#else
-	typedef QObject XcbWrapper;
-#endif
-
-#ifdef ENABLE_QT
-	#include <grabber/QtWrapper.h>
-#else
-	typedef QObject QtWrapper;
-#endif
-
-#ifdef ENABLE_DX
-	#include <grabber/DirectXWrapper.h>
-#else
-	typedef QObject DirectXWrapper;
-#endif
-
-#include <hyperion/GrabberWrapper.h>
-
 #include <utils/Logger.h>
 #include <utils/VideoMode.h>
 
@@ -153,15 +97,7 @@ private slots:
 	void setVideoMode(VideoMode mode);
 
 private:
-	void createGrabberDispmanx(const QJsonObject & grabberConfig);
-	void createGrabberAmlogic(const QJsonObject & grabberConfig);
-	void createGrabberFramebuffer(const QJsonObject & grabberConfig);
-	void createGrabberOsx(const QJsonObject & grabberConfig);
-	void createGrabberX11(const QJsonObject & grabberConfig);
-	void createGrabberXcb(const QJsonObject & grabberConfig);
-	void createGrabberQt(const QJsonObject & grabberConfig);
 	void createCecHandler();
-	void createGrabberDx(const QJsonObject & grabberConfig);
 
 	Logger*                    _log;
 	HyperionIManager*          _instanceManager;
@@ -172,15 +108,6 @@ private:
 	WebServer*                 _webserver;
 	WebServer*                 _sslWebserver;
 	JsonServer*                _jsonServer;
-	VideoWrapper*              _videoGrabber;
-	DispmanxWrapper*           _dispmanx;
-	X11Wrapper*                _x11Grabber;
-	XcbWrapper*                _xcbGrabber;
-	AmlogicWrapper*            _amlGrabber;
-	FramebufferWrapper*        _fbGrabber;
-	OsxWrapper*                _osxGrabber;
-	QtWrapper*                 _qtGrabber;
-	DirectXWrapper*            _dxGrabber;
 	SSDPHandler*               _ssdp;
 
 	#ifdef ENABLE_CEC
@@ -192,16 +119,6 @@ private:
 	#if defined(ENABLE_PROTOBUF_SERVER)
 	ProtoServer*               _protoServer;
 	#endif
-	int                        _grabber_width;
-	int                        _grabber_height;
-	int                        _grabber_pixelDecimation;
-	int                        _grabber_frequency;
-	int                        _grabber_cropLeft;
-	int                        _grabber_cropRight;
-	int                        _grabber_cropTop;
-	int                        _grabber_cropBottom;
-
-	QString                    _prevType;
 
 	VideoMode                  _currVideoMode;
 	SettingsManager*           _settingsManager;

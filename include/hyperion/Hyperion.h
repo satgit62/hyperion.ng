@@ -47,11 +47,11 @@ class MultiColorAdjustment;
 class ColorAdjustment;
 class SettingsManager;
 class BGEffectHandler;
-class CaptureCont;
 #if defined(ENABLE_BOBLIGHT_SERVER)
 class BoblightServer;
 #endif
 class LedDeviceWrapper;
+class GrabberWrapper;
 class Logger;
 
 ///
@@ -530,6 +530,9 @@ private:
 	/// The actual LedDeviceWrapper
 	LedDeviceWrapper* _ledDeviceWrapper;
 
+	/// The GrabberWrapper
+	GrabberWrapper* _grabberWrapper;
+
 	/// The smoothing LedDevice
 	LinearColorSmoothing * _deviceSmooth;
 
@@ -551,8 +554,6 @@ private:
 
 	/// Background effect instance, kept active to react on setting changes
 	BGEffectHandler* _BGEffectHandler;
-	/// Capture control for Daemon native capture
-	CaptureCont* _captureCont;
 
 	/// buffer for leds (with adjustment)
 	std::vector<ColorRgb> _ledBuffer;

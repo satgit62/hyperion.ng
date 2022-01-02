@@ -4,8 +4,11 @@
 #include <QThread>
 
 // util includes
+#include <utils/VideoMode.h>
 #include <utils/PixelFormat.h>
-#include <utils/ImageResampler.h>
+#include <utils/Image.h>
+#include <utils/ColorRgb.h>
+#include <utils/ColorSys.h>
 
 // Determine the cmake options
 #include <HyperionConfig.h>
@@ -15,7 +18,7 @@
 	#include <turbojpeg.h>
 #endif
 
-/// Encoder thread for USB devices
+/// Encoder thread for image data
 class EncoderThread : public QObject
 {
 	Q_OBJECT
@@ -24,10 +27,9 @@ public:
 	~EncoderThread();
 
 	void setup(
-		PixelFormat pixelFormat, uint8_t* sharedData,
-		int size, int width, int height, int lineLength,
+		uint8_t* sharedData, int size, int width, int height, int lineLength,
 		unsigned cropLeft, unsigned cropTop, unsigned cropBottom, unsigned cropRight,
-		VideoMode videoMode, FlipMode flipMode, int pixelDecimation);
+		VideoMode videoMode, FlipMode flipMode, int pixelDecimation, PixelFormat pixelFormat);
 
 	void process();
 
@@ -46,14 +48,15 @@ private:
 						_height,
 						_lineLength,
 						_currentFrame,
-						_pixelDecimation;
+						_horizontalDecimation,
+						_verticalDecimation;
 	unsigned long		_size;
 	unsigned			_cropLeft,
 						_cropTop,
 						_cropBottom,
 						_cropRight;
+	VideoMode			_videoMode;
 	FlipMode			_flipMode;
-	ImageResampler		_imageResampler;
 
 #ifdef HAVE_TURBO_JPEG
 	tjhandle			_transform, _decompress;
@@ -85,17 +88,16 @@ public:
 	EncoderThread* thread() const { return qobject_cast<EncoderThread*>(_thread); }
 
 	void setup(
-		PixelFormat pixelFormat, uint8_t* sharedData,
-		int size, int width, int height, int lineLength,
+		uint8_t* sharedData, int size, int width, int height, int lineLength,
 		unsigned cropLeft, unsigned cropTop, unsigned cropBottom, unsigned cropRight,
-		VideoMode videoMode, FlipMode flipMode, int pixelDecimation)
+		VideoMode videoMode, FlipMode flipMode, int pixelDecimation, PixelFormat pixelFormat)
 	{
 		auto encThread = qobject_cast<EncoderThread*>(_thread);
 		if (encThread != nullptr)
-			encThread->setup(pixelFormat, sharedData,
+			encThread->setup(sharedData,
 				size, width, height, lineLength,
 				cropLeft, cropTop, cropBottom, cropRight,
-				videoMode, flipMode, pixelDecimation);
+				videoMode, flipMode, pixelDecimation, pixelFormat);
 	}
 
 	bool isBusy()
@@ -120,57 +122,4 @@ protected:
 		QThread::run();
 		delete _thread;
 	}
-};
-
-class EncoderThreadManager : public QObject
-{
-    Q_OBJECT
-public:
-	explicit EncoderThreadManager(QObject *parent = nullptr)
-		: QObject(parent)
-		, _threadCount(qMax(QThread::idealThreadCount(), 1))
-		, _threads(nullptr)
-	{
-		_threads = new Thread<EncoderThread>*[_threadCount];
-		for (int i = 0; i < _threadCount; i++)
-		{
-			_threads[i] = new Thread<EncoderThread>(new EncoderThread, this);
-			_threads[i]->setObjectName("Encoder " + QString::number(i));
-		}
-	}
-
-	~EncoderThreadManager()
-	{
-		if (_threads != nullptr)
-		{
-			for(int i = 0; i < _threadCount; i++)
-			{
-				_threads[i]->deleteLater();
-				_threads[i] = nullptr;
-			}
-
-			delete[] _threads;
-			_threads = nullptr;
-		}
-	}
-
-	void start()
-	{
-		if (_threads != nullptr)
-			for (int i = 0; i < _threadCount; i++)
-				connect(_threads[i]->thread(), &EncoderThread::newFrame, this, &EncoderThreadManager::newFrame);
-	}
-
-	void stop()
-	{
-		if (_threads != nullptr)
-			for(int i = 0; i < _threadCount; i++)
-				disconnect(_threads[i]->thread(), nullptr, nullptr, nullptr);
-	}
-
-	int					_threadCount;
-	Thread<EncoderThread>**	_threads;
-
-signals:
-	void newFrame(const Image<ColorRgb>& data);
 };

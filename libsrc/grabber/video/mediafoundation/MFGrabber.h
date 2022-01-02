@@ -20,9 +20,6 @@
 #include <utils/Components.h>
 #include <hyperion/Grabber.h>
 
-// decoder thread includes
-#include <grabber/EncoderThread.h>
-
 /// Forward class declaration
 class SourceReaderCB;
 /// Forward struct declaration
@@ -84,7 +81,6 @@ public slots:
 	bool prepare();
 	bool start();
 	void stop();
-	void newThreadFrame(Image<ColorRgb> image);
 
 signals:
 	void newFrame(const Image<ColorRgb> & image);
@@ -96,7 +92,6 @@ private:
 	HRESULT init_device(QString device, DeviceProperties props);
 	void enumVideoCaptureDevices();
 	void start_capturing();
-	void process_image(const void *frameImageBuffer, int size);
 
 	QString										_currentDeviceName,
 												_newDeviceName;
@@ -105,7 +100,6 @@ private:
 	HRESULT										_hr;
 	IMFSourceReader*							_sourceReader;
 	SourceReaderCB*								_sourceReaderCB;
-	EncoderThreadManager*						_threadManager;
 	PixelFormat									_pixelFormat,
 												_pixelFormatConfig;
 	int											_lineLength,

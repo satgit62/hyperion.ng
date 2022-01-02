@@ -16,9 +16,9 @@ namespace settings {
 		DEVICE,
 		EFFECTS,
 		NETFORWARD,
-		SYSTEMCAPTURE,
+		SCREENGRABBER,
+		VIDEOGRABBER,
 		GENERAL,
-		V4L2,
 		JSONSERVER,
 		LEDCONFIG,
 		LEDS,
@@ -49,9 +49,9 @@ namespace settings {
 			case DEVICE:        return "device";
 			case EFFECTS:       return "effects";
 			case NETFORWARD:    return "forwarder";
-			case SYSTEMCAPTURE: return "framegrabber";
+			case SCREENGRABBER: return "screenGrabber";
+			case VIDEOGRABBER:  return "videoGrabber";
 			case GENERAL:       return "general";
-			case V4L2:          return "grabberV4L2";
 			case JSONSERVER:    return "jsonServer";
 			case LEDCONFIG:     return "ledConfig";
 			case LEDS:          return "leds";
@@ -81,9 +81,9 @@ namespace settings {
 		else if (type == "device")               return DEVICE;
 		else if (type == "effects")              return EFFECTS;
 		else if (type == "forwarder")            return NETFORWARD;
-		else if (type == "framegrabber")         return SYSTEMCAPTURE;
+		else if (type == "screenGrabber")        return SCREENGRABBER;
+		else if (type == "videoGrabber")         return VIDEOGRABBER;
 		else if (type == "general")              return GENERAL;
-		else if (type == "grabberV4L2")          return V4L2;
 		else if (type == "jsonServer")           return JSONSERVER;
 		else if (type == "ledConfig")            return LEDCONFIG;
 		else if (type == "leds")                 return LEDS;

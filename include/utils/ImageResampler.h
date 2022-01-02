@@ -1,31 +1,40 @@
 #pragma once
 
+// Qt includes
+#include <QThread>
+
+// util includes
 #include <utils/VideoMode.h>
 #include <utils/PixelFormat.h>
 #include <utils/Image.h>
 #include <utils/ColorRgb.h>
+#include <utils/EncoderThread.h>
 
-class ImageResampler
+class ImageResampler : public QObject
 {
+    Q_OBJECT
 public:
-	ImageResampler();
-	~ImageResampler() {}
+	explicit ImageResampler(QObject *parent = nullptr);
+	~ImageResampler();
 
-	void setHorizontalPixelDecimation(int decimator) { _horizontalDecimation = decimator; }
-	void setVerticalPixelDecimation(int decimator) { _verticalDecimation = decimator; }
+	void setPixelDecimation(int decimator) { _pixelDecimation = decimator; }
 	void setCropping(int cropLeft, int cropRight, int cropTop, int cropBottom);
 	void setVideoMode(VideoMode mode) { _videoMode = mode; }
 	void setFlipMode(FlipMode mode) { _flipMode = mode; }
-	void processImage(const uint8_t * data, int width, int height, int lineLength, PixelFormat pixelFormat, Image<ColorRgb> & outputImage) const;
+	void processImage(const uint8_t *data, int size, int width, int height, int lineLength, PixelFormat pixelFormat) const;
+
+signals:
+	void newFrame(const Image<ColorRgb>& data);
 
 private:
-	int _horizontalDecimation;
-	int _verticalDecimation;
-	int _cropLeft;
-	int _cropRight;
-	int _cropTop;
-	int _cropBottom;
-	VideoMode _videoMode;
-	FlipMode _flipMode;
-};
+	int						_pixelDecimation,
+							_cropLeft,
+							_cropRight,
+							_cropTop,
+							_cropBottom,
+							_threadCount;
+	Thread<EncoderThread>**	_threads;
+	VideoMode				_videoMode;
+	FlipMode				_flipMode;
 
+};

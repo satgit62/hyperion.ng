@@ -22,6 +22,7 @@ target_link_libraries(hyperion
 	blackborder
 	hyperion-utils
 	leddevice
+	grabber
 	effectengine
 	database
 	${QT_LIBRARIES}

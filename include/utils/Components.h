@@ -21,8 +21,8 @@ enum Components
 #if defined(ENABLE_BOBLIGHT_SERVER)
 	COMP_BOBLIGHTSERVER,
 #endif
-	COMP_GRABBER,
-	COMP_V4L,
+	COMP_SCREEN_GRABBER,
+	COMP_VIDEO_GRABBER,
 	COMP_COLOR,
 	COMP_IMAGE,
 	COMP_EFFECT,
@@ -39,28 +39,28 @@ inline const char* componentToString(Components c)
 {
 	switch (c)
 	{
-		case COMP_ALL:           return "Hyperion";
-		case COMP_SMOOTHING:     return "Smoothing";
-		case COMP_BLACKBORDER:   return "Blackborder detector";
+		case COMP_ALL:            return "Hyperion";
+		case COMP_SMOOTHING:      return "Smoothing";
+		case COMP_BLACKBORDER:    return "Blackborder detector";
 #if defined(ENABLE_FORWARDER)
-		case COMP_FORWARDER:     return "Json/Proto forwarder";
+		case COMP_FORWARDER:      return "Json/Proto forwarder";
 #endif
 #if defined(ENABLE_BOBLIGHT_SERVER)
-		case COMP_BOBLIGHTSERVER:return "Boblight server";
+		case COMP_BOBLIGHTSERVER: return "Boblight server";
 #endif
-		case COMP_GRABBER:       return "Framegrabber";
-		case COMP_V4L:           return "V4L capture device";
-		case COMP_COLOR:         return "Solid color";
-		case COMP_EFFECT:        return "Effect";
-		case COMP_IMAGE:         return "Image";
-		case COMP_LEDDEVICE:     return "LED device";
+		case COMP_SCREEN_GRABBER: return "Screen Grabber";
+		case COMP_VIDEO_GRABBER:  return "Video Grabber";
+		case COMP_COLOR:          return "Solid color";
+		case COMP_EFFECT:         return "Effect";
+		case COMP_IMAGE:          return "Image";
+		case COMP_LEDDEVICE:      return "LED device";
 #if defined(ENABLE_FLATBUF_SERVER)
-		case COMP_FLATBUFSERVER: return "Image Receiver";
+		case COMP_FLATBUFSERVER:  return "Image Receiver";
 #endif
 #if defined(ENABLE_PROTOBUF_SERVER)
-		case COMP_PROTOSERVER:   return "Proto Server";
+		case COMP_PROTOSERVER:    return "Proto Server";
 #endif
-		default:                 return "";
+		default:                  return "";
 	}
 }
 
@@ -68,28 +68,28 @@ inline const char* componentToIdString(Components c)
 {
 	switch (c)
 	{
-		case COMP_ALL:           return "ALL";
-		case COMP_SMOOTHING:     return "SMOOTHING";
-		case COMP_BLACKBORDER:   return "BLACKBORDER";
+		case COMP_ALL:            return "ALL";
+		case COMP_SMOOTHING:      return "SMOOTHING";
+		case COMP_BLACKBORDER:    return "BLACKBORDER";
 #if defined(ENABLE_FORWARDER)
-		case COMP_FORWARDER:     return "FORWARDER";
+		case COMP_FORWARDER:      return "FORWARDER";
 #endif
 #if defined(ENABLE_BOBLIGHT_SERVER)
-		case COMP_BOBLIGHTSERVER:return "BOBLIGHTSERVER";
+		case COMP_BOBLIGHTSERVER: return "BOBLIGHTSERVER";
 #endif
-		case COMP_GRABBER:       return "GRABBER";
-		case COMP_V4L:           return "V4L";
-		case COMP_COLOR:         return "COLOR";
-		case COMP_EFFECT:        return "EFFECT";
-		case COMP_IMAGE:         return "IMAGE";
-		case COMP_LEDDEVICE:     return "LEDDEVICE";
+		case COMP_SCREEN_GRABBER: return "SCREENGRABBER";
+		case COMP_VIDEO_GRABBER:  return "VIDEOGRABBER";
+		case COMP_COLOR:          return "COLOR";
+		case COMP_EFFECT:         return "EFFECT";
+		case COMP_IMAGE:          return "IMAGE";
+		case COMP_LEDDEVICE:      return "LEDDEVICE";
 #if defined(ENABLE_FLATBUF_SERVER)
-		case COMP_FLATBUFSERVER: return "FLATBUFSERVER";
+		case COMP_FLATBUFSERVER:  return "FLATBUFSERVER";
 #endif
 #if defined(ENABLE_PROTOBUF_SERVER)
-		case COMP_PROTOSERVER:   return "PROTOSERVER";
+		case COMP_PROTOSERVER:    return "PROTOSERVER";
 #endif
-		default:                 return "";
+		default:                  return "";
 	}
 }
 
@@ -105,8 +105,8 @@ inline Components stringToComponent(const QString& component)
 #if defined(ENABLE_BOBLIGHT_SERVER)
 	if (cmp == "BOBLIGHTSERVER")return COMP_BOBLIGHTSERVER;
 #endif
-	if (cmp == "GRABBER")       return COMP_GRABBER;
-	if (cmp == "V4L")           return COMP_V4L;
+	if (cmp == "SCREENGRABBER") return COMP_SCREEN_GRABBER;
+	if (cmp == "VIDEOGRABBER")  return COMP_VIDEO_GRABBER;
 	if (cmp == "COLOR")         return COMP_COLOR;
 	if (cmp == "EFFECT")        return COMP_EFFECT;
 	if (cmp == "IMAGE")         return COMP_IMAGE;

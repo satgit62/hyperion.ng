@@ -25,6 +25,9 @@
 // LedDevice includes
 #include <leddevice/LedDeviceWrapper.h>
 
+// GrabberWrapper
+#include <grabber/GrabberWrapper.h>
+
 #include <hyperion/MultiColorAdjustment.h>
 #include "LinearColorSmoothing.h"
 
@@ -36,9 +39,6 @@
 
 // BGEffectHandler
 #include <hyperion/BGEffectHandler.h>
-
-// CaptureControl (Daemon capture)
-#include <hyperion/CaptureCont.h>
 
 // Boblight
 #if defined(ENABLE_BOBLIGHT_SERVER)
@@ -55,6 +55,7 @@ Hyperion::Hyperion(quint8 instance, bool readonlyMode)
 	, _muxer(static_cast<int>(_ledString.leds().size()), this)
 	, _raw2ledAdjustment(hyperion::createLedColorsAdjustment(static_cast<int>(_ledString.leds().size()), getSetting(settings::COLOR).object()))
 	, _ledDeviceWrapper(nullptr)
+	, _grabberWrapper(nullptr)
 	, _deviceSmooth(nullptr)
 	, _effectEngine(nullptr)
 #if defined(ENABLE_FORWARDER)
@@ -64,7 +65,6 @@ Hyperion::Hyperion(quint8 instance, bool readonlyMode)
 	, _hwLedCount()
 	, _ledGridSize(hyperion::getLedLayoutGridSize(getSetting(settings::LEDS).array()))
 	, _BGEffectHandler(nullptr)
-	, _captureCont(nullptr)
 	, _ledBuffer(_ledString.leds().size(), ColorRgb::BLACK)
 #if defined(ENABLE_BOBLIGHT_SERVER)
 	, _boblightServer(nullptr)
@@ -126,6 +126,14 @@ void Hyperion::start()
 	connect(this, &Hyperion::ledDeviceData, _ledDeviceWrapper, &LedDeviceWrapper::updateLeds);
 	_ledDeviceWrapper->createLedDevice(ledDevice);
 
+	// initialize Screen/Video Grabber
+	_grabberWrapper = new GrabberWrapper(this);
+	connect(_settingsManager, &SettingsManager::settingsChanged, _grabberWrapper, &GrabberWrapper::settingsChanged);
+	connect(this, &Hyperion::compStateChangeRequest, _grabberWrapper, &GrabberWrapper::componentStateChanged);
+	connect(this, &Hyperion::newVideoMode, _grabberWrapper, &GrabberWrapper::newVideoMode);
+	_grabberWrapper->createGrabber(getSetting(settings::SCREENGRABBER).object(), settings::SCREENGRABBER);
+	// _grabberWrapper->createGrabber(getSetting(settings::VIDEOGRABBER).object(), settings::VIDEOGRABBER);
+
 	// smoothing
 	_deviceSmooth = new LinearColorSmoothing(getSetting(settings::SMOOTHING), this);
 	connect(this, &Hyperion::settingsChanged, _deviceSmooth, &LinearColorSmoothing::handleSettingsUpdate);
@@ -151,10 +159,7 @@ void Hyperion::start()
 	// handle background effect
 	_BGEffectHandler = new BGEffectHandler(this);
 
-	// create the Daemon capture interface
-	_captureCont = new CaptureCont(this);
-
-	// forwards global signals to the corresponding slots
+	// forwards global signals (Flat/Proto) to the corresponding slots
 	connect(GlobalSignals::getInstance(), &GlobalSignals::registerGlobalInput, this, &Hyperion::registerInput);
 	connect(GlobalSignals::getInstance(), &GlobalSignals::clearGlobalInput, this, &Hyperion::clear);
 	connect(GlobalSignals::getInstance(), &GlobalSignals::setGlobalColor, this, &Hyperion::setColor);
@@ -189,7 +194,6 @@ void Hyperion::freeObjects()
 	delete _boblightServer;
 #endif
 
-	delete _captureCont;
 	delete _effectEngine;
 	delete _raw2ledAdjustment;
 
@@ -279,6 +283,11 @@ void Hyperion::handleSettingsUpdate(settings::type type, const QJsonDocument& co
 	else if(type == settings::SMOOTHING)
 	{
 		_deviceSmooth->handleSettingsUpdate( type, config);
+	}
+	else if (type == settings::SCREENGRABBER)
+	{
+		// do always reinit until the grabber can handle dynamic changes
+		_grabberWrapper->createGrabber(config.object(), settings::SCREENGRABBER);
 	}
 
 	// update once to push single color sets / adjustments/ ledlayout resizes and update ledBuffer color

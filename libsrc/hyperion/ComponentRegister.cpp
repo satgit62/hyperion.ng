@@ -3,7 +3,7 @@
 
 #include <hyperion/Hyperion.h>
 
-#include <hyperion/GrabberWrapper.h>
+#include <grabber/GrabberWrapper.h>
 
 using namespace hyperion;
 
@@ -30,12 +30,12 @@ ComponentRegister::ComponentRegister(Hyperion* hyperion)
 
 	if (areScreenGrabberAvailable)
 	{
-		vect << COMP_GRABBER;
+		vect << COMP_SCREEN_GRABBER;
 	}
 
 	if (areVideoGrabberAvailable)
 	{
-		vect << COMP_V4L;
+		vect << COMP_VIDEO_GRABBER;
 	}
 
 	if (areScreenGrabberAvailable || areVideoGrabberAvailable || flatBufServerAvailable || protoBufServerAvailable)

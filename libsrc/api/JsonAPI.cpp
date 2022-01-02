@@ -18,42 +18,42 @@
 
 #include <HyperionConfig.h> // Required to determine the cmake options
 
-#include <hyperion/GrabberWrapper.h>
-#include <grabber/QtGrabber.h>
+#include <grabber/GrabberWrapper.h>
+// #include <grabber/QtGrabber.h>
 
-#if defined(ENABLE_MF)
-	#include <grabber/MFGrabber.h>
-#elif defined(ENABLE_V4L2)
-	#include <grabber/V4L2Grabber.h>
-#endif
+// #if defined(ENABLE_MF)
+// 	#include <grabber/MFGrabber.h>
+// #elif defined(ENABLE_V4L2)
+// 	#include <grabber/V4L2Grabber.h>
+// #endif
 
-#if defined(ENABLE_X11)
-	#include <grabber/X11Grabber.h>
-#endif
+// #if defined(ENABLE_X11)
+// 	#include <grabber/X11Grabber.h>
+// #endif
 
-#if defined(ENABLE_XCB)
-	#include <grabber/XcbGrabber.h>
-#endif
+// #if defined(ENABLE_XCB)
+// 	#include <grabber/XcbGrabber.h>
+// #endif
 
-#if defined(ENABLE_DX)
-	#include <grabber/DirectXGrabber.h>
-#endif
+// #if defined(ENABLE_DX)
+// 	#include <grabber/DirectXGrabber.h>
+// #endif
 
-#if defined(ENABLE_FB)
-	#include <grabber/FramebufferFrameGrabber.h>
-#endif
+// #if defined(ENABLE_FB)
+// 	#include <grabber/FramebufferFrameGrabber.h>
+// #endif
 
-#if defined(ENABLE_DISPMANX)
-	#include <grabber/DispmanxFrameGrabber.h>
-#endif
+// #if defined(ENABLE_DISPMANX)
+// 	#include <grabber/DispmanxFrameGrabber.h>
+// #endif
 
-#if defined(ENABLE_AMLOGIC)
-	#include <grabber/AmlogicGrabber.h>
-#endif
+// #if defined(ENABLE_AMLOGIC)
+// 	#include <grabber/AmlogicGrabber.h>
+// #endif
 
-#if defined(ENABLE_OSX)
-	#include <grabber/OsxFrameGrabber.h>
-#endif
+// #if defined(ENABLE_OSX)
+// 	#include <grabber/OsxFrameGrabber.h>
+// #endif
 
 #include <utils/jsonschema/QJsonFactory.h>
 #include <utils/jsonschema/QJsonSchemaChecker.h>
@@ -511,69 +511,69 @@ void JsonAPI::handleServerInfoCommand(const QJsonObject &message, const QString 
 	ledDevices["available"] = availableLedDevices;
 	info["ledDevices"] = ledDevices;
 
-	QJsonObject grabbers;
+	// QJsonObject grabbers;
 
-	// *** Deprecated ***
-	//QJsonArray availableGrabbers;
-	//if ( GrabberWrapper::getInstance() != nullptr )
-	//{
-	//	QStringList activeGrabbers = GrabberWrapper::getInstance()->getActive(_hyperion->getInstanceIndex());
-	//	QJsonArray activeGrabberNames;
-	//	for (auto grabberName : activeGrabbers)
-	//	{
-	//		activeGrabberNames.append(grabberName);
-	//	}
+	// // *** Deprecated ***
+	// //QJsonArray availableGrabbers;
+	// //if ( GrabberWrapper::getInstance() != nullptr )
+	// //{
+	// //	QStringList activeGrabbers = GrabberWrapper::getInstance()->getActive(_hyperion->getInstanceIndex());
+	// //	QJsonArray activeGrabberNames;
+	// //	for (auto grabberName : activeGrabbers)
+	// //	{
+	// //		activeGrabberNames.append(grabberName);
+	// //	}
 
-	//	grabbers["active"] = activeGrabberNames;
-	//}
-	//for (auto grabber : GrabberWrapper::availableGrabbers(GrabberTypeFilter::ALL))
-	//{
-	//	availableGrabbers.append(grabber);
-	//}
+	// //	grabbers["active"] = activeGrabberNames;
+	// //}
+	// //for (auto grabber : GrabberWrapper::availableGrabbers(GrabberTypeFilter::ALL))
+	// //{
+	// //	availableGrabbers.append(grabber);
+	// //}
 
-	//grabbers["available"] = availableGrabbers;
+	// //grabbers["available"] = availableGrabbers;
 
-	QJsonObject screenGrabbers;
-	if (GrabberWrapper::getInstance() != nullptr)
-	{
-		QStringList activeGrabbers = GrabberWrapper::getInstance()->getActive(_hyperion->getInstanceIndex(), GrabberTypeFilter::SCREEN);
-		QJsonArray activeGrabberNames;
-		for (auto grabberName : activeGrabbers)
-		{
-			activeGrabberNames.append(grabberName);
-		}
+	// QJsonObject screenGrabbers;
+	// if (GrabberWrapper::getInstance() != nullptr)
+	// {
+	// 	QStringList activeGrabbers = GrabberWrapper::getInstance()->getActive(_hyperion->getInstanceIndex(), GrabberTypeFilter::SCREEN);
+	// 	QJsonArray activeGrabberNames;
+	// 	for (auto grabberName : activeGrabbers)
+	// 	{
+	// 		activeGrabberNames.append(grabberName);
+	// 	}
 
-		screenGrabbers["active"] = activeGrabberNames;
-	}
-	QJsonArray availableScreenGrabbers;
-	for (auto grabber : GrabberWrapper::availableGrabbers(GrabberTypeFilter::SCREEN))
-	{
-		availableScreenGrabbers.append(grabber);
-	}
-	screenGrabbers["available"] = availableScreenGrabbers;
+	// 	screenGrabbers["active"] = activeGrabberNames;
+	// }
+	// QJsonArray availableScreenGrabbers;
+	// for (auto grabber : GrabberWrapper::availableGrabbers(GrabberTypeFilter::SCREEN))
+	// {
+	// 	availableScreenGrabbers.append(grabber);
+	// }
+	// screenGrabbers["available"] = availableScreenGrabbers;
 
-	QJsonObject videoGrabbers;
-	if (GrabberWrapper::getInstance() != nullptr)
-	{
-		QStringList activeGrabbers = GrabberWrapper::getInstance()->getActive(_hyperion->getInstanceIndex(), GrabberTypeFilter::VIDEO);
-		QJsonArray activeGrabberNames;
-		for (auto grabberName : activeGrabbers)
-		{
-			activeGrabberNames.append(grabberName);
-		}
+	// QJsonObject videoGrabbers;
+	// if (GrabberWrapper::getInstance() != nullptr)
+	// {
+	// 	QStringList activeGrabbers = GrabberWrapper::getInstance()->getActive(_hyperion->getInstanceIndex(), GrabberTypeFilter::VIDEO);
+	// 	QJsonArray activeGrabberNames;
+	// 	for (auto grabberName : activeGrabbers)
+	// 	{
+	// 		activeGrabberNames.append(grabberName);
+	// 	}
 
-		videoGrabbers["active"] = activeGrabberNames;
-	}
-	QJsonArray availableVideoGrabbers;
-	for (auto grabber : GrabberWrapper::availableGrabbers(GrabberTypeFilter::VIDEO))
-	{
-		availableVideoGrabbers.append(grabber);
-	}
-	videoGrabbers["available"] = availableVideoGrabbers;
+	// 	videoGrabbers["active"] = activeGrabberNames;
+	// }
+	// QJsonArray availableVideoGrabbers;
+	// for (auto grabber : GrabberWrapper::availableGrabbers(GrabberTypeFilter::VIDEO))
+	// {
+	// 	availableVideoGrabbers.append(grabber);
+	// }
+	// videoGrabbers["available"] = availableVideoGrabbers;
 
-	grabbers.insert("screen", screenGrabbers);
-	grabbers.insert("video", videoGrabbers);
-	info["grabbers"] = grabbers;
+	// grabbers.insert("screen", screenGrabbers);
+	// grabbers.insert("video", videoGrabbers);
+	// info["grabbers"] = grabbers;
 
 	info["videomode"] = QString(videoMode2String(_hyperion->getCurrentVideoMode()));
 
@@ -1571,113 +1571,114 @@ void JsonAPI::handleInputSourceCommand(const QJsonObject& message, const QString
 			inputSourcesDiscovered.insert("sourceType", sourceType);
 			QJsonArray videoInputs;
 
-#if defined(ENABLE_V4L2) || defined(ENABLE_MF)
+// #if defined(ENABLE_V4L2) || defined(ENABLE_MF)
 
-			if (sourceType == "video" )
-			{
-#if defined(ENABLE_MF)
-				MFGrabber* grabber = new MFGrabber();
-#elif defined(ENABLE_V4L2)
-				V4L2Grabber* grabber = new V4L2Grabber();
-#endif
-				QJsonObject params;
-				videoInputs = grabber->discover(params);
-				delete grabber;
-			}
-			else
-#endif
-			{
-				DebugIf(verbose, _log, "sourceType: [%s]", QSTRING_CSTR(sourceType));
+// 			if (sourceType == "video" )
+// 			{
+// #if defined(ENABLE_MF)
+// 				MFGrabber* grabber = new MFGrabber();
+// #elif defined(ENABLE_V4L2)
+// 				V4L2Grabber* grabber = new V4L2Grabber();
+// #endif
+// 				QJsonObject params;
+// 				videoInputs = grabber->discover(params);
+// 				delete grabber;
+// 			}
+// 			else
+// #endif
+// 			{
+// 				DebugIf(verbose, _log, "sourceType: [%s]", QSTRING_CSTR(sourceType));
 
-				if (sourceType == "screen")
-				{
-					QJsonObject params;
+// 				if (sourceType == "screen")
+// 				{
+// 					QJsonObject params;
 
-					QJsonObject device;
-					#ifdef ENABLE_QT
-					QtGrabber* qtgrabber = new QtGrabber();
-					device = qtgrabber->discover(params);
-					if (!device.isEmpty() )
-					{
-						videoInputs.append(device);
-					}
-					delete qtgrabber;
-					#endif
+// 					QJsonObject device;
+// 					#ifdef ENABLE_QT
+// 					QtGrabber* qtgrabber = new QtGrabber();
+// 					device = qtgrabber->discover(params);
+// 					if (!device.isEmpty() )
+// 					{
+// 						videoInputs.append(device);
+// 					}
+// 					delete qtgrabber;
+// 					#endif
 
-					#ifdef ENABLE_DX
-					DirectXGrabber* dxgrabber = new DirectXGrabber();
-					device = dxgrabber->discover(params);
-					if (!device.isEmpty() )
-					{
-						videoInputs.append(device);
-					}
-					delete dxgrabber;
-					#endif
+// 					#ifdef ENABLE_DX
+// 					DirectXGrabber* dxgrabber = new DirectXGrabber();
+// 					device = dxgrabber->discover(params);
+// 					if (!device.isEmpty() )
+// 					{
+// 						videoInputs.append(device);
+// 					}
+// 					delete dxgrabber;
+// 					#endif
 
-					#ifdef ENABLE_X11
-					X11Grabber* x11Grabber = new X11Grabber();
-					device = x11Grabber->discover(params);
-					if (!device.isEmpty() )
-					{
-						videoInputs.append(device);
-					}
-					delete x11Grabber;
-					#endif
+// 					#ifdef ENABLE_X11
+// 					X11Grabber* x11Grabber = new X11Grabber();
+// 					device = x11Grabber->discover(params);
+// 					if (!device.isEmpty() )
+// 					{
+// 						videoInputs.append(device);
+// 					}
+// 					delete x11Grabber;
+// 					#endif
 
-					#ifdef ENABLE_XCB
-					XcbGrabber* xcbGrabber = new XcbGrabber();
-					device = xcbGrabber->discover(params);
-					if (!device.isEmpty() )
-					{
-						videoInputs.append(device);
-					}
-					delete xcbGrabber;
-					#endif
+// 					#ifdef ENABLE_XCB
+// 					XcbGrabber* xcbGrabber = new XcbGrabber();
+// 					device = xcbGrabber->discover(params);
+// 					if (!device.isEmpty() )
+// 					{
+// 						videoInputs.append(device);
+// 					}
+// 					delete xcbGrabber;
+// 					#endif
 
-					//Ignore FB for Amlogic, as it is embedded in the Amlogic grabber itself
-					#if defined(ENABLE_FB) && !defined(ENABLE_AMLOGIC)
+// 					//Ignore FB for Amlogic, as it is embedded in the Amlogic grabber itself
+// 					#if defined(ENABLE_FB) && !defined(ENABLE_AMLOGIC)
 
-					FramebufferFrameGrabber* fbGrabber = new FramebufferFrameGrabber();
-					device = fbGrabber->discover(params);
-					if (!device.isEmpty() )
-					{
-						videoInputs.append(device);
-					}
-					delete fbGrabber;
-					#endif
+// 					FramebufferFrameGrabber* fbGrabber = new FramebufferFrameGrabber();
+// 					device = fbGrabber->discover(params);
+// 					if (!device.isEmpty() )
+// 					{
+// 						videoInputs.append(device);
+// 					}
+// 					delete fbGrabber;
+// 					#endif
 
-					#if defined(ENABLE_DISPMANX)
-					DispmanxFrameGrabber* dispmanx = new DispmanxFrameGrabber();
-					device = dispmanx->discover(params);
-					if (!device.isEmpty() )
-					{
-						videoInputs.append(device);
-					}
-					delete dispmanx;
-					#endif
+// 					#if defined(ENABLE_DISPMANX)
+// 					DispmanxFrameGrabber* dispmanx = new DispmanxFrameGrabber();
+// 					device = dispmanx->discover(params);
+// 					if (!device.isEmpty() )
+// 					{
+// 						videoInputs.append(device);
+// 					}
+// 					delete dispmanx;
+// 					#endif
 
-					#if defined(ENABLE_AMLOGIC)
-					AmlogicGrabber* amlGrabber = new AmlogicGrabber();
-					device = amlGrabber->discover(params);
-					if (!device.isEmpty() )
-					{
-						videoInputs.append(device);
-					}
-					delete amlGrabber;
-					#endif
+// 					#if defined(ENABLE_AMLOGIC)
+// 					AmlogicGrabber* amlGrabber = new AmlogicGrabber();
+// 					device = amlGrabber->discover(params);
+// 					if (!device.isEmpty() )
+// 					{
+// 						videoInputs.append(device);
+// 					}
+// 					delete amlGrabber;
+// 					#endif
 
-					#if defined(ENABLE_OSX)
-					OsxFrameGrabber* osxGrabber = new OsxFrameGrabber();
-					device = osxGrabber->discover(params);
-					if (!device.isEmpty() )
-					{
-						videoInputs.append(device);
-					}
-					delete osxGrabber;
-					#endif
-				}
+// 					#if defined(ENABLE_OSX)
+// 					OsxFrameGrabber* osxGrabber = new OsxFrameGrabber();
+// 					device = osxGrabber->discover(params);
+// 					if (!device.isEmpty() )
+// 					{
+// 						videoInputs.append(device);
+// 					}
+// 					delete osxGrabber;
+// 					#endif
+// 				}
 
-			}
+// 			}
+
 			inputSourcesDiscovered["video_sources"] = videoInputs;
 
 			DebugIf(verbose, _log, "response: [%s]", QString(QJsonDocument(inputSourcesDiscovered).toJson(QJsonDocument::Compact)).toUtf8().constData());

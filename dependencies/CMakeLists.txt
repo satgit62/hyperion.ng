@@ -85,6 +85,7 @@ if(ENABLE_PROTOBUF_SERVER)
 
 		if (WIN32)
 			set(protobuf_MSVC_STATIC_RUNTIME OFF CACHE BOOL "Build protobuf static")
+			set(protobuf_WITH_ZLIB OFF CACHE BOOL "Build protobuf with zlib support") # TODO: includes zlib
 		endif()
 
 		add_subdirectory(external/protobuf/cmake)

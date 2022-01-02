@@ -61,14 +61,14 @@ SET ( DEFAULT_X11                         OFF )
 SET ( DEFAULT_XCB                         OFF )
 
 # Input
-SET ( DEFAULT_BOBLIGHT_SERVER             ON  )
+SET ( DEFAULT_BOBLIGHT_SERVER             OFF )
 SET ( DEFAULT_CEC                         OFF )
-SET ( DEFAULT_FLATBUF_SERVER              ON  )
-SET ( DEFAULT_PROTOBUF_SERVER             ON  )
+SET ( DEFAULT_FLATBUF_SERVER              OFF )
+SET ( DEFAULT_PROTOBUF_SERVER             OFF )
 
 # Output
-SET ( DEFAULT_FORWARDER                   ON  )
-SET ( DEFAULT_FLATBUF_CONNECT             ON  )
+SET ( DEFAULT_FORWARDER                   OFF )
+SET ( DEFAULT_FLATBUF_CONNECT             OFF )
 
 # LED-Devices
 SET ( DEFAULT_SPIDEV                      OFF )
@@ -77,13 +77,13 @@ SET ( DEFAULT_USB_HID                     OFF )
 SET ( DEFAULT_WS281XPWM                   OFF )
 
 # Services
-SET ( DEFAULT_AVAHI                       ON  )
+SET ( DEFAULT_AVAHI                       OFF )
 SET ( DEFAULT_EXPERIMENTAL                OFF )
 
 # Build
 SET ( DEFAULT_TESTS                       OFF )
 SET ( DEFAULT_DEPLOY_DEPENDENCIES         ON  )
-SET ( DEFAULT_USE_SHARED_AVAHI_LIBS       ON  )
+SET ( DEFAULT_USE_SHARED_AVAHI_LIBS       OFF )
 SET ( DEFAULT_USE_SYSTEM_FLATBUFFERS_LIBS OFF )
 SET ( DEFAULT_USE_SYSTEM_PROTO_LIBS       OFF )
 SET ( DEFAULT_USE_SYSTEM_MBEDTLS_LIBS     OFF )
@@ -99,8 +99,8 @@ IF ( ${CMAKE_SYSTEM} MATCHES "Linux" )
 	SET ( DEFAULT_USB_HID     ON )
 	SET ( DEFAULT_CEC         ON )
 ELSEIF ( WIN32 )
-	SET ( DEFAULT_DX ON )
-	SET ( DEFAULT_MF ON )
+	SET ( DEFAULT_DX OFF )
+	SET ( DEFAULT_MF OFF )
 ELSE()
 	SET ( DEFAULT_FB          OFF )
 	SET ( DEFAULT_V4L2        OFF )

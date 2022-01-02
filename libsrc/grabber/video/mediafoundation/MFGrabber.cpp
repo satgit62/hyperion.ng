@@ -21,6 +21,18 @@ inline QMap<VideoProcAmpProperty, QString> initVideoProcAmpPropertyMap()
 
 Q_GLOBAL_STATIC_WITH_ARGS(VideoProcAmpPropertyMap, _videoProcAmpPropertyMap, (initVideoProcAmpPropertyMap()));
 
+static PixelFormat GetPixelFormatForGuid(const GUID guid)
+{
+	if (IsEqualGUID(guid, MFVideoFormat_RGB32)) return PixelFormat::RGB32;
+	if (IsEqualGUID(guid, MFVideoFormat_RGB24)) return PixelFormat::BGR24;
+	if (IsEqualGUID(guid, MFVideoFormat_YUY2)) return PixelFormat::YUYV;
+	if (IsEqualGUID(guid, MFVideoFormat_UYVY)) return PixelFormat::UYVY;
+	if (IsEqualGUID(guid, MFVideoFormat_MJPG)) return  PixelFormat::MJPEG;
+	if (IsEqualGUID(guid, MFVideoFormat_NV12)) return  PixelFormat::NV12;
+	if (IsEqualGUID(guid, MFVideoFormat_I420)) return  PixelFormat::I420;
+	return PixelFormat::NO_CHANGE;
+};
+
 MFGrabber::MFGrabber()
 	: Grabber("V4L2:MEDIA_FOUNDATION")
 	, _currentDeviceName("none")
@@ -28,7 +40,6 @@ MFGrabber::MFGrabber()
 	, _hr(S_FALSE)
 	, _sourceReader(nullptr)
 	, _sourceReaderCB(nullptr)
-	, _threadManager(nullptr)
 	, _pixelFormat(PixelFormat::NO_CHANGE)
 	, _pixelFormatConfig(PixelFormat::NO_CHANGE)
 	, _lineLength(-1)
@@ -50,6 +61,7 @@ MFGrabber::MFGrabber()
 	, _x_frac_max(0.75)
 	, _y_frac_max(0.75)
 {
+	_useImageResampler = true;
 	CoInitializeEx(0, COINIT_MULTITHREADED);
 	_hr = MFStartup(MF_VERSION, MFSTARTUP_NOSOCKET);
 	if (FAILED(_hr))
@@ -67,10 +79,6 @@ MFGrabber::~MFGrabber()
 
 	SAFE_RELEASE(_sourceReaderCB);
 
-	if (_threadManager)
-		delete _threadManager;
-	_threadManager = nullptr;
-
 	if (SUCCEEDED(_hr) && SUCCEEDED(MFShutdown()))
 		CoUninitialize();
 }
@@ -82,10 +90,7 @@ bool MFGrabber::prepare()
 		if (!_sourceReaderCB)
 			_sourceReaderCB = new SourceReaderCB(this);
 
-		if (!_threadManager)
-			_threadManager = new EncoderThreadManager(this);
-
-		return (_sourceReaderCB != nullptr && _threadManager != nullptr);
+		return (_sourceReaderCB != nullptr);
 	}
 
 	return false;
@@ -97,10 +102,7 @@ bool MFGrabber::start()
 	{
 		if (init())
 		{
-			connect(_threadManager, &EncoderThreadManager::newFrame, this, &MFGrabber::newThreadFrame);
-			_threadManager->start();
-			DebugIf(verbose, _log, "Decoding threads: %d", _threadManager->_threadCount);
-
+			connect(&_imageResampler, &ImageResampler::newFrame, this, &MFGrabber::newFrame);
 			start_capturing();
 			Info(_log, "Started");
 			return true;
@@ -120,8 +122,7 @@ void MFGrabber::stop()
 	if (_initialized)
 	{
 		_initialized = false;
-		_threadManager->stop();
-		disconnect(_threadManager, nullptr, nullptr, nullptr);
+		disconnect(&_imageResampler, nullptr, nullptr, nullptr);
 		_sourceReader->Flush(MF_SOURCE_READER_FIRST_VIDEO_STREAM);
 		SAFE_RELEASE(_sourceReader);
 		_deviceProperties.clear();
@@ -337,13 +338,6 @@ HRESULT MFGrabber::init_device(QString deviceName, DeviceProperties props)
 		goto done;
 	}
 
-	hr = _sourceReaderCB->InitializeVideoEncoder(type, pixelformat);
-	if (FAILED(hr))
-	{
-		error = QString("Failed to initialize the Video Encoder (%1)").arg(hr);
-		goto done;
-	}
-
 	hr = _sourceReader->SetCurrentMediaType(MF_SOURCE_READER_FIRST_VIDEO_STREAM, nullptr, type);
 	if (FAILED(hr))
 	{
@@ -361,8 +355,46 @@ done:
 		_pixelFormat = props.pf;
 		_width = props.width;
 		_height = props.height;
-		_frameByteSize = _width * _height * 3;
-		_lineLength = _width * 3;
+		switch (props.pf)
+		{
+			case PixelFormat::YUYV:
+			case PixelFormat::UYVY:
+			case PixelFormat::BGR16:
+			{
+				_frameByteSize = _width * _height * 2;
+				_lineLength = _width * 2;
+			}
+			break;
+
+			case PixelFormat::BGR24:
+			{
+				_frameByteSize = _width * _height * 3;
+				_lineLength = _width * 3;
+			}
+			break;
+
+			case PixelFormat::RGB32:
+			case PixelFormat::BGR32:
+			{
+				_frameByteSize = _width * _height * 4;
+				_lineLength = _width * 4;
+			}
+			break;
+
+			case PixelFormat::I420:
+			case PixelFormat::NV12:
+			{
+				_frameByteSize = (6 * _width * _height) / 4;
+				_lineLength = _width;
+			}
+			break;
+
+#ifdef HAVE_TURBO_JPEG
+			case PixelFormat::MJPEG:
+#endif
+			default:
+			break;
+		}
 	}
 
 	// Cleanup
@@ -510,7 +542,7 @@ void MFGrabber::enumVideoCaptureDevices()
 
 void MFGrabber::start_capturing()
 {
-	if (_initialized && _sourceReader && _threadManager)
+	if (_initialized && _sourceReader)
 	{
 		HRESULT hr = _sourceReader->ReadSample(MF_SOURCE_READER_FIRST_VIDEO_STREAM, 0, NULL, NULL, NULL, NULL);
 		if (!SUCCEEDED(hr))
@@ -520,82 +552,74 @@ void MFGrabber::start_capturing()
 	}
 }
 
-void MFGrabber::process_image(const void *frameImageBuffer, int size)
+void MFGrabber::receive_image(const void *frameImageBuffer, int size)
 {
 	int processFrameIndex = _currentFrame++;
 
 	// frame skipping
 	if ((processFrameIndex % (_fpsSoftwareDecimation + 1) != 0) && (_fpsSoftwareDecimation > 0))
+	{
+		start_capturing();
 		return;
+	}
 
 	// We do want a new frame...
 	if (size < _frameByteSize && _pixelFormat != PixelFormat::MJPEG)
-		Error(_log, "Frame too small: %d != %d", size, _frameByteSize);
-	else if (_threadManager != nullptr)
 	{
-		for (int i = 0; i < _threadManager->_threadCount; i++)
-		{
-			if (!_threadManager->_threads[i]->isBusy())
-			{
-				_threadManager->_threads[i]->setup(_pixelFormat, (uint8_t*)frameImageBuffer, size, _width, _height, _lineLength, _cropLeft, _cropTop, _cropBottom, _cropRight, _videoMode, _flipMode, _pixelDecimation);
-				_threadManager->_threads[i]->process();
-				break;
-			}
-		}
+		Error(_log, "Frame too small: %d != %d", size, _frameByteSize);
+		start_capturing();
+		return;
 	}
-}
 
-void MFGrabber::receive_image(const void *frameImageBuffer, int size)
-{
-	process_image(frameImageBuffer, size);
+	_imageResampler.processImage((uint8_t*)frameImageBuffer, size, _width, _height, _lineLength, _pixelFormat);
 	start_capturing();
 }
 
-void MFGrabber::newThreadFrame(Image<ColorRgb> image)
-{
-	if (_signalDetectionEnabled)
-	{
-		// check signal (only in center of the resulting image, because some grabbers have noise values along the borders)
-		bool noSignal = true;
+// void MFGrabber::newThreadFrame(Image<ColorRgb> image)
+// {
+// 	if (_signalDetectionEnabled)
+// 	{
+// 		// check signal (only in center of the resulting image, because some grabbers have noise values along the borders)
+// 		bool noSignal = true;
 
-		// top left
-		unsigned xOffset  = image.width()  * _x_frac_min;
-		unsigned yOffset  = image.height() * _y_frac_min;
+// 		// top left
+// 		unsigned xOffset  = image.width()  * _x_frac_min;
+// 		unsigned yOffset  = image.height() * _y_frac_min;
 
-		// bottom right
-		unsigned xMax     = image.width()  * _x_frac_max;
-		unsigned yMax     = image.height() * _y_frac_max;
+// 		// bottom right
+// 		unsigned xMax     = image.width()  * _x_frac_max;
+// 		unsigned yMax     = image.height() * _y_frac_max;
 
-		for (unsigned x = xOffset; noSignal && x < xMax; ++x)
-			for (unsigned y = yOffset; noSignal && y < yMax; ++y)
-				noSignal &= (ColorRgb&)image(x, y) <= _noSignalThresholdColor;
+// 		for (unsigned x = xOffset; noSignal && x < xMax; ++x)
+// 			for (unsigned y = yOffset; noSignal && y < yMax; ++y)
+// 				noSignal &= (ColorRgb&)image(x, y) <= _noSignalThresholdColor;
 
-		if (noSignal)
-			++_noSignalCounter;
-		else
-		{
-			if (_noSignalCounter >= _noSignalCounterThreshold)
-			{
-				_noSignalDetected = true;
-				Info(_log, "Signal detected");
-			}
+// 		if (noSignal)
+// 			++_noSignalCounter;
+// 		else
+// 		{
+// 			if (_noSignalCounter >= _noSignalCounterThreshold)
+// 			{
+// 				_noSignalDetected = true;
+// 				Info(_log, "Signal detected");
+// 			}
 
-			_noSignalCounter = 0;
-		}
+// 			_noSignalCounter = 0;
+// 		}
 
-		if ( _noSignalCounter < _noSignalCounterThreshold)
-		{
-			emit newFrame(image);
-		}
-		else if (_noSignalCounter == _noSignalCounterThreshold)
-		{
-			_noSignalDetected = false;
-			Info(_log, "Signal lost");
-		}
-	}
-	else
-		emit newFrame(image);
-}
+// 		if ( _noSignalCounter < _noSignalCounterThreshold)
+// 		{
+// 			emit newFrame(image);
+// 		}
+// 		else if (_noSignalCounter == _noSignalCounterThreshold)
+// 		{
+// 			_noSignalDetected = false;
+// 			Info(_log, "Signal lost");
+// 		}
+// 	}
+// 	else
+// 		emit newFrame(image);
+// }
 
 void MFGrabber::setDevice(const QString& device)
 {

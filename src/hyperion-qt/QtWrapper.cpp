@@ -1,14 +1,10 @@
 
 #include "QtWrapper.h"
 
-QtWrapper::QtWrapper( int updateRate_Hz,
-					  int display,
-					  int pixelDecimation,
-					  int cropLeft, int cropRight,
-					  int cropTop, int cropBottom
-					  ) :
-	  _timer(this),
-	  _grabber(display, cropLeft, cropRight, cropTop, cropBottom)
+QtWrapper::QtWrapper(int updateRate_Hz, int display, int pixelDecimation, int cropLeft, int cropRight, int cropTop, int cropBottom)
+	: _timer(this)
+	, _grabber(display, cropLeft, cropRight, cropTop, cropBottom)
+	, _screenshot(new Image<ColorRgb>(0,0))
 {
 	_grabber.setFramerate(updateRate_Hz);
 	_grabber.setPixelDecimation(pixelDecimation);
@@ -23,8 +19,8 @@ QtWrapper::QtWrapper( int updateRate_Hz,
 
 const Image<ColorRgb> & QtWrapper::getScreenshot()
 {
-	_grabber.grabFrame(_screenshot);
-	return _screenshot;
+	_grabber.grabFrame(_screenshot.data());
+	return *_screenshot.data();
 }
 
 void QtWrapper::start()
@@ -44,11 +40,11 @@ bool QtWrapper::displayInit()
 
 void QtWrapper::capture()
 {
-	if(unsigned(_grabber.getImageWidth()) != unsigned(_screenshot.width()) || unsigned(_grabber.getImageHeight()) != unsigned(_screenshot.height()))
-		_screenshot.resize(_grabber.getImageWidth(),_grabber.getImageHeight());
+	if(unsigned(_grabber.getImageWidth()) != unsigned(_screenshot->width()) || unsigned(_grabber.getImageHeight()) != unsigned(_screenshot->height()))
+		_screenshot->resize(_grabber.getImageWidth(),_grabber.getImageHeight());
 
-	_grabber.grabFrame(_screenshot);
-	emit sig_screenshot(_screenshot);
+	_grabber.grabFrame(_screenshot.data());
+	emit sig_screenshot(*_screenshot.data());
 }
 
 void QtWrapper::setVideoMode(VideoMode mode)

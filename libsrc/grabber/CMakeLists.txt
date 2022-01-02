@@ -1,35 +1,67 @@
-if (ENABLE_AMLOGIC)
-	add_subdirectory(amlogic)
-endif (ENABLE_AMLOGIC)
+project(grabber)
 
-if (ENABLE_DISPMANX)
-	add_subdirectory(dispmanx)
-endif (ENABLE_DISPMANX)
+# Define the current source locations
+set(CURRENT_HEADER_DIR ${CMAKE_SOURCE_DIR}/include/grabber)
+set(CURRENT_SOURCE_DIR ${CMAKE_SOURCE_DIR}/libsrc/grabber)
 
-if (ENABLE_FB)
-	add_subdirectory(framebuffer)
-endif (ENABLE_FB)
+file(GLOB Grabber_SOURCES
+	"${CURRENT_HEADER_DIR}/*.h"
+	"${CURRENT_SOURCE_DIR}/*.h"
+	"${CURRENT_SOURCE_DIR}/*.cpp"
+)
 
-if (ENABLE_OSX)
-	add_subdirectory(osx)
-endif(ENABLE_OSX)
+#########################
+##### Video Grabber #####
+#########################
 
-if (ENABLE_V4L2 OR ENABLE_MF)
-	add_subdirectory(video)
-endif ()
+if(ENABLE_V4L2)
+	include_directories("${CURRENT_SOURCE_DIR}/video/v4l2")
+	file (GLOB Grabber_V4L2_SOURCES "${CURRENT_SOURCE_DIR}/video/v4l2/*.h" "${CURRENT_SOURCE_DIR}/video/v4l2/*.cpp")
+endif()
 
-if (ENABLE_X11)
-	add_subdirectory(x11)
-endif(ENABLE_X11)
+if(ENABLE_MF)
+	include_directories("${CURRENT_SOURCE_DIR}/video/mediafoundation")
+	file (GLOB Grabber_MF_SOURCES "${CURRENT_SOURCE_DIR}/video/mediafoundation/*.h" "${CURRENT_SOURCE_DIR}/video/mediafoundation/*.cpp")
+endif()
 
-if (ENABLE_XCB)
-	add_subdirectory(xcb)
-endif(ENABLE_XCB)
+# Add Turbo JPEG library
+if(ENABLE_V4L2 OR ENABLE_MF)
+	find_package(TurboJPEG)
+	if(TURBOJPEG_FOUND)
+		add_definitions(-DHAVE_TURBO_JPEG)
+		message( STATUS "Using Turbo JPEG library: ${TurboJPEG_LIBRARY}")
+		include_directories(${TurboJPEG_INCLUDE_DIRS})
+	else()
+		message( STATUS "Turbo JPEG library not found, MJPEG camera format won't work.")
+	endif()
+endif()
 
-if (ENABLE_QT)
-	add_subdirectory(qt)
-endif(ENABLE_QT)
+##########################
+##### Screen Grabber #####
+##########################
 
-if (ENABLE_DX)
-	add_subdirectory(directx)
-endif(ENABLE_DX)
+if(ENABLE_QT)
+	include_directories("${CURRENT_SOURCE_DIR}/screen/qt")
+	file(GLOB Grabber_QT_SOURCES "${CURRENT_SOURCE_DIR}/screen/qt/*.h" "${CURRENT_SOURCE_DIR}/screen/qt/*.cpp")
+endif()
+
+#########################
+######## General ########
+#########################
+
+set(Grabber_SOURCES
+	${Grabber_SOURCES}
+	${Grabber_V4L2_SOURCES}
+	${Grabber_MF_SOURCES}
+	${Grabber_QT_SOURCES}
+)
+
+add_library(${PROJECT_NAME} ${Grabber_SOURCES})
+target_link_libraries(${PROJECT_NAME}
+	hyperion
+	${QT_LIBRARIES}
+)
+
+if(ENABLE_V4L2 OR ENABLE_MF AND TURBOJPEG_FOUND)
+	target_link_libraries(${PROJECT_NAME} ${TurboJPEG_LIBRARY})
+endif()

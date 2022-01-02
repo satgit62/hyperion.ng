@@ -5,7 +5,7 @@
 #include <utils/ImageData.h>
 
 template <typename Pixel_T>
-class Image
+class Image : public QSharedData
 {
 public:
 	typedef Pixel_T pixel_type;

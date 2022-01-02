@@ -1,5 +1,5 @@
 // proj
-#include <grabber/QtGrabber.h>
+#include <QtGrabber.h>
 
 // qt
 #include <QPixmap>
@@ -211,7 +211,7 @@ QPixmap QtGrabber::grabWindow(quintptr window, int xIn, int yIn, int width, int 
 }
 #endif
 
-int QtGrabber::grabFrame(Image<ColorRgb> & image)
+int QtGrabber::grabFrame(Image<ColorRgb> *image)
 {
 	int rc = 0;
 	if (_isEnabled && !_isDeviceInError)
@@ -237,11 +237,11 @@ int QtGrabber::grabFrame(Image<ColorRgb> & image)
 			else
 			{
 				QImage imageFrame = originalPixmap.toImage().scaled(_calculatedWidth, _calculatedHeight).convertToFormat( QImage::Format_RGB888);
-				image.resize(static_cast<uint>(_calculatedWidth), static_cast<uint>(_calculatedHeight));
+				image->resize(static_cast<uint>(_calculatedWidth), static_cast<uint>(_calculatedHeight));
 
 				for (int y = 0; y < imageFrame.height(); y++)
 				{
-					memcpy((unsigned char*)image.memptr() + y * image.width() * 3, static_cast<unsigned char*>(imageFrame.scanLine(y)), imageFrame.width() * 3);
+					memcpy((unsigned char*)image->memptr() + y * image->width() * 3, static_cast<unsigned char*>(imageFrame.scanLine(y)), imageFrame.width() * 3);
 				}
 			}
 		}
