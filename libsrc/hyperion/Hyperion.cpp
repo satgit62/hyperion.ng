@@ -132,7 +132,7 @@ void Hyperion::start()
 	connect(this, &Hyperion::compStateChangeRequest, _grabberWrapper, &GrabberWrapper::componentStateChanged);
 	connect(this, &Hyperion::newVideoMode, _grabberWrapper, &GrabberWrapper::newVideoMode);
 	_grabberWrapper->createGrabber(getSetting(settings::SCREENGRABBER).object(), settings::SCREENGRABBER);
-	// _grabberWrapper->createGrabber(getSetting(settings::VIDEOGRABBER).object(), settings::VIDEOGRABBER);
+	// _grabberWrapper->createGrabber(getSetting(settings::VIDEOGRABBER).object(), settings::VIDEOGRABBER); // TODO
 
 	// smoothing
 	_deviceSmooth = new LinearColorSmoothing(getSetting(settings::SMOOTHING), this);
@@ -284,10 +284,10 @@ void Hyperion::handleSettingsUpdate(settings::type type, const QJsonDocument& co
 	{
 		_deviceSmooth->handleSettingsUpdate( type, config);
 	}
-	else if (type == settings::SCREENGRABBER)
+	else if (type == settings::SCREENGRABBER || type == settings::VIDEOGRABBER)
 	{
 		// do always reinit until the grabber can handle dynamic changes
-		_grabberWrapper->createGrabber(config.object(), settings::SCREENGRABBER);
+		_grabberWrapper->createGrabber(config.object(), type); // TODO
 	}
 
 	// update once to push single color sets / adjustments/ ledlayout resizes and update ledBuffer color

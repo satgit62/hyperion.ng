@@ -61,7 +61,7 @@ GrabberWrapper::GrabberWrapper(Hyperion* hyperion)
 GrabberWrapper::~GrabberWrapper()
 {
 	stopGrabberThread(settings::SCREENGRABBER);
-	stopGrabberThread(settings::VIDEOGRABBER);
+	// stopGrabberThread(settings::VIDEOGRABBER); // TODO
 }
 
 void GrabberWrapper::createGrabber(const QJsonObject& config, settings::type type)
@@ -71,34 +71,40 @@ void GrabberWrapper::createGrabber(const QJsonObject& config, settings::type typ
 		stopGrabberThread(type);
 	}
 
-	// create thread and grabber
+	// create thread
 	QThread* thread = new QThread(this);
-	Grabber* ggrabber;
-
-	(type == settings::SCREENGRABBER) ? ggrabber = _screenGrabber : ggrabber = _videoGrabber;
-
-	ggrabber = GrabberFactory::construct(config, type);
-	thread->setObjectName(ggrabber->getGrabberName() + "_Thread");
-	ggrabber->moveToThread(thread);
-	// setup thread management
-	connect(thread, &QThread::started, ggrabber, &Grabber::start);
-
-	// further signals
-	connect(this, &GrabberWrapper::newVideoMode, ggrabber, &Grabber::setVideoMode, Qt::QueuedConnection);
 
 	if (type == settings::SCREENGRABBER)
 	{
-		connect(ggrabber, &Grabber::newImage, this, &GrabberWrapper::setScreenImage);
-		connect(this, &GrabberWrapper::stopScreenGrabber, ggrabber, &Grabber::stop, Qt::BlockingQueuedConnection);
+		_screenGrabber = GrabberFactory::construct(config, type); // <- auf nullptr reagieren oder dummy objekt erzeugen lassen?
+
+		thread->setObjectName(_screenGrabber->getGrabberName() + "_Thread");
+		_screenGrabber->moveToThread(thread);
+
+		// setup thread management
+		connect(thread, &QThread::started, _screenGrabber, &Grabber::start);
+
+		// further signals
+		connect(this, &GrabberWrapper::newVideoMode, _screenGrabber, &Grabber::setVideoMode, Qt::QueuedConnection);
+		connect(_screenGrabber, &Grabber::newImage, this, &GrabberWrapper::setScreenImage);
+		connect(this, &GrabberWrapper::stopScreenGrabber, _screenGrabber, &Grabber::stop, Qt::BlockingQueuedConnection);
 	}
 
 	if (type == settings::VIDEOGRABBER)
 	{
-		connect(ggrabber, &Grabber::newImage, this, &GrabberWrapper::setVideoImage);
-		connect(this, &GrabberWrapper::stopVideoGrabber, ggrabber, &Grabber::stop, Qt::BlockingQueuedConnection);
-	}
+		_videoGrabber = GrabberFactory::construct(config, type); // <- auf nullptr reagieren oder dummy objekt erzeugen lassen?
 
-	// connect(ggrabber, &LedDevice::enableStateChanged, this, &LedDeviceWrapper::handleInternalEnableState, Qt::QueuedConnection);
+		thread->setObjectName(_videoGrabber->getGrabberName() + "_Thread");
+		_videoGrabber->moveToThread(thread);
+
+		// setup thread management
+		connect(thread, &QThread::started, _videoGrabber, &Grabber::start);
+
+		// further signals
+		connect(this, &GrabberWrapper::newVideoMode, _videoGrabber, &Grabber::setVideoMode, Qt::QueuedConnection);
+		connect(_videoGrabber, &Grabber::newImage, this, &GrabberWrapper::setVideoImage);
+		connect(this, &GrabberWrapper::stopVideoGrabber, _videoGrabber, &Grabber::stop, Qt::BlockingQueuedConnection);
+	}
 
 	// start the thread
 	thread->start();
@@ -324,7 +330,7 @@ void GrabberWrapper::stopGrabberThread(settings::type type)
 		emit stopScreenGrabber();
 
 		// get current thread
-		QThread* oldThread = _screenGrabber->thread();
+		QThread* oldThread = _screenGrabber->thread(); // <- hier chrashed es noch wenn der pointer null ist
 		disconnect(oldThread, nullptr, nullptr, nullptr);
 		oldThread->quit();
 		oldThread->wait();
@@ -340,7 +346,7 @@ void GrabberWrapper::stopGrabberThread(settings::type type)
 		emit stopVideoGrabber();
 
 		// get current thread
-		QThread* oldThread = _videoGrabber->thread();
+		QThread* oldThread = _videoGrabber->thread();  // <- hier chrashed es noch wenn der pointer null ist
 		disconnect(oldThread, nullptr, nullptr, nullptr);
 		oldThread->quit();
 		oldThread->wait();
