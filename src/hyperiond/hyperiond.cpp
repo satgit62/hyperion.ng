@@ -60,9 +60,9 @@
 // EffectFileHandler
 #include <effectengine/EffectFileHandler.h>
 
-#ifdef ENABLE_CEC
-#include <cec/CECHandler.h>
-#endif
+// #ifdef ENABLE_CEC
+// #include <cec/CECHandler.h> // TODO move to GrabberWrapper or Grabber?
+// #endif
 
 HyperionDaemon *HyperionDaemon::daemon = nullptr;
 
@@ -79,9 +79,9 @@ HyperionDaemon::HyperionDaemon(const QString& rootPath, QObject* parent, bool lo
 	  , _sslWebserver(nullptr)
 	  , _jsonServer(nullptr)
 	  , _ssdp(nullptr)
-#ifdef ENABLE_CEC
-	  , _cecHandler(nullptr)
-#endif
+// #ifdef ENABLE_CEC  // TODO move to GrabberWrapper or Grabber?
+// 	  , _cecHandler(nullptr)
+// #endif
 	  , _currVideoMode(VideoMode::VIDEO_2D)
 {
 	HyperionDaemon::daemon = this;
@@ -103,7 +103,7 @@ HyperionDaemon::HyperionDaemon(const QString& rootPath, QObject* parent, bool lo
 		handleSettingsUpdate(settings::LOGGER, getSetting(settings::LOGGER));
 	}
 
-	createCecHandler();
+	// createCecHandler(); // TODO move to GrabberWrapper or Grabber?
 
 	// init EffectFileHandler
 	EffectFileHandler* efh = new EffectFileHandler(rootPath, getSetting(settings::EFFECTS), this);
@@ -222,17 +222,17 @@ void HyperionDaemon::freeObjects()
 		_sslWebserver = nullptr;
 	}
 
-#ifdef ENABLE_CEC
-	if (_cecHandler != nullptr)
-	{
-		auto cecHandlerThread = _cecHandler->thread();
-		cecHandlerThread->quit();
-		cecHandlerThread->wait();
-		delete cecHandlerThread;
-		delete _cecHandler;
-		_cecHandler = nullptr;
-	}
-#endif
+// #ifdef ENABLE_CEC
+// 	if (_cecHandler != nullptr) // TODO move to GrabberWrapper or Grabber?
+// 	{
+// 		auto cecHandlerThread = _cecHandler->thread();
+// 		cecHandlerThread->quit();
+// 		cecHandlerThread->wait();
+// 		delete cecHandlerThread;
+// 		delete _cecHandler;
+// 		_cecHandler = nullptr;
+// 	}
+// #endif
 
 	// stop Hyperions (non blocking)
 	_instanceManager->stopAll();
@@ -335,41 +335,41 @@ void HyperionDaemon::handleSettingsUpdate(settings::type settingsType, const QJs
 		}
 	}
 
-	if (settingsType == settings::VIDEOGRABBER)
-	{
-#ifdef ENABLE_CEC
-		const QJsonObject& grabberConfig = config.object();
-		if (_cecHandler != nullptr && grabberConfig["cecDetection"].toBool(false))
-		{
-			QMetaObject::invokeMethod(_cecHandler, "start", Qt::QueuedConnection);
-		}
-		else
-		{
-			QMetaObject::invokeMethod(_cecHandler, "stop", Qt::QueuedConnection);
-		}
-#endif
-	}
+// 	if (settingsType == settings::VIDEOGRABBER) // TODO move to GrabberWrapper or Grabber or Hyperion?
+// 	{
+// #ifdef ENABLE_CEC
+// 		const QJsonObject& grabberConfig = config.object();
+// 		if (_cecHandler != nullptr && grabberConfig["cecDetection"].toBool(false))
+// 		{
+// 			QMetaObject::invokeMethod(_cecHandler, "start", Qt::QueuedConnection);
+// 		}
+// 		else
+// 		{
+// 			QMetaObject::invokeMethod(_cecHandler, "stop", Qt::QueuedConnection);
+// 		}
+// #endif
+// 	}
 }
 
-void HyperionDaemon::createCecHandler()
-{
-#if defined(ENABLE_V4L2) && defined(ENABLE_CEC)
-	_cecHandler = new CECHandler;
+// void HyperionDaemon::createCecHandler()  // TODO move to GrabberWrapper or Grabber?
+// {
+// #if defined(ENABLE_V4L2) && defined(ENABLE_CEC)
+// 	_cecHandler = new CECHandler;
 
-	QThread* thread = new QThread(this);
-	thread->setObjectName("CECThread");
-	_cecHandler->moveToThread(thread);
-	thread->start();
+// 	QThread* thread = new QThread(this);
+// 	thread->setObjectName("CECThread");
+// 	_cecHandler->moveToThread(thread);
+// 	thread->start();
 
-	connect(_cecHandler, &CECHandler::cecEvent, [&](CECEvent event) {
-		if (_videoGrabber != nullptr)
-		{
-			_videoGrabber->handleCecEvent(event);
-		}
-	});
+// 	connect(_cecHandler, &CECHandler::cecEvent, [&](CECEvent event) {
+// 		if (_videoGrabber != nullptr)
+// 		{
+// 			_videoGrabber->handleCecEvent(event);
+// 		}
+// 	});
 
-	Info(_log, "CEC handler created");
-#else
-	Debug(_log, "The CEC handler is not supported on this platform");
-#endif
-}
+// 	Info(_log, "CEC handler created");
+// #else
+// 	Debug(_log, "The CEC handler is not supported on this platform");
+// #endif
+// }

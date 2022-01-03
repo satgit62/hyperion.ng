@@ -97,7 +97,7 @@ private slots:
 	void setVideoMode(VideoMode mode);
 
 private:
-	void createCecHandler();
+	// void createCecHandler();  // TODO move to GrabberWrapper or Grabber?
 
 	Logger*                    _log;
 	HyperionIManager*          _instanceManager;
@@ -110,9 +110,9 @@ private:
 	JsonServer*                _jsonServer;
 	SSDPHandler*               _ssdp;
 
-	#ifdef ENABLE_CEC
-	CECHandler*                _cecHandler;
-	#endif
+	// #ifdef ENABLE_CEC
+	// CECHandler*                _cecHandler;  // TODO move to GrabberWrapper or Grabber?
+	// #endif
 	#if defined(ENABLE_FLATBUF_SERVER)
 	FlatBufferServer*          _flatBufferServer;
 	#endif
