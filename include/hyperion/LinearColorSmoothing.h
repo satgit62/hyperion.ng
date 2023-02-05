@@ -248,7 +248,7 @@ private:
 	/// Value of 1.0 / settlingTime; inverse of the window size used for weighting of frames.
 	floatT _invWindow;
 
-	enum class SmoothingType { Linear = 0, Decay = 1 };
+	enum class SmoothingType { Linear = 0, Decay = 1, Delay = 2 };
 
 	class SmoothingCfg
 	{

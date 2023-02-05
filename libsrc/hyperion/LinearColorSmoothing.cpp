@@ -49,6 +49,8 @@ const char* SETTINGS_KEY_DECAY = "decay";
 const char* SETTINGS_KEY_INTERPOLATION_RATE = "interpolationRate";
 const char* SETTINGS_KEY_DITHERING = "dithering";
 
+const char* SETTINGS_KEY_DELAY = "delay";
+
 const int64_t DEFAULT_SETTLINGTIME = 200;	// in ms
 const int DEFAULT_UPDATEFREQUENCY = 25;		// in Hz
 
@@ -126,6 +128,9 @@ void LinearColorSmoothing::handleSettingsUpdate(settings::type type, const QJson
 
 		if(typeString == SETTINGS_KEY_DECAY) {
 			cfg._type = SmoothingType::Decay;
+		}
+		else if(typeString == SETTINGS_KEY_DELAY) {
+			cfg._type = SmoothingType::Delay;
 		}
 		else {
 			cfg._type = SmoothingType::Linear;
@@ -466,6 +471,10 @@ void LinearColorSmoothing::updateLeds()
 
 	switch (_smoothingType)
 	{
+	case SmoothingType::Delay:
+		writeFrame();
+		break;
+
 	case SmoothingType::Decay:
 		performDecay(now);
 		break;
@@ -739,6 +748,9 @@ QString LinearColorSmoothing::getConfig(int cfgID)
 						  .arg(int(MS_PER_MICRO/cfg._updateInterval));
 			break;
 		}
+
+		case SmoothingType::Delay:
+			break;
 		}
 
 		configText += QString (", delay: %1 frames")
@@ -777,6 +789,11 @@ QString LinearColorSmoothing::SmoothingCfg::EnumToString(SmoothingType type)
 	if (type == SmoothingType::Decay)
 	{
 		return QString("Decay");
+	}
+
+	if (type == SmoothingType::Delay)
+	{
+		return QString("Delay");
 	}
 
 	return QString("Unknown");

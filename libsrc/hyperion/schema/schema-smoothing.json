@@ -11,26 +11,31 @@
     "type": {
       "type": "string",
       "title": "edt_conf_smooth_type_title",
-      "enum": [ "linear", "decay" ],
+      "enum": [ "linear", "decay", "delay" ],
       "default": "linear",
       "options": {
-        "enum_titles": [ "edt_conf_enum_linear", "edt_conf_enum_decay" ]
+        "enum_titles": [ "edt_conf_enum_linear", "edt_conf_enum_decay", "edt_conf_enum_delay" ]
       },
       "propertyOrder": 2
     },
     "time_ms": {
       "type": "integer",
       "title": "edt_conf_smooth_time_ms_title",
-      "minimum": 25,
+      "minimum": 0,
       "maximum": 5000,
       "default": 200,
       "append": "edt_append_ms",
-      "propertyOrder": 3
+      "propertyOrder": 3,
+      "options": {
+        "dependencies": {
+          "type": [ "linear", "decay" ]
+        }
+      }
     },
     "updateFrequency": {
       "type": "number",
       "title": "edt_conf_smooth_updateFrequency_title",
-      "minimum": 1.0,
+      "minimum": 0.0,
       "maximum": 2000.0,
       "default": 25.0,
       "append": "edt_append_hz",
@@ -39,7 +44,7 @@
     "interpolationRate": {
       "type": "number",
       "title": "edt_conf_smooth_interpolationRate_title",
-      "minimum": 1.0,
+      "minimum": 0.0,
       "maximum": 1000.0,
       "default": 1.0,
       "append": "edt_append_hz",
