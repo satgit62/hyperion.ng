@@ -1,13 +1,7 @@
 #include "LedDeviceYeelight.h"
 
-// mDNS/bonjour wrapper
-#ifndef __APPLE__
-#include <mdns/mdnsEngineWrapper.h>
-#include <leddevice/LedDeviceMdnsRegister.h>
-#endif
-
-#include <ssdp/SSDPDiscover.h>
-#include <utils/QStringUtils.h>
+#include <chrono>
+#include <thread>
 
 // Qt includes
 #include <QEventLoop>
@@ -17,8 +11,15 @@
 #include <QColor>
 #include <QDateTime>
 
-#include <chrono>
-#include <thread>
+#include <ssdp/SSDPDiscover.h>
+#include <utils/QStringUtils.h>
+
+// mDNS discover
+#ifdef ENABLE_MDNS
+#include <mdns/MdnsBrowser.h>
+#include <mdns/MdnsServiceRegister.h>
+#endif
+#include <utils/NetUtils.h>
 
 // Constants
 namespace {
@@ -34,6 +35,9 @@ constexpr std::chrono::milliseconds CONNECT_STREAM_TIMEOUT{1000}; // device stre
 const bool TEST_CORRELATION_IDS  = false; //Ignore, if yeelight sends responses in different order as request commands
 
 // Configuration settings
+const char CONFIG_HOST[] = "host";
+const char CONFIG_PORT[] = "port";
+
 const char CONFIG_LIGHTS [] = "lights";
 
 const char CONFIG_COLOR_MODEL [] = "colorModel";
@@ -78,7 +82,6 @@ const char API_PROP_BRIGHT[] = "bright";
 // List of Result Information
 const char API_RESULT_ID[] = "id";
 const char API_RESULT[] = "result";
-//const char API_RESULT_OK[] = "OK";
 
 // List of Error Information
 const char API_ERROR[] = "error";
@@ -123,7 +126,6 @@ YeelightLight::YeelightLight( Logger *log, const QString &hostname, quint16 port
 	  ,_isInMusicMode(false)
 {
 	_name = hostname;
-
 }
 
 YeelightLight::~YeelightLight()
@@ -163,25 +165,29 @@ bool YeelightLight::open()
 	}
 	else
 	{
-		_tcpSocket->connectToHost( _host, _port);
-
-		if ( _tcpSocket->waitForConnected( CONNECT_TIMEOUT.count() ) )
+		QHostAddress address;
+		if (NetUtils::resolveHostToAddress(_log, _host, address))
 		{
-			if ( _tcpSocket->state() != QAbstractSocket::ConnectedState )
+			_tcpSocket->connectToHost( address.toString(), _port);
+
+			if ( _tcpSocket->waitForConnected( CONNECT_TIMEOUT.count() ) )
+			{
+				if ( _tcpSocket->state() != QAbstractSocket::ConnectedState )
+				{
+					this->setInError( _tcpSocket->errorString() );
+					rc = false;
+				}
+				else
+				{
+					log (2,"open()","Successfully opened Yeelight: %s", QSTRING_CSTR(_host));
+					rc = true;
+				}
+			}
+			else
 			{
 				this->setInError( _tcpSocket->errorString() );
 				rc = false;
 			}
-			else
-			{
-				log (2,"open()","Successfully opened Yeelight: %s", QSTRING_CSTR(_host));
-				rc = true;
-			}
-		}
-		else
-		{
-			this->setInError( _tcpSocket->errorString() );
-			rc = false;
 		}
 	}
 	return rc;
@@ -214,13 +220,13 @@ bool YeelightLight::close()
 	return rc;
 }
 
-int YeelightLight::writeCommand( const QJsonDocument &command )
+int YeelightLight::writeCommand( const QJsonDocument &command, bool ignoreErrors )
 {
 	QJsonArray result;
-	return writeCommand(command, result );
+	return writeCommand(command, result, ignoreErrors );
 }
 
-int YeelightLight::writeCommand( const QJsonDocument &command, QJsonArray &result )
+int YeelightLight::writeCommand( const QJsonDocument &command, QJsonArray &result, bool ignoreErrors )
 {
 	log( 3,
 		 "writeCommand()",
@@ -290,8 +296,16 @@ int YeelightLight::writeCommand( const QJsonDocument &command, QJsonArray &resul
 							QString errorReason = QString ("(%1) %2").arg(yeeResponse.getErrorCode()).arg( yeeResponse.getErrorReason() );
 							if ( yeeResponse.getErrorCode() != -1)
 							{
-								this->setInError ( errorReason );
-								rc =-1;
+								if (!ignoreErrors)
+								{
+									this->setInError ( errorReason );
+									rc =-1;
+								}
+								else
+								{
+									log ( 1, "writeCommand():", "Ignore Error: %s", QSTRING_CSTR(errorReason) );
+									rc = 0;
+								}
 							}
 							else
 							{
@@ -374,16 +388,12 @@ bool YeelightLight::streamCommand( const QJsonDocument &command )
 	{
 		log ( 2, "Info:", "Skip write. Device is in error");
 	}
-
-	//log (2,"streamCommand() rc","%d, isON[%d], isInMusicMode[%d]", rc, _isOn, _isInMusicMode );
 	return rc;
 }
 
 YeelightResponse YeelightLight::handleResponse(int correlationID, QByteArray const &response )
 {
 	log (3,"handleResponse()","" );
-
-	//std::cout << _name.toStdString() <<"| Response: [" << response.toStdString() << "]" << std::endl << std::flush;
 
 	YeelightResponse yeeResponse;
 	QString errorReason;
@@ -437,8 +447,6 @@ YeelightResponse YeelightLight::handleResponse(int correlationID, QByteArray con
 		else
 		{
 			int id = jsonObj[API_RESULT_ID].toInt();
-			//log ( 3, "Correlation ID:", "%d", id );
-
 			if ( id != correlationID && TEST_CORRELATION_IDS)
 			{
 				errorReason = QString ("%1| API is out of sync, received ID [%2], expected [%3]").
@@ -519,9 +527,6 @@ QJsonObject YeelightLight::getProperties()
 	log (3,"getProperties()","" );
 	QJsonObject properties;
 
-	//Selected properties
-	//QJsonArray propertyList = { API_PROP_NAME, API_PROP_MODEL, API_PROP_POWER, API_PROP_RGB, API_PROP_BRIGHT, API_PROP_CT, API_PROP_FWVER };
-
 	//All properties
 	QJsonArray propertyList = {"power","bright","ct","rgb","hue","sat","color_mode","flowing","delayoff","music_on","name","bg_power","bg_flowing","bg_ct","bg_bright","bg_hue","bg_sat","bg_rgb","nl_br","active_mode" };
 
@@ -569,9 +574,6 @@ bool YeelightLight::identify()
 	Brightness:	10
 	*/
 	QJsonArray colorflowParams = { API_PROP_COLORFLOW, 6, 0, "500,1,100,100,500,1,16711696,10"};
-
-	//Blink White
-	//QJsonArray colorflowParams = { API_PROP_COLORFLOW, 6, 0, "500,2,4000,1,500,2,4000,50"};
 
 	QJsonDocument command = getCommand( API_METHOD_SETSCENE, colorflowParams );
 
@@ -705,6 +707,13 @@ bool YeelightLight::setPower(bool on, YeelightLight::API_EFFECT effect, int dura
 			_tcpStreamSocket->close();
 		}
 	}
+	else
+	{
+		if ( !_isInMusicMode && isInMusicMode(true) )
+		{
+			setMusicMode(false);
+		}
+	}
 
 	QString powerParam = on ? API_METHOD_POWER_ON : API_METHOD_POWER_OFF;
 	QString effectParam = effect == YeelightLight::API_EFFECT_SMOOTH ? API_PARAM_EFFECT_SMOOTH : API_PARAM_EFFECT_SUDDEN;
@@ -723,7 +732,7 @@ bool YeelightLight::setPower(bool on, YeelightLight::API_EFFECT effect, int dura
 	}
 	log( 2,
 		 "setPower() rc",
-		 "%d, isON[%d], isInMusicMode[)%d]",
+		 "%d, isON[%d], isInMusicMode[%d]",
 		 static_cast<int>(rc), static_cast<int>( _isOn ), static_cast<int>( _isInMusicMode ) );
 
 	return rc;
@@ -803,7 +812,6 @@ bool YeelightLight::setColorRGB(const ColorRgb &color)
 			rc = false;
 		}
 	}
-	//log (2,"setColorRGB() rc","%d, isON[%d], isInMusicMode[%d]", rc, _isOn, _isInMusicMode );
 	return rc;
 }
 
@@ -898,7 +906,7 @@ bool YeelightLight::setColorHSV(const ColorRgb &colorRGB)
 	}
 	else
 	{
-		//log ( 3, "setColorHSV", "Skip update. Same Color as before");
+		// Skip update. Same Color as before
 	}
 	log( 3,
 		 "setColorHSV() rc",
@@ -942,13 +950,22 @@ bool YeelightLight::setMusicMode(bool on, const QHostAddress &hostAddress, int p
 	if ( on )
 	{
 		paramlist << hostAddress.toString() << port;
-	}
 
-	// Music Mode is only on, if write did not fail nor quota was exceeded
-	if ( writeCommand( getCommand( API_METHOD_MUSIC_MODE, paramlist ) ) > -1 )
+		// Music Mode is only on, if write did not fail nor quota was exceeded
+		if ( writeCommand( getCommand( API_METHOD_MUSIC_MODE, paramlist ) ) > -1 )
+		{
+			_isInMusicMode = on;
+			rc = true;
+		}
+	}
+	else
 	{
-		_isInMusicMode = on;
-		rc = true;
+		QJsonArray offParams = { API_METHOD_MUSIC_MODE_OFF };
+		if ( writeCommand( getCommand( API_METHOD_MUSIC_MODE, offParams ) ) > -1 )
+		{
+			_isInMusicMode = false;
+			rc = true;
+		}
 	}
 
 	log( 2,
@@ -997,6 +1014,10 @@ LedDeviceYeelight::LedDeviceYeelight(const QJsonObject &deviceConfig)
 	, _mdnsEngine(MdnsEngineWrapper::getInstance())
 #endif
 {
+#ifdef ENABLE_MDNS
+	QMetaObject::invokeMethod(&MdnsBrowser::getInstance(), "browseForServiceType",
+							   Qt::QueuedConnection, Q_ARG(QByteArray, MdnsServiceRegister::getServiceType(_activeDeviceType)));
+#endif
 }
 
 LedDeviceYeelight::~LedDeviceYeelight()
@@ -1025,17 +1046,11 @@ bool LedDeviceYeelight::init(const QJsonObject &deviceConfig)
 
 	if ( LedDevice::init(deviceConfig) )
 	{
-		Debug(_log, "DeviceType        : %s", QSTRING_CSTR( this->getActiveDeviceType() ));
-		Debug(_log, "LedCount          : %d", this->getLedCount());
-		Debug(_log, "ColorOrder        : %s", QSTRING_CSTR( this->getColorOrder() ));
-		Debug(_log, "RewriteTime  : %d", this->getRewriteTime());
-		Debug(_log, "LatchTime         : %d", this->getLatchTime());
-
 		//Get device specific configuration
 
 		if ( deviceConfig[ CONFIG_COLOR_MODEL ].isString() )
 		{
-			_outputColorModel = deviceConfig[ CONFIG_COLOR_MODEL ].toString(QString(MODEL_RGB)).toInt();
+			_outputColorModel = deviceConfig[ CONFIG_COLOR_MODEL ].toString(QString(QChar(MODEL_RGB))).toInt();
 		}
 		else
 		{
@@ -1044,7 +1059,7 @@ bool LedDeviceYeelight::init(const QJsonObject &deviceConfig)
 
 		if ( deviceConfig[ CONFIG_TRANS_EFFECT ].isString() )
 		{
-			_transitionEffect = static_cast<YeelightLight::API_EFFECT>( deviceConfig[ CONFIG_TRANS_EFFECT ].toString(QString(YeelightLight::API_EFFECT_SMOOTH)).toInt() );
+			_transitionEffect = static_cast<YeelightLight::API_EFFECT>( deviceConfig[ CONFIG_TRANS_EFFECT ].toString(QString(QChar(YeelightLight::API_EFFECT_SMOOTH))).toInt() );
 		}
 		else
 		{
@@ -1093,8 +1108,9 @@ bool LedDeviceYeelight::init(const QJsonObject &deviceConfig)
 		int configuredYeelightsCount = 0;
 		for (const QJsonValueRef light : configuredYeelightLights)
 		{
-			QString hostName = light.toObject().value("host").toString();
-			int port = light.toObject().value("port").toInt(API_DEFAULT_PORT);
+			QString hostName = light.toObject().value(CONFIG_HOST).toString();
+			int port = light.toObject().value(CONFIG_PORT).toInt(API_DEFAULT_PORT);
+
 			if ( !hostName.isEmpty() )
 			{
 				QString name = light.toObject().value("name").toString();
@@ -1124,36 +1140,9 @@ bool LedDeviceYeelight::init(const QJsonObject &deviceConfig)
 			_lightsAddressList.clear();
 			for (int j = 0; j < static_cast<int>( configuredLedCount ); ++j)
 			{
-				QString hostName = configuredYeelightLights[j].toObject().value("host").toString();
-				int port = configuredYeelightLights[j].toObject().value("port").toInt(API_DEFAULT_PORT);
-
-#ifndef __APPLE__
-				if (hostName.endsWith(".local."))
-				{
-					QHostAddress hostAddress = _mdnsEngine->getHostAddress(hostName);
-
-					int retries = DEFAULT_HOSTNAME_RESOLUTION_RETRIES;
-					while (hostAddress.isNull() && retries > 0)
-					{
-						--retries;
-						QThread::msleep(DEFAULT_HOSTNAME_RESOLUTION_WAIT_TIME.count());
-						hostAddress = _mdnsEngine->getHostAddress(hostName);
-					}
-
-					if (retries == 0)
-					{
-						Error(_log, "Resolving IP-address for hostname [%s] failed.", QSTRING_CSTR(hostName));
-					}
-
-					hostName = hostAddress.toString();
-				}
-#endif
-
-				QStringList addressparts = QStringUtils::split(hostName,":", QStringUtils::SplitBehavior::SkipEmptyParts);
-				QString apiHost = addressparts[0];
-				int apiPort = port;
-
-				_lightsAddressList.append( {apiHost, apiPort} );
+				QString hostName = configuredYeelightLights[j].toObject().value(CONFIG_HOST).toString();
+				int port = configuredYeelightLights[j].toObject().value(CONFIG_PORT).toInt(API_DEFAULT_PORT);
+				_lightsAddressList.append( { hostName, port} );
 			}
 
 			if ( updateLights(_lightsAddressList) )
@@ -1177,34 +1166,33 @@ bool LedDeviceYeelight::startMusicModeServer()
 
 	if ( ! _tcpMusicModeServer->isListening() )
 	{
-		if (! _tcpMusicModeServer->listen())
+		if (! _tcpMusicModeServer->listen(QHostAddress::AnyIPv4))
 		{
-			QString errorReason = QString ("(%1) %2").arg(_tcpMusicModeServer->serverError()).arg( _tcpMusicModeServer->errorString());
-			Error( _log, "Error: MusicModeServer: %s", QSTRING_CSTR(errorReason));
+			QString errorReason = QString ("Failed to start music mode server: (%1) %2").arg(_tcpMusicModeServer->serverError()).arg( _tcpMusicModeServer->errorString());
 			this->setInError ( errorReason );
-
-			Error( _log, "Failed to start music mode server");
 		}
 		else
 		{
-			QList<QHostAddress> ipAddressesList = QNetworkInterface::allAddresses();
-			// use the first non-localhost IPv4 address
-			for (int i = 0; i < ipAddressesList.size(); ++i) {
-				if (ipAddressesList.at(i) != QHostAddress::LocalHost &&
-					 (ipAddressesList.at(i).toIPv4Address() != 0U))
+			// use the first non-localhost IPv4 address, IPv6 are not supported by Yeelight currently
+			for (const auto& address : QNetworkInterface::allAddresses())
+			{
+				// is valid when, no loopback, IPv4
+				if (!address.isLoopback() && (address.protocol() == QAbstractSocket::IPv4Protocol))
 				{
-					_musicModeServerAddress = ipAddressesList.at(i);
+					_musicModeServerAddress = address;
 					break;
 				}
 			}
-			if ( _musicModeServerAddress.isNull() )
+			if (_musicModeServerAddress.isNull())
 			{
-				Error( _log, "Failed to resolve IP for music mode server");
+				_tcpMusicModeServer->close();
+				QString errorReason = QString ("Network error - failed to resolve IP for music mode server");
+				this->setInError ( errorReason );
 			}
 		}
 	}
 
-	if ( _tcpMusicModeServer->isListening() )
+	if ( !_isDeviceInError && _tcpMusicModeServer->isListening() )
 	{
 		_musicModeServerPort = _tcpMusicModeServer->serverPort();
 		Debug (_log, "The music mode server is running at %s:%d", QSTRING_CSTR(_musicModeServerAddress.toString()), _musicModeServerPort);
@@ -1408,25 +1396,21 @@ QJsonObject LedDeviceYeelight::discover(const QJsonObject& /*params*/)
 	QJsonObject devicesDiscovered;
 	devicesDiscovered.insert("ledDeviceType", _activeDeviceType );
 
-	QString discoveryMethod("mDNS");
 	QJsonArray deviceList;
 
-#ifndef __APPLE__
-	QVariantList deviceListResponse;
-
-	deviceListResponse = _mdnsEngine->getServicesDiscoveredJson(
-		LedDeviceMdnsRegister::getServiceType(_activeDeviceType),
-		LedDeviceMdnsRegister::getServiceNameFilter(_activeDeviceType)
-	);
-
-	deviceList = QJsonValue::fromVariant(deviceListResponse).toArray();
-	if (deviceList.isEmpty())
+#ifdef ENABLE_MDNS
+	QString discoveryMethod("mDNS");
+	deviceList = MdnsBrowser::getInstance().getServicesDiscoveredJson(
+		MdnsServiceRegister::getServiceType(_activeDeviceType),
+		MdnsServiceRegister::getServiceNameFilter(_activeDeviceType),
+		DEFAULT_DISCOVER_TIMEOUT
+		);
+#else
+	QString discoveryMethod("ssdp");
+	deviceList = discover();
 #endif
-	{
-		discoveryMethod = "ssdp";
-		deviceList = discover();
-	}
 
+	devicesDiscovered.insert("discoveryMethod", discoveryMethod);
 	devicesDiscovered.insert("devices", deviceList);
 
 	DebugIf(verbose,_log, "devicesDiscovered: [%s]", QString(QJsonDocument(devicesDiscovered).toJson(QJsonDocument::Compact)).toUtf8().constData() );
@@ -1439,30 +1423,22 @@ QJsonObject LedDeviceYeelight::getProperties(const QJsonObject& params)
 	DebugIf(verbose,_log, "params: [%s]", QString(QJsonDocument(params).toJson(QJsonDocument::Compact)).toUtf8().constData() );
 	QJsonObject properties;
 
-	QString hostName = params["hostname"].toString("");
-	quint16 apiPort = static_cast<quint16>( params["port"].toInt(API_DEFAULT_PORT) );
+	QString hostName = params[CONFIG_HOST].toString("");
+	quint16 apiPort = static_cast<quint16>( params[CONFIG_PORT].toInt(API_DEFAULT_PORT) );
 
-	Debug (_log, "apiHost [%s], apiPort [%d]", QSTRING_CSTR(hostName), apiPort);
+	Info(_log, "Get properties for %s, hostname (%s)", QSTRING_CSTR(_activeDeviceType), QSTRING_CSTR(hostName) );
 
-#ifndef __APPLE__
-	if (hostName.endsWith(".local."))
+	QHostAddress address;
+	if (NetUtils::resolveHostToAddress(_log, hostName, address))
 	{
-		hostName = _mdnsEngine->getHostAddress(hostName).toString();
-	}
-#endif
-
-	if ( !hostName.isEmpty() )
-	{
-		YeelightLight yeelight(_log, hostName, apiPort);
-
-		//yeelight.setDebuglevel(3);
+		YeelightLight yeelight(_log, address.toString(), apiPort);
 		if ( yeelight.open() )
 		{
 			properties.insert("properties", yeelight.getProperties());
 			yeelight.close();
 		}
 	}
-	Debug(_log, "properties: [%s]", QString(QJsonDocument(properties).toJson(QJsonDocument::Compact)).toUtf8().constData() );
+	DebugIf(verbose, _log, "properties: [%s]", QString(QJsonDocument(properties).toJson(QJsonDocument::Compact)).toUtf8().constData() );
 
 	return properties;
 }
@@ -1471,22 +1447,15 @@ void LedDeviceYeelight::identify(const QJsonObject& params)
 {
 	DebugIf(verbose,_log,  "params: [%s]", QString(QJsonDocument(params).toJson(QJsonDocument::Compact)).toUtf8().constData() );
 
-	QString hostName = params["hostname"].toString("");
-	quint16 apiPort = static_cast<quint16>( params["port"].toInt(API_DEFAULT_PORT) );
-	Debug (_log, "apiHost [%s], apiPort [%d]", QSTRING_CSTR(hostName), apiPort);
+	QString hostName = params[CONFIG_HOST].toString("");
+	quint16 apiPort = static_cast<quint16>( params[CONFIG_PORT].toInt(API_DEFAULT_PORT) );
 
-#ifndef __APPLE__
-	if (hostName.endsWith(".local."))
+	Info(_log, "Identify %s, hostname (%s)", QSTRING_CSTR(_activeDeviceType), QSTRING_CSTR(hostName) );
+
+	QHostAddress address;
+	if (NetUtils::resolveHostToAddress(_log, hostName, address))
 	{
-		hostName = _mdnsEngine->getHostAddress(hostName).toString();
-	}
-#endif
-
-	if ( !hostName.isEmpty() )
-	{
-		YeelightLight yeelight(_log, hostName, apiPort);
-		//yeelight.setDebuglevel(3);
-
+		YeelightLight yeelight(_log, address.toString(), apiPort);
 		if ( yeelight.open() )
 		{
 			yeelight.identify();
@@ -1497,7 +1466,6 @@ void LedDeviceYeelight::identify(const QJsonObject& params)
 
 int LedDeviceYeelight::write(const std::vector<ColorRgb> & ledValues)
 {
-	//DebugIf(verbose, _log, "enabled [%d], _isDeviceReady [%d]", _isEnabled, _isDeviceReady);
 	int rc = -1;
 
 	//Update on all Yeelights by iterating through lights and set colors.
@@ -1571,8 +1539,5 @@ int LedDeviceYeelight::write(const std::vector<ColorRgb> & ledValues)
 		// Minimum one Yeelight device is working, continue updating devices
 		rc = 0;
 	}
-
-	//DebugIf(verbose, _log, "rc [%d]", rc );
-
 	return rc;
 }

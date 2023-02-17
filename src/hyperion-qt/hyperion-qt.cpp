@@ -1,4 +1,3 @@
-
 // QT includes
 #include <QCoreApplication>
 #include <QImage>
@@ -10,19 +9,26 @@
 #include "HyperionConfig.h"
 #include <commandline/Parser.h>
 
-//flatbuf sending
-#include <flatbufserver/FlatBufferConnection.h>
-
+#ifdef ENABLE_MDNS
+// mDNS discover
+#include <mdns/MdnsBrowser.h>
+#include <mdns/MdnsServiceRegister.h>
+#else
 // ssdp discover
 #include <ssdp/SSDPDiscover.h>
+#endif
+#include <utils/NetUtils.h>
+
+//flatbuf sending
+#include <flatbufserver/FlatBufferConnection.h>
 
 using namespace commandline;
 
 // save the image as screenshot
-void saveScreenshot(QString filename, const Image<ColorRgb> & image)
+void saveScreenshot(const QString& filename, const Image<ColorRgb> & image)
 {
 	// store as PNG
-	QImage pngImage((const uint8_t *) image.memptr(), image.width(), image.height(), 3*image.width(), QImage::Format_RGB888);
+	QImage pngImage(reinterpret_cast<const uint8_t *>(image.memptr()), static_cast<int>(image.width()), static_cast<int>(image.height()), static_cast<int>(3*image.width()), QImage::Format_RGB888);
 	pngImage.save(filename);
 }
 
@@ -36,7 +42,6 @@ int main(int argc, char ** argv)
 		<< "\tVersion   : " << HYPERION_VERSION << " (" << HYPERION_BUILD_ID << ")" << std::endl
 		<< "\tbuild time: " << __DATE__ << " " << __TIME__ << std::endl;
 
-	//QCoreApplication app(argc, argv);
 	QGuiApplication app(argc, argv);
 
 	try
@@ -46,7 +51,7 @@ int main(int argc, char ** argv)
 
 		IntOption      & argDisplay         = parser.add<IntOption>    ('d', "display",        "Set the display to capture [default: %1]", "0");
 
-		IntOption      & argFps				= parser.add<IntOption>    ('f', "framerate",      "Capture frame rate [default: %1]", QString::number(GrabberWrapper::DEFAULT_RATE_HZ), GrabberWrapper::DEFAULT_MIN_GRAB_RATE_HZ, GrabberWrapper::DEFAULT_MAX_GRAB_RATE_HZ);
+		IntOption      & argFps             = parser.add<IntOption>    ('f', "framerate",      QString("Capture frame rate. Range %1-%2fps").arg(GrabberWrapper::DEFAULT_MIN_GRAB_RATE_HZ).arg(GrabberWrapper::DEFAULT_MAX_GRAB_RATE_HZ), QString::number(GrabberWrapper::DEFAULT_RATE_HZ), GrabberWrapper::DEFAULT_MIN_GRAB_RATE_HZ, GrabberWrapper::DEFAULT_MAX_GRAB_RATE_HZ);
 		IntOption      & argSizeDecimation	= parser.add<IntOption>    ('s', "size-decimator", "Decimation factor for the output image size [default=%1]", QString::number(GrabberWrapper::DEFAULT_PIXELDECIMATION), 1);
 
 		IntOption      & argCropLeft        = parser.add<IntOption>    (0x0, "crop-left",      "Number of pixels to crop from the left of the picture before decimation");
@@ -56,7 +61,7 @@ int main(int argc, char ** argv)
 		BooleanOption  & arg3DSBS			= parser.add<BooleanOption>(0x0, "3DSBS",          "Interpret the incoming video stream as 3D side-by-side");
 		BooleanOption  & arg3DTAB			= parser.add<BooleanOption>(0x0, "3DTAB",          "Interpret the incoming video stream as 3D top-and-bottom");
 
-		Option         & argAddress         = parser.add<Option>       ('a', "address",        "Set the address of the hyperion server [default: %1]", "127.0.0.1:19400");
+		Option         & argAddress         = parser.add<Option>       ('a', "address",        "The hostname or IP-address (IPv4 or IPv6) of the hyperion server.\nDefault host: %1, port: 19400.\nSample addresses:\nHost : hyperion.fritz.box\nIPv4 : 127.0.0.1:19400\nIPv6 : [2001:1:2:3:4:5:6:7]", "127.0.0.1");
 		IntOption      & argPriority        = parser.add<IntOption>    ('p', "priority",       "Use the provided priority channel (suggested 100-199) [default: %1]", "150");
 		BooleanOption  & argSkipReply       = parser.add<BooleanOption>(0x0, "skip-reply",     "Do not receive and check reply messages from Hyperion");
 
@@ -114,29 +119,46 @@ int main(int argc, char ** argv)
 		}
 		else
 		{
-			// server searching by ssdp
-			QString address = argAddress.value(parser);
-			if(argAddress.value(parser) == "127.0.0.1:19400")
+			QString host;
+			QString serviceName {QHostInfo::localHostName()};
+			int port {FLATBUFFER_DEFAULT_PORT};
+
+			// Split hostname and port (or use default port)
+			QString givenAddress = argAddress.value(parser);
+			if (!NetUtils::resolveHostPort(givenAddress, host, port))
 			{
-				SSDPDiscover discover;
-				address = discover.getFirstService(searchType::STY_FLATBUFSERVER);
-				if(address.isEmpty())
-				{
-					address = argAddress.value(parser);
-				}
+				throw std::runtime_error(QString("Wrong address: unable to parse address (%1)").arg(givenAddress).toStdString());
 			}
 
+			// Search available Hyperion services via mDNS, if default/localhost IP is given
+			if (host == "127.0.0.1" || host == "::1")
+			{
+#ifndef ENABLE_MDNS
+				SSDPDiscover discover;
+				host = discover.getFirstService(searchType::STY_FLATBUFSERVER);
+#endif
+				
+				QHostAddress address;
+				if (!NetUtils::resolveHostToAddress(log, host, address, port))
+				{
+					throw std::runtime_error(QString("Address could not be resolved for hostname: %2").arg(QSTRING_CSTR(host)).toStdString());
+				}
+				host = address.toString();
+			}
+
+			Info(log, "Connecting to Hyperion host: %s, port: %u using service: %s", QSTRING_CSTR(host), port, QSTRING_CSTR(serviceName));
+
 			// Create the Flabuf-connection
-			FlatBufferConnection flatbuf("Qt Standalone", address, argPriority.getInt(parser), parser.isSet(argSkipReply));
+			FlatBufferConnection flatbuf("Qt Standalone", host, argPriority.getInt(parser), parser.isSet(argSkipReply), port);
 
 			// Connect the screen capturing to flatbuf connection processing
-			QObject::connect(&qtWrapper, SIGNAL(sig_screenshot(const Image<ColorRgb> &)), &flatbuf, SLOT(setImage(Image<ColorRgb>)));
+			QObject::connect(&qtWrapper, &QtWrapper::sig_screenshot, &flatbuf, &FlatBufferConnection::setImage);
 
 			// Start the capturing
 			qtWrapper.start();
 
 			// Start the application
-			app.exec();
+			QGuiApplication::exec();
 		}
 	}
 	catch (const std::runtime_error & e)

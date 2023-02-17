@@ -51,20 +51,6 @@
         }
       }
     },
-    "outputRate": {
-      "type": "number",
-      "title": "edt_conf_smooth_outputRate_title",
-      "minimum": 1.0,
-      "maximum": 1000.0,
-      "default": 1.0,
-      "append": "edt_append_hz",
-      "propertyOrder": 6,
-      "options": {
-        "dependencies": {
-          "type": "decay"
-        }
-      }
-    },
     "decay": {
       "type": "number",
       "title": "edt_conf_smooth_decay_title",
@@ -96,7 +82,7 @@
       "minimum": 0,
       "maximum": 2048,
       "default": 0,
-      "append": "edt_append_ms",
+      "append": "edt_append_frames",
       "propertyOrder": 9
     }
   },

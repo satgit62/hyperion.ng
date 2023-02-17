@@ -1,7 +1,10 @@
 #pragma once
+#include <memory>
 
 #include <QObject>
 #include <QString>
+
+#include "HyperionConfig.h"
 
 class SysInfo : public QObject
 {
@@ -23,7 +26,9 @@ public:
 		QString domainName;
 		bool isUserAdmin;
 		QString qtVersion;
+#if defined(ENABLE_EFFECTENGINE)
 		QString pyVersion;
+#endif
 	};
 
 	static HyperionSysInfo get();
@@ -35,7 +40,7 @@ private:
 	SysInfo();
 	void getCPUInfo();
 
-	static SysInfo* _instance;
+	static std::unique_ptr <SysInfo> _instance;
 
 	HyperionSysInfo _sysinfo;
 };

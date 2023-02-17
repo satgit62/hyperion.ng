@@ -4,6 +4,8 @@
 #include <QObject>
 #include <QJsonObject>
 
+#include <hyperion/HyperionIManager.h>
+
 #ifdef ENABLE_DISPMANX
 	#include <grabber/DispmanxWrapper.h>
 #else
@@ -58,6 +60,8 @@
 	typedef QObject DirectXWrapper;
 #endif
 
+#include <hyperion/GrabberWrapper.h>
+
 #include <utils/Logger.h>
 #include <utils/VideoMode.h>
 
@@ -65,16 +69,19 @@
 #include <utils/settings.h>
 #include <utils/Components.h>
 
+#include "SuspendHandler.h"
+
 class HyperionIManager;
 class SysTray;
 class JsonServer;
-#ifndef __APPLE__
-	class MdnsEngineWrapper;
+#ifdef ENABLE_MDNS
+class MdnsProvider;
 #endif
-class BonjourBrowserWrapper;
 class WebServer;
 class SettingsManager;
+#if defined(ENABLE_EFFECTENGINE)
 class PythonInit;
+#endif
 class SSDPHandler;
 class FlatBufferServer;
 class ProtoServer;
@@ -96,6 +103,11 @@ public:
 	/// @brief Get webserver pointer (systray)
 	///
 	WebServer *getWebServerInstance() { return _webserver; }
+
+	///
+	/// @brief Get suspense handler pointer
+	///
+	SuspendHandler* getSuspendHandlerInstance() { return _suspendHandler; }
 
 	///
 	/// @brief Get the current videoMode
@@ -153,6 +165,12 @@ private slots:
 	///
 	void setVideoMode(VideoMode mode);
 
+	/// @brief Handle whenever the state of a instance (HyperionIManager) changes according to enum instanceState
+	/// @param instaneState  A state from enum
+	/// @param instance      The index of instance
+	///
+	void handleInstanceStateChange(InstanceState state, quint8 instance);
+
 private:
 	void createGrabberDispmanx(const QJsonObject & grabberConfig);
 	void createGrabberAmlogic(const QJsonObject & grabberConfig);
@@ -167,12 +185,13 @@ private:
 	Logger*                    _log;
 	HyperionIManager*          _instanceManager;
 	AuthManager*               _authManager;
-#ifndef __APPLE__
-	MdnsEngineWrapper*         _mDNSEngineWrapper;
+#ifdef ENABLE_MDNS
+	MdnsProvider*                _mDNSProvider;
 #endif
-	BonjourBrowserWrapper*     _bonjourBrowserWrapper;
 	NetOrigin*                 _netOrigin;
+#if defined(ENABLE_EFFECTENGINE)
 	PythonInit*                _pyInit;
+#endif
 	WebServer*                 _webserver;
 	WebServer*                 _sslWebserver;
 	JsonServer*                _jsonServer;
@@ -186,10 +205,17 @@ private:
 	QtWrapper*                 _qtGrabber;
 	DirectXWrapper*            _dxGrabber;
 	SSDPHandler*               _ssdp;
+	#ifdef ENABLE_CEC
 	CECHandler*                _cecHandler;
-	FlatBufferServer*          _flatBufferServer;
-	ProtoServer*               _protoServer;
+	#endif
+	SuspendHandler*            _suspendHandler;
 
+	#if defined(ENABLE_FLATBUF_SERVER)
+	FlatBufferServer*          _flatBufferServer;
+	#endif
+	#if defined(ENABLE_PROTOBUF_SERVER)
+	ProtoServer*               _protoServer;
+	#endif
 	int                        _grabber_width;
 	int                        _grabber_height;
 	int                        _grabber_pixelDecimation;

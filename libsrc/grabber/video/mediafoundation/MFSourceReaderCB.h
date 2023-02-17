@@ -30,7 +30,9 @@ static PixelFormat GetPixelFormatForGuid(const GUID guid)
 	if (IsEqualGUID(guid, MFVideoFormat_RGB24)) return PixelFormat::BGR24;
 	if (IsEqualGUID(guid, MFVideoFormat_YUY2)) return PixelFormat::YUYV;
 	if (IsEqualGUID(guid, MFVideoFormat_UYVY)) return PixelFormat::UYVY;
+#ifdef HAVE_TURBO_JPEG
 	if (IsEqualGUID(guid, MFVideoFormat_MJPG)) return  PixelFormat::MJPEG;
+#endif
 	if (IsEqualGUID(guid, MFVideoFormat_NV12)) return  PixelFormat::NV12;
 	if (IsEqualGUID(guid, MFVideoFormat_I420)) return  PixelFormat::I420;
 	return PixelFormat::NO_CHANGE;
@@ -124,12 +126,15 @@ public:
 
 		// Variables declaration
 		IMFMediaBuffer* buffer = nullptr;
+		BYTE* data = nullptr;
+		DWORD maxLength = 0, currentLength = 0;
+
+
 
 		if (FAILED(hrStatus))
 		{
 			_hrStatus = hrStatus;
-			_com_error error(_hrStatus);
-			Error(_grabber->_log, "%s", error.ErrorMessage());
+			Error(_grabber->_log, "0x%08x: %s", _hrStatus, std::system_category().message(_hrStatus).c_str());
 			goto done;
 		}
 
@@ -139,24 +144,25 @@ public:
 			goto done;
 		}
 
+#ifdef HAVE_TURBO_JPEG
 		if (_pixelformat != PixelFormat::MJPEG && _pixelformat != PixelFormat::BGR24 && _pixelformat != PixelFormat::NO_CHANGE)
+#else
+		if (_pixelformat != PixelFormat::BGR24 && _pixelformat != PixelFormat::NO_CHANGE)
+#endif
 			pSample = TransformSample(_transform, pSample);
 
 		_hrStatus = pSample->ConvertToContiguousBuffer(&buffer);
 		if (FAILED(_hrStatus))
 		{
-			_com_error error(_hrStatus);
-			Error(_grabber->_log, "Buffer conversion failed => %s", error.ErrorMessage());
+			Error(_grabber->_log, "Buffer conversion failed => 0x%08x: %s", _hrStatus, std::system_category().message(_hrStatus).c_str());
 			goto done;
 		}
 
-		BYTE* data = nullptr;
-		DWORD maxLength = 0, currentLength = 0;
+
 		_hrStatus = buffer->Lock(&data, &maxLength, &currentLength);
 		if (FAILED(_hrStatus))
 		{
-			_com_error error(_hrStatus);
-			Error(_grabber->_log, "Access to the buffer memory failed => %s", error.ErrorMessage());
+			Error(_grabber->_log, "Access to the buffer memory failed => 0x%08x: %s", _hrStatus, std::system_category().message(_hrStatus).c_str());
 			goto done;
 		}
 
@@ -165,8 +171,7 @@ public:
 		_hrStatus = buffer->Unlock();
 		if (FAILED(_hrStatus))
 		{
-			_com_error error(_hrStatus);
-			Error(_grabber->_log, "Unlocking the buffer memory failed => %s", error.ErrorMessage());
+			Error(_grabber->_log, "Unlocking the buffer memory failed => 0x%08x: %s", _hrStatus, std::system_category().message(_hrStatus).c_str());
 		}
 
 	done:
@@ -175,7 +180,11 @@ public:
 		if (MF_SOURCE_READERF_ENDOFSTREAM & dwStreamFlags)
 			_bEOS = TRUE; // Reached the end of the stream.
 
+#ifdef HAVE_TURBO_JPEG
 		if (_pixelformat != PixelFormat::MJPEG && _pixelformat != PixelFormat::BGR24 && _pixelformat != PixelFormat::NO_CHANGE)
+#else
+		if (_pixelformat != PixelFormat::BGR24 && _pixelformat != PixelFormat::NO_CHANGE)
+#endif
 			SAFE_RELEASE(pSample);
 
 		_isBusy = false;
@@ -183,10 +192,14 @@ public:
 		return _hrStatus;
 	}
 
-	HRESULT SourceReaderCB::InitializeVideoEncoder(IMFMediaType* type, PixelFormat format)
+	HRESULT InitializeVideoEncoder(IMFMediaType* type, PixelFormat format)
 	{
 		_pixelformat = format;
+#ifdef HAVE_TURBO_JPEG
 		if (format == PixelFormat::MJPEG || format == PixelFormat::BGR24 || format == PixelFormat::NO_CHANGE)
+#else
+		if (format == PixelFormat::BGR24 || format == PixelFormat::NO_CHANGE)
+#endif
 			return S_OK;
 
 		// Variable declaration
@@ -198,8 +211,7 @@ public:
 		_hrStatus = CoCreateInstance(CLSID_CColorConvertDMO, nullptr, CLSCTX_INPROC_SERVER, IID_IMFTransform, (void**)&_transform);
 		if (FAILED(_hrStatus))
 		{
-			_com_error error(_hrStatus);
-			Error(_grabber->_log, "Creation of the Color Converter failed => %s", error.ErrorMessage());
+			Error(_grabber->_log, "Creation of the Color Converter failed => 0x%08x: %s", _hrStatus, std::system_category().message(_hrStatus).c_str());
 			goto done;
 		}
 
@@ -207,8 +219,7 @@ public:
 		_hrStatus = _transform->SetInputType(0, type, 0);
 		if (FAILED(_hrStatus))
 		{
-			_com_error error(_hrStatus);
-			Error(_grabber->_log, "Setting the input media type failed => %s", error.ErrorMessage());
+			Error(_grabber->_log, "Setting the input media type failed => 0x%08x: %s", _hrStatus, std::system_category().message(_hrStatus).c_str());
 			goto done;
 		}
 
@@ -216,8 +227,7 @@ public:
 		_hrStatus = MFCreateMediaType(&output);
 		if (FAILED(_hrStatus))
 		{
-			_com_error error(_hrStatus);
-			Error(_grabber->_log, "Creating a new media type failed => %s", error.ErrorMessage());
+			Error(_grabber->_log, "Creating a new media type failed => 0x%08x: %s", _hrStatus, std::system_category().message(_hrStatus).c_str());
 			goto done;
 		}
 
@@ -225,8 +235,7 @@ public:
 		_hrStatus = type->CopyAllItems(output);
 		if (FAILED(_hrStatus))
 		{
-			_com_error error(_hrStatus);
-			Error(_grabber->_log, "Copying of all attributes from input to output media type failed => %s", error.ErrorMessage());
+			Error(_grabber->_log, "Copying of all attributes from input to output media type failed => 0x%08x: %s", _hrStatus, std::system_category().message(_hrStatus).c_str());
 			goto done;
 		}
 
@@ -253,8 +262,7 @@ public:
 		_hrStatus = _transform->SetOutputType(0, output, 0);
 		if (FAILED(_hrStatus))
 		{
-			_com_error error(_hrStatus);
-			Error(_grabber->_log, "Setting the output media type failed => %s", error.ErrorMessage());
+			Error(_grabber->_log, "Setting the output media type failed => 0x%08x: %s", _hrStatus, std::system_category().message(_hrStatus).c_str());
 			goto done;
 		}
 
@@ -262,8 +270,7 @@ public:
 		_hrStatus = _transform->GetInputStatus(0, &mftStatus);
 		if (FAILED(_hrStatus))
 		{
-			_com_error error(_hrStatus);
-			Error(_grabber->_log, "Failed to query the input stream for more data => %s", error.ErrorMessage());
+			Error(_grabber->_log, "Failed to query the input stream for more data => 0x%08x: %s", _hrStatus, std::system_category().message(_hrStatus).c_str());
 			goto done;
 		}
 
@@ -283,7 +290,7 @@ public:
 		return _hrStatus;
 	}
 
-	BOOL SourceReaderCB::isBusy()
+	BOOL isBusy()
 	{
 		EnterCriticalSection(&_critsec);
 		BOOL result = _isBusy;
@@ -310,18 +317,18 @@ private:
 		DeleteCriticalSection(&_critsec);
 	}
 
-	IMFSample* SourceReaderCB::TransformSample(IMFTransform* transform, IMFSample* in_sample)
+	IMFSample* TransformSample(IMFTransform* transform, IMFSample* in_sample)
 	{
 		IMFSample* result = nullptr;
 		IMFMediaBuffer* out_buffer = nullptr;
 		MFT_OUTPUT_DATA_BUFFER outputDataBuffer = { 0 };
+		DWORD status = 0;
 
 		// Process the input sample
 		_hrStatus = transform->ProcessInput(0, in_sample, 0);
 		if (FAILED(_hrStatus))
 		{
-			_com_error error(_hrStatus);
-			Error(_grabber->_log, "Failed to process the input sample => %s", error.ErrorMessage());
+			Error(_grabber->_log, "Failed to process the input sample => 0x%08x: %s", _hrStatus, std::system_category().message(_hrStatus).c_str());
 			goto done;
 		}
 
@@ -330,8 +337,7 @@ private:
 		_hrStatus = transform->GetOutputStreamInfo(0, &streamInfo);
 		if (FAILED(_hrStatus))
 		{
-			_com_error error(_hrStatus);
-			Error(_grabber->_log, "Failed to retrieve buffer requirement for output current => %s", error.ErrorMessage());
+			Error(_grabber->_log, "Failed to retrieve buffer requirement for output current => 0x%08x: %s", _hrStatus, std::system_category().message(_hrStatus).c_str());
 			goto done;
 		}
 
@@ -339,8 +345,7 @@ private:
 		_hrStatus = MFCreateMemoryBuffer(streamInfo.cbSize, &out_buffer);
 		if (FAILED(_hrStatus))
 		{
-			_com_error error(_hrStatus);
-			Error(_grabber->_log, "Failed to create an output media buffer => %s", error.ErrorMessage());
+			Error(_grabber->_log, "Failed to create an output media buffer => 0x%08x: %s", _hrStatus, std::system_category().message(_hrStatus).c_str());
 			goto done;
 		}
 
@@ -348,8 +353,7 @@ private:
 		_hrStatus = MFCreateSample(&result);
 		if (FAILED(_hrStatus))
 		{
-			_com_error error(_hrStatus);
-			Error(_grabber->_log, "Failed to create an empty media sample => %s", error.ErrorMessage());
+			Error(_grabber->_log, "Failed to create an empty media sampl => 0x%08x: %s", _hrStatus, std::system_category().message(_hrStatus).c_str());
 			goto done;
 		}
 
@@ -357,8 +361,7 @@ private:
 		_hrStatus = result->AddBuffer(out_buffer);
 		if (FAILED(_hrStatus))
 		{
-			_com_error error(_hrStatus);
-			Error(_grabber->_log, "Failed to add the output media buffer to the media sample => %s", error.ErrorMessage());
+			Error(_grabber->_log, "Failed to add the output media buffer to the media sample => 0x%08x: %s", _hrStatus, std::system_category().message(_hrStatus).c_str());
 			goto done;
 		}
 
@@ -369,14 +372,11 @@ private:
 		outputDataBuffer.pEvents = nullptr;
 		outputDataBuffer.pSample = result;
 
-		DWORD status = 0;
-
 		// Generate the output sample
 		_hrStatus = transform->ProcessOutput(0, 1, &outputDataBuffer, &status);
 		if (FAILED(_hrStatus))
 		{
-			_com_error error(_hrStatus);
-			Error(_grabber->_log, "Failed to generate the output sample => %s", error.ErrorMessage());
+			Error(_grabber->_log, "Failed to generate the output sample => 0x%08x: %s", _hrStatus, std::system_category().message(_hrStatus).c_str());
 		}
 		else
 		{

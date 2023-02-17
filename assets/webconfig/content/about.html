@@ -21,8 +21,8 @@
 <script type="text/javascript">
   performTranslation();
 
-  var si = sysInfo.hyperion;
-  var libs = { "Bootstrap 3": "https://getbootstrap.com/", "JQuery": "https://jquery.com/", "Bootstrap Colorpicker": "https://itsjavi.com/bootstrap-colorpicker/", "Bootstrap Toggle": "https://www.bootstraptoggle.com/", "Bootstrap Select": "https://developer.snapappointments.com/bootstrap-select/", "JSON-Editor": "https://github.com/json-editor/json-editor", "jQuery.i18n": "https://github.com/wikimedia/jquery.i18n", "metisMenu": "https://mm.onokumus.com/index.html", "download.js": "https://github.com/rndme/download", "gijgo": "https://gijgo.com/" };
+  var si = window.sysInfo.hyperion;
+  var libs = { "Bootstrap 3": "https://getbootstrap.com/", "JQuery": "https://jquery.com/", "Bootstrap Colorpicker": "https://itsjavi.com/bootstrap-colorpicker/", "Bootstrap Toggle": "https://www.bootstraptoggle.com/", "Bootstrap Select": "https://developer.snapappointments.com/bootstrap-select/", "JSON-Editor": "https://www.jeremydorn.com/json-editor", "jQuery.i18n": "https://github.com/wikimedia/jquery.i18n", "metisMenu": "https://mm.onokumus.com/index.html", "download.js": "https://github.com/rndme/download", "Gijgo": "https://gijgo.com/", "DOMPurify" : "https://github.com/cure53/DOMPurify", "Marked": "https://github.com/markedjs/marked", "PlainDraggable": "https://github.com/anseki/plain-draggable", "LeaderLine": "https://github.com/anseki/leader-line", "Animate.css": "https://github.com/animate-css/animate.css"};
   var libh = "";
   var lang = [];
   var dcount = 0;
@@ -58,21 +58,18 @@
     initRestart();
   });
 
-  var url = 'https://raw.githubusercontent.com/hyperion-project/hyperion.ng/master/3RD_PARTY_LICENSES';
-  fetch(url)
-    .then(function (response) {
-      if (!response.ok) {
-        $("#3rdpartylicenses").html('<a href="' + url + '">' + $.i18n("about_3rd_party_licenses_error") + '</a>');
-      }
-      else {
-        response.text().then(function (text) {
-          $("#3rdpartylicenses").html('<code>' + text + '</code>');
-        });
-      }
-    })
-    .catch(function (rejected) {
-      $("#3rdpartylicenses").html('<a href="' + url + '">' + $.i18n("about_3rd_party_licenses_error") + '</a>');
-    });
+  $.ajax({
+    url:'3RD_PARTY_LICENSES',
+    dataType: "text",
+    success: function(data)
+    {
+      $("#3rdpartylicenses").html('<code>' + data + '</code>');
+    },
+    error: function()
+    {
+      $("#3rdpartylicenses").html('<a href="https://raw.githubusercontent.com/hyperion-project/hyperion.ng/master/3RD_PARTY_LICENSES">' + $.i18n("about_3rd_party_licenses_error") + '</a>');
+    }
+  });
 
   removeOverlay();
 </script>

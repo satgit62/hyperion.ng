@@ -1,4 +1,3 @@
-//#include <iostream>
 #pragma once
 
 // Utils includes
@@ -127,7 +126,7 @@ namespace hyperion
 			// only test the topleft third of the image
 			int width = image.width() /3;
 			int height = image.height() / 3;
-			int maxSize = std::max(width, height);
+			int maxSize = qMax(width, height);
 
 			int firstNonBlackXPixelIndex = -1;
 			int firstNonBlackYPixelIndex = -1;
@@ -135,8 +134,8 @@ namespace hyperion
 			// find some pixel of the image
 			for (int i = 0; i < maxSize; ++i)
 			{
-				int x = std::min(i, width);
-				int y = std::min(i, height);
+				int x = qMin(i, width);
+				int y = qMin(i, height);
 
 				const Pixel_T & color = image(x, y);
 				if (!isBlack(color))
@@ -219,7 +218,6 @@ namespace hyperion
 					|| !isBlack(image((width - x), y))
 					|| !isBlack(image((width - x), (height - y))))
 				{
-//					std::cout << "y " << y << " lt " << int(isBlack(color1)) << " lb " << int(isBlack(color2)) << " rt " << int(isBlack(color3)) << " rb " << int(isBlack(color4)) << std::endl;
 					firstNonBlackYPixelIndex = y;
 					break;
 				}

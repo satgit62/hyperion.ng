@@ -59,18 +59,18 @@ $(document).ready(function () {
         if ((components[idx].name === "FORWARDER" && window.currentHyperionInstance != 0) ||
           (components[idx].name === "GRABBER" && !window.serverConfig.framegrabber.enable) ||
           (components[idx].name === "V4L" && !window.serverConfig.grabberV4L2.enable))
-            continue;
+          continue;
 
-          var comp_enabled = components[idx].enabled ? "checked" : "";
-          const general_comp = "general_comp_" + components[idx].name;
-          componentBtn = '<input ' +
-            'id="' + general_comp + '" ' + comp_enabled +
-            ' type="checkbox" ' +
-            'data-toggle="toggle" ' +
-            'data-size="mini" ' +
-            'data-onstyle="success" ' +
-            'data-on="' + $.i18n('general_btn_on') + '" ' +
-            'data-off="' + $.i18n('general_btn_off') + '">';
+        var comp_enabled = components[idx].enabled ? "checked" : "";
+        const general_comp = "general_comp_" + components[idx].name;
+        componentBtn = '<input ' +
+          'id="' + general_comp + '" ' + comp_enabled +
+          ' type="checkbox" ' +
+          'data-toggle="toggle" ' +
+          'data-size="mini" ' +
+          'data-onstyle="success" ' +
+          'data-on="' + $.i18n('general_btn_on') + '" ' +
+          'data-off="' + $.i18n('general_btn_off') + '">';
 
         instance_components += '<tr><td></td><td>' + $.i18n('general_comp_' + components[idx].name) + '</td><td style="text-align:right">' + componentBtn + '</td></tr>';
       }
@@ -85,7 +85,7 @@ $(document).ready(function () {
     updateHyperionInstanceListing();
 
     $('#instanceButton').bootstrapToggle();
-    $('#instanceButton').change(e => {
+    $('#instanceButton').on("change", e => {
       requestSetComponentState('ALL', e.currentTarget.checked);
     });
 
@@ -93,7 +93,7 @@ $(document).ready(function () {
       if (components[idx].name != "ALL") {
         $("#general_comp_" + components[idx].name).bootstrapToggle();
         $("#general_comp_" + components[idx].name).bootstrapToggle(hyperion_enabled ? "enable" : "disable");
-        $("#general_comp_" + components[idx].name).change(e => {
+        $("#general_comp_" + components[idx].name).on("change", e => {
           requestSetComponentState(e.currentTarget.id.split('_')[2], e.currentTarget.checked);
         });
       }
@@ -102,15 +102,48 @@ $(document).ready(function () {
 
   // add more info
 
-  var screenGrabber = window.serverConfig.framegrabber.enable ? $.i18n('general_enabled') : $.i18n('general_disabled');
-  $('#dash_screen_grabber').html(screenGrabber);
-  var videoGrabber = window.serverConfig.grabberV4L2.enable ? $.i18n('general_enabled') : $.i18n('general_disabled');
-  $('#dash_video_grabber').html(videoGrabber);
+  var screenGrabberAvailable = (window.serverInfo.grabbers.screen.available.length !== 0);
+  var videoGrabberAvailable = (window.serverInfo.grabbers.video.available.length !== 0);
 
-  var fbPort = window.serverConfig.flatbufServer.enable ? window.serverConfig.flatbufServer.port : $.i18n('general_disabled');
-  $('#dash_fbPort').html(fbPort);
-  var pbPort = window.serverConfig.protoServer.enable ? window.serverConfig.protoServer.port : $.i18n('general_disabled');
-  $('#dash_pbPort').html(pbPort);
+  if (screenGrabberAvailable || videoGrabberAvailable) {
+
+    if (screenGrabberAvailable) {
+      var screenGrabber = window.serverConfig.framegrabber.enable ? $.i18n('general_enabled') : $.i18n('general_disabled');
+      $('#dash_screen_grabber').html(screenGrabber);
+    } else {
+      $("#dash_screen_grabber_row").hide();
+    }
+
+    if (videoGrabberAvailable) {
+      var videoGrabber = window.serverConfig.grabberV4L2.enable ? $.i18n('general_enabled') : $.i18n('general_disabled');
+      $('#dash_video_grabber').html(videoGrabber);
+    } else {
+      $("#dash_video_grabber_row").hide();
+    }
+  } else {
+    $("#dash_capture_hw").hide();
+  }
+
+  if (jQuery.inArray("flatbuffer", window.serverInfo.services) !== -1) {
+    var fbPort = window.serverConfig.flatbufServer.enable ? window.serverConfig.flatbufServer.port : $.i18n('general_disabled');
+    $('#dash_fbPort').html(fbPort);
+  } else {
+    $("#dash_ports_flat_row").hide();
+  }
+
+  if (jQuery.inArray("protobuffer", window.serverInfo.services) !== -1) {
+    var pbPort = window.serverConfig.protoServer.enable ? window.serverConfig.protoServer.port : $.i18n('general_disabled');
+    $('#dash_pbPort').html(pbPort);
+  } else {
+    $("#dash_ports_proto_row").hide();
+  }
+
+  if (jQuery.inArray("boblight", window.serverInfo.services) !== -1) {
+    var boblightPort = window.serverConfig.boblightServer.enable ? window.serverConfig.boblightServer.port : $.i18n('general_disabled');
+    $('#dash_boblightPort').html(boblightPort);
+  } else {
+    $("#dash_ports_boblight_row").hide();
+  }
 
   var jsonPort = window.serverConfig.jsonServer.port;
   $('#dash_jsonPort').html(jsonPort);

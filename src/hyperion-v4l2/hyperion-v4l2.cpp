@@ -21,8 +21,15 @@
 #include "HyperionConfig.h"
 #include <commandline/Parser.h>
 
+#ifdef ENABLE_MDNS
+// mDNS discover
+#include <mdns/MdnsBrowser.h>
+#include <mdns/MdnsServiceRegister.h>
+#else
 // ssdp discover
 #include <ssdp/SSDPDiscover.h>
+#endif
+#include <utils/NetUtils.h>
 
 #include <utils/DefaultSignalHandler.h>
 
@@ -55,11 +62,12 @@ int main(int argc, char** argv)
 		Option             & argDevice              = parser.add<Option>       ('d', "device", "The device to use, can be /dev/video0 [default: %1 (auto detected)]", "auto");
 		IntOption          & argInput               = parser.add<IntOption>    ('i', "input",  "The device input [default: %1]", "0");
 		SwitchOption<VideoStandard> & argVideoStandard= parser.add<SwitchOption<VideoStandard>>('v', "video-standard", "The used video standard. Valid values are PAL, NTSC, SECAM or no-change. [default: %1]", "no-change");
-		SwitchOption<PixelFormat> & argPixelFormat    = parser.add<SwitchOption<PixelFormat>>  (0x0, "pixel-format", "The use pixel format. Valid values are YUYV, UYVY, RGB32, MJPEG or no-change. [default: %1]", "no-change");
-		IntOption          & argFps			        = parser.add<IntOption>    ('f', "framerate",      "Capture frame rate [default: %1]", QString::number(GrabberWrapper::DEFAULT_RATE_HZ), GrabberWrapper::DEFAULT_MIN_GRAB_RATE_HZ, GrabberWrapper::DEFAULT_MAX_GRAB_RATE_HZ);
-		SwitchOption<FlipMode> & argFlipMode = parser.add<SwitchOption<FlipMode>>(0x0, "flip-mode", "The used image flip mode. Valid values are HORIZONTAL, VERTICAL, BOTH or no-change. [default: %1]", "no-change");
-		IntOption          & argWidth               = parser.add<IntOption>    ('w', "width",      "Width of the captured image [default: %1]", "640", 640);
-		IntOption          & argHeight              = parser.add<IntOption>    ('h', "height",     "Height of the captured image [default: %1]", "480", 480);
+		SwitchOption<PixelFormat> & argPixelFormat   = parser.add<SwitchOption<PixelFormat>>  (0x0, "pixel-format", "The use pixel format. Valid values are YUYV, UYVY, RGB32, MJPEG or no-change. [default: %1]", "no-change");
+		IntOption          & argFps                 = parser.add<IntOption>    ('f', "framerate", QString("Capture frame rate. Range %1-%2fps").arg(GrabberWrapper::DEFAULT_MIN_GRAB_RATE_HZ).arg(GrabberWrapper::DEFAULT_MAX_GRAB_RATE_HZ), QString::number(GrabberWrapper::DEFAULT_RATE_HZ), GrabberWrapper::DEFAULT_MIN_GRAB_RATE_HZ, GrabberWrapper::DEFAULT_MAX_GRAB_RATE_HZ);
+
+		SwitchOption<FlipMode> & argFlipMode        = parser.add<SwitchOption<FlipMode>>(0x0, "flip-mode", "The used image flip mode. Valid values are HORIZONTAL, VERTICAL, BOTH or no-change. [default: %1]", "no-change");
+		IntOption          & argWidth               = parser.add<IntOption>    ('w', "width", "Width of the captured image [default: %1]", "640", 640);
+		IntOption          & argHeight              = parser.add<IntOption>    ('h', "height", "Height of the captured image [default: %1]", "480", 480);
 		IntOption          & argSizeDecimation	    = parser.add<IntOption>    ('s', "size-decimator", "Decimation factor for the output image size [default=%1]", QString::number(GrabberWrapper::DEFAULT_PIXELDECIMATION), 1);
 		IntOption          & argCropWidth           = parser.add<IntOption>    (0x0, "crop-width", "Number of pixels to crop from the left and right sides of the picture before decimation [default: %1]", "0");
 		IntOption          & argCropHeight          = parser.add<IntOption>    (0x0, "crop-height", "Number of pixels to crop from the top and the bottom of the picture before decimation [default: %1]", "0");
@@ -81,7 +89,7 @@ int main(int argc, char** argv)
 		DoubleOption       & argSignalHorizontalMax = parser.add<DoubleOption> (0x0, "signal-horizontal-max", "area for signal detection - horizontal maximum offset value. Values between 0.0 and 1.0");
 		DoubleOption       & argSignalVerticalMax   = parser.add<DoubleOption> (0x0, "signal-vertical-max"  , "area for signal detection - vertical maximum offset value. Values between 0.0 and 1.0");
 
-		Option             & argAddress             = parser.add<Option>       ('a', "address", "Set the address of the hyperion server [default: %1]", "127.0.0.1:19400");
+		Option             & argAddress             = parser.add<Option>       ('a', "address", "The hostname or IP-address (IPv4 or IPv6) of the hyperion server.\nDefault host: %1, port: 19400.\nSample addresses:\nHost : hyperion.fritz.box\nIPv4 : 127.0.0.1:19400\nIPv6 : [2001:1:2:3:4:5:6:7]", "127.0.0.1");
 		IntOption          & argPriority            = parser.add<IntOption>    ('p', "priority", "Use the provided priority channel (suggested 100-199) [default: %1]", "150");
 		BooleanOption      & argSkipReply           = parser.add<BooleanOption>(0x0, "skip-reply", "Do not receive and check reply messages from Hyperion");
 
@@ -229,20 +237,37 @@ int main(int argc, char** argv)
 		}
 		else
 		{
-			// server searching by ssdp
-			QString address = argAddress.value(parser);
-			if(argAddress.value(parser) == "127.0.0.1:19400")
+			QString host;
+			QString serviceName{ QHostInfo::localHostName() };
+			int port{ FLATBUFFER_DEFAULT_PORT };
+
+			// Split hostname and port (or use default port)
+			QString givenAddress = argAddress.value(parser);
+			if (!NetUtils::resolveHostPort(givenAddress, host, port))
 			{
-				SSDPDiscover discover;
-				address = discover.getFirstService(searchType::STY_FLATBUFSERVER);
-				if(address.isEmpty())
-				{
-					address = argAddress.value(parser);
-				}
+				throw std::runtime_error(QString("Wrong address: unable to parse address (%1)").arg(givenAddress).toStdString());
 			}
 
-			// Create the Flatbuf-connection
-			FlatBufferConnection flatbuf("V4L2 Standalone", address, argPriority.getInt(parser), parser.isSet(argSkipReply));
+			// Search available Hyperion services via mDNS, if default/localhost IP is given
+			if (host == "127.0.0.1" || host == "::1")
+			{
+#ifndef ENABLE_MDNS
+				SSDPDiscover discover;
+				host = discover.getFirstService(searchType::STY_FLATBUFSERVER);
+#endif
+				
+				QHostAddress address;
+				if (!NetUtils::resolveHostToAddress(log, host, address, port))
+				{
+					throw std::runtime_error(QString("Address could not be resolved for hostname: %2").arg(QSTRING_CSTR(host)).toStdString());
+				}
+				host = address.toString();
+			}
+
+			Info(log, "Connecting to Hyperion host: %s, port: %u using service: %s", QSTRING_CSTR(host), port, QSTRING_CSTR(serviceName));
+
+			// Create the Flabuf-connection
+			FlatBufferConnection flatbuf("V4L2 Standalone", host, argPriority.getInt(parser), parser.isSet(argSkipReply), port);
 
 			// Connect the screen capturing to flatbuf connection processing
 			QObject::connect(&grabber, SIGNAL(newFrame(const Image<ColorRgb> &)), &flatbuf, SLOT(setImage(Image<ColorRgb>)));

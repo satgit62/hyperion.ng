@@ -8,10 +8,6 @@
 
 #include <QCoreApplication>
 
-#ifndef __APPLE__
-#include <QX11Info>
-#endif
-
 #include <memory>
 
 // Constants
@@ -246,12 +242,12 @@ bool XcbGrabber::setupDisplay()
 		setupRender();
 		setupShm();
 
-		Info(_log, QString("XcbRandR=[%1] XcbRender=[%2] XcbShm=[%3] XcbPixmap=[%4]")
-			 .arg(_XcbRandRAvailable     ? "available" : "unavailable")
-			 .arg(_XcbRenderAvailable    ? "available" : "unavailable")
-			 .arg(_XcbShmAvailable       ? "available" : "unavailable")
-			 .arg(_XcbShmPixmapAvailable ? "available" : "unavailable")
-			 .toStdString().c_str());
+		Info(_log, "%s", QSTRING_CSTR(QString("XcbRandR=[%1] XcbRender=[%2] XcbShm=[%3] XcbPixmap=[%4]")
+			 .arg(_XcbRandRAvailable ? "available" : "unavailable",
+			 _XcbRenderAvailable     ? "available" : "unavailable",
+			 _XcbShmAvailable        ? "available" : "unavailable",
+			 _XcbShmPixmapAvailable  ? "available" : "unavailable"))
+			 );
 
 		result = (updateScreenDimensions(true) >= 0);
 		ErrorIf(!result, _log, "XCB Grabber start failed");
@@ -454,7 +450,11 @@ void XcbGrabber::setCropping(int cropLeft, int cropRight, int cropTop, int cropB
 		updateScreenDimensions(true);
 }
 
+#if (QT_VERSION >= QT_VERSION_CHECK(6, 0, 0))
+bool XcbGrabber::nativeEventFilter(const QByteArray & eventType, void * message, qintptr * /*result*/)
+#else
 bool XcbGrabber::nativeEventFilter(const QByteArray & eventType, void * message, long int * /*result*/)
+#endif
 {
 	if (!_XcbRandRAvailable || eventType != "xcb_generic_event_t" || _XcbRandREventBase == -1)
 		return false;
@@ -477,7 +477,7 @@ xcb_render_pictformat_t XcbGrabber::findFormatForVisual(xcb_visualid_t visual) c
 #ifdef __APPLE__
 	int screen = 0;
 #else
-	int screen = QX11Info::appScreen();
+	int screen = _screen_num;
 #endif
 	xcb_render_pictscreen_iterator_t sit =
 		xcb_render_query_pict_formats_screens_iterator(formats.get());

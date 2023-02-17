@@ -1,25 +1,25 @@
 // system includes
 #include <stdexcept>
 
-// project includes
-#include "HyperionConfig.h"
-#include <jsonserver/JsonServer.h>
-#include "JsonClientConnection.h"
-
-// mDNS/bonjour wrapper
-#ifndef __APPLE__
-#include <mdns/mdnsEngineWrapper.h>
-#elif ENABLE_AVAHI
-#include <bonjour/bonjourserviceregister.h>
-#endif
-
-#include <utils/NetOrigin.h>
-
 // qt includes
 #include <QTcpServer>
 #include <QTcpSocket>
 #include <QJsonDocument>
 #include <QByteArray>
+
+// project includes
+#include "HyperionConfig.h"
+#include <jsonserver/JsonServer.h>
+#include "JsonClientConnection.h"
+
+#include <utils/NetOrigin.h>
+
+// Constants
+namespace {
+
+const char SERVICE_TYPE[] = "jsonapi";
+
+} //End of constants
 
 JsonServer::JsonServer(const QJsonDocument& config)
 	: QObject()
@@ -27,14 +27,9 @@ JsonServer::JsonServer(const QJsonDocument& config)
 	, _openConnections()
 	, _log(Logger::getInstance("JSONSERVER"))
 	, _netOrigin(NetOrigin::getInstance())
+	, _config(config)
 {
 	Debug(_log, "Created instance");
-
-	// Set trigger for incoming connections
-	connect(_server, &QTcpServer::newConnection, this, &JsonServer::newConnection);
-
-	// init
-	handleSettingsUpdate(settings::JSONSERVER, config);
 }
 
 JsonServer::~JsonServer()
@@ -42,39 +37,29 @@ JsonServer::~JsonServer()
 	qDeleteAll(_openConnections);
 }
 
+void JsonServer::initServer()
+{
+	// Set trigger for incoming connections
+	connect(_server, &QTcpServer::newConnection, this, &JsonServer::newConnection);
+
+	// init
+	handleSettingsUpdate(settings::JSONSERVER, _config);
+}
+
 void JsonServer::start()
 {
-	if(_server->isListening())
-		return;
-
-	if (!_server->listen(QHostAddress::Any, _port))
+	if(!_server->isListening())
 	{
-		Error(_log,"Could not bind to port '%d', please use an available port", _port);
-		return;
+		if (!_server->listen(QHostAddress::Any, _port))
+		{
+			Error(_log,"Could not bind to port '%d', please use an available port", _port);
+		}
+		else
+		{
+			Info(_log, "Started on port %d", _port);
+			emit publishService(SERVICE_TYPE, _port);
+		}
 	}
-	Info(_log, "Started on port %d", _port);
-
-#ifndef __APPLE__
-	MdnsEngineWrapper* mdnsEngine = MdnsEngineWrapper::getInstance();
-	QMetaObject::invokeMethod(mdnsEngine, "provideServiceType", Qt::QueuedConnection,
-		Q_ARG(QByteArray, "_hyperiond-json._tcp.local."),
-		Q_ARG(quint16, _port),
-		Q_ARG(QByteArray, "API")
-	);
-
-#elif ENABLE_AVAHI
-	if(_serviceRegister == nullptr)
-	{
-		_serviceRegister = new BonjourServiceRegister(this);
-		_serviceRegister->registerService("_hyperiond-json._tcp", _port);
-	}
-	else if( _serviceRegister->getPort() != _port)
-	{
-		delete _serviceRegister;
-		_serviceRegister = new BonjourServiceRegister(this);
-		_serviceRegister->registerService("_hyperiond-json._tcp", _port);
-	}
-#endif
 }
 
 void JsonServer::stop()
@@ -113,7 +98,7 @@ void JsonServer::newConnection()
 		{
 			if(_netOrigin->accessAllowed(socket->peerAddress(), socket->localAddress()))
 			{
-				Debug(_log, "New connection from: %s ",socket->localAddress().toString().toStdString().c_str());
+				Debug(_log, "New connection from: %s",QSTRING_CSTR(socket->peerAddress().toString()));
 				JsonClientConnection * connection = new JsonClientConnection(socket, _netOrigin->isLocalAddress(socket->peerAddress(), socket->localAddress()));
 				_openConnections.insert(connection);
 
@@ -129,7 +114,7 @@ void JsonServer::newConnection()
 void JsonServer::closedConnection()
 {
 	JsonClientConnection* connection = qobject_cast<JsonClientConnection*>(sender());
-	Debug(_log, "Connection closed");
+	Debug(_log, "Connection closed for %s", QSTRING_CSTR(connection->getClientAddress().toString()));
 	_openConnections.remove(connection);
 
 	// schedule to delete the connection object

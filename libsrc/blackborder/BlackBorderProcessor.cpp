@@ -1,4 +1,5 @@
 #include <iostream>
+#include <cmath>
 
 #include <hyperion/Hyperion.h>
 
@@ -33,6 +34,8 @@ BlackBorderProcessor::BlackBorderProcessor(Hyperion* hyperion, QObject* parent)
 
 	// listen for component state changes
 	connect(_hyperion, &Hyperion::compStateChangeRequest, this, &BlackBorderProcessor::handleCompStateChangeRequest);
+
+	_detector = new BlackBorderDetector(_oldThreshold);
 }
 
 BlackBorderProcessor::~BlackBorderProcessor()
@@ -44,27 +47,36 @@ void BlackBorderProcessor::handleSettingsUpdate(settings::type type, const QJson
 {
 	if(type == settings::BLACKBORDER)
 	{
-		const QJsonObject& obj = config.object();
-		_unknownSwitchCnt = obj["unknownFrameCnt"].toInt(600);
-		_borderSwitchCnt = obj["borderFrameCnt"].toInt(50);
-		_maxInconsistentCnt = obj["maxInconsistentCnt"].toInt(10);
-		_blurRemoveCnt = obj["blurRemoveCnt"].toInt(1);
-		_detectionMode = obj["mode"].toString("default");
-		const double newThreshold = obj["threshold"].toDouble(5.0)/100.0;
-
-		if(_oldThreshold != newThreshold)
+		if (_hyperion->isComponentEnabled(COMP_BLACKBORDER) == -1)
 		{
-			_oldThreshold = newThreshold;
-
-			delete _detector;
-
-			_detector = new BlackBorderDetector(newThreshold);
+			//Disable, if service is not available
+			_enabled = false;
+			_userEnabled = false;
 		}
+		else
+		{
+			const QJsonObject& obj = config.object();
+			_unknownSwitchCnt = obj["unknownFrameCnt"].toInt(600);
+			_borderSwitchCnt = obj["borderFrameCnt"].toInt(50);
+			_maxInconsistentCnt = obj["maxInconsistentCnt"].toInt(10);
+			_blurRemoveCnt = obj["blurRemoveCnt"].toInt(1);
+			_detectionMode = obj["mode"].toString("default");
+			const double newThreshold = obj["threshold"].toDouble(5.0) / 100.0;
 
-		Debug(Logger::getInstance("BLACKBORDER"), "Set mode to: %s", QSTRING_CSTR(_detectionMode));
+			if (fabs(_oldThreshold - newThreshold) > std::numeric_limits<double>::epsilon())
+			{
+				_oldThreshold = newThreshold;
 
-		// eval the comp state
-		handleCompStateChangeRequest(hyperion::COMP_BLACKBORDER, obj["enable"].toBool(true));
+				delete _detector;
+
+				_detector = new BlackBorderDetector(newThreshold);
+			}
+
+			Debug(Logger::getInstance("BLACKBORDER", "I"+QString::number(_hyperion->getInstanceIndex())), "Set mode to: %s", QSTRING_CSTR(_detectionMode));
+
+			// eval the comp state
+			handleCompStateChangeRequest(hyperion::COMP_BLACKBORDER, obj["enable"].toBool(true));
+		}
 	}
 }
 
@@ -130,8 +142,6 @@ bool BlackBorderProcessor::updateBorder(const BlackBorder & newDetectedBorder)
 // this "random effect" caused the old algorithm to switch to that smaller border immediatly, resulting in a too small border being detected
 // makes it look like the border detectionn is not working - since the new 3 line detection algorithm is more precise this became a problem specialy in dark scenes
 // wisc
-
-//	std::cout << "c: " << setw(2) << _currentBorder.verticalSize << " " << setw(2) << _currentBorder.horizontalSize << " p: " << setw(2) << _previousDetectedBorder.verticalSize << " " << setw(2) << _previousDetectedBorder.horizontalSize << " n: " << setw(2) << newDetectedBorder.verticalSize << " " << setw(2) << newDetectedBorder.horizontalSize << " c:i " << setw(2) << _consistentCnt << ":" << setw(2) << _inconsistentCnt << std::endl;
 
 	// set the consistency counter
 	if (newDetectedBorder == _previousDetectedBorder)

@@ -55,7 +55,11 @@ $(document).ready(function () {
     testrun = true;
 
     var args = effects_editor.getEditor('root.args');
-    requestTestEffect(effectName, effectPyScript, JSON.stringify(args.getValue()), imageData);
+    if ($('input[type=radio][value=url]').is(':checked')) {
+      requestTestEffect(effectName, effectPyScript, JSON.stringify(args.getValue()), "");
+    } else {
+      requestTestEffect(effectName, effectPyScript, JSON.stringify(args.getValue()), imageData);
+    }
   };
 
   // Specify upload handler for image files
@@ -109,11 +113,11 @@ $(document).ready(function () {
         triggerTestEffect();
       }
       if (effects_editor.validate().length == 0 && effectName != "") {
-        $('#btn_start_test').attr('disabled', false);
-        !window.readOnlyMode ? $('#btn_write').attr('disabled', false) : $('#btn_write').attr('disabled', true);
+        $('#btn_start_test').prop('disabled', false);
+        !window.readOnlyMode ? $('#btn_write').prop('disabled', false) : $('#btn_write').prop('disabled', true);
       }
       else {
-        $('#btn_start_test, #btn_write').attr('disabled', true);
+        $('#btn_start_test, #btn_write').prop('disabled', true);
       }
     });
   });
@@ -123,17 +127,22 @@ $(document).ready(function () {
     effectName = encodeHTML($(this).val());
     if ($(this).val() == '') {
       effects_editor.disable();
-      $("#eff_footer").children().attr('disabled', true);
+      $("#eff_footer").children().prop('disabled', true);
     } else {
       effects_editor.enable();
-      $("#eff_footer").children().attr('disabled', false);
-      !window.readOnlyMode ? $('#btn_write').attr('disabled', false) : $('#btn_write').attr('disabled', true);
+      $("#eff_footer").children().prop('disabled', false);
+      !window.readOnlyMode ? $('#btn_write').prop('disabled', false) : $('#btn_write').prop('disabled', true);
     }
   });
 
   // Save Effect
   $('#btn_write').off().on('click', function () {
-    requestWriteEffect(effectName, effectPyScript, JSON.stringify(effects_editor.getValue()), imageData);
+    if ($('input[type=radio][value=url]').is(':checked')) {
+      requestWriteEffect(effectName, effectPyScript, JSON.stringify(effects_editor.getValue()), "");
+    } else {
+      requestWriteEffect(effectName, effectPyScript, JSON.stringify(effects_editor.getValue()), imageData);
+    }
+
     $(window.hyperion).one("cmd-create-effect", function (event) {
       if (event.response.success)
         showInfoDialog('success', "", $.i18n('infoDialog_effconf_created_text', effectName));
@@ -145,6 +154,7 @@ $(document).ready(function () {
 
   // Start test
   $('#btn_start_test').off().on('click', function () {
+    $('#btn_start_test').prop('disabled', true);
     triggerTestEffect();
   });
 
@@ -152,6 +162,7 @@ $(document).ready(function () {
   $('#btn_stop_test').off().on('click', function () {
     requestPriorityClear();
     testrun = false;
+    $('#btn_start_test').prop('disabled', false);
   });
 
   // Continuous test
@@ -171,8 +182,9 @@ $(document).ready(function () {
 
   // Disable or enable Delete Effect Button
   $('#effectsdellist').off().on('change', function () {
-    $(this).val() == null ? $('#btn_edit, #btn_delete').prop('disabled', true) : "";
-    $(this).val().startsWith("int_") ? $('#btn_delete').prop('disabled', true) : $('#btn_delete').prop('disabled', false);
+    var value = $(this).val();
+    value == null ? $('#btn_edit').prop('disabled', true) : $('#btn_edit').prop('disabled', false);
+    value.startsWith("int_") ? $('#btn_delete').prop('disabled', true) : $('#btn_delete').prop('disabled', false);
   });
 
   // Load Effect

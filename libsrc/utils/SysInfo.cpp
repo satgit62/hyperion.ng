@@ -1,5 +1,9 @@
+#include "HyperionConfig.h"
+
+#if defined(ENABLE_EFFECTENGINE)
 // Python includes
 #include <Python.h>
+#endif
 
 #include "utils/SysInfo.h"
 #include "utils/FileUtils.h"
@@ -10,12 +14,15 @@
 #include <QRegularExpressionMatch>
 
 #include <iostream>
+#ifndef _WIN32
+#include <unistd.h>
+#endif
 
 #ifdef _WIN32
 #include <shlobj_core.h>
 #endif
 
-SysInfo* SysInfo::_instance = nullptr;
+std::unique_ptr<SysInfo> SysInfo::_instance = nullptr;
 
 SysInfo::SysInfo()
 	: QObject()
@@ -32,13 +39,15 @@ SysInfo::SysInfo()
 	_sysinfo.isUserAdmin = isUserAdmin();
 	getCPUInfo();
 	_sysinfo.qtVersion = QT_VERSION_STR;
+#if defined(ENABLE_EFFECTENGINE)
 	_sysinfo.pyVersion = PY_VERSION;
+#endif
 }
 
 SysInfo::HyperionSysInfo SysInfo::get()
 {
 	if (SysInfo::_instance == nullptr)
-		SysInfo::_instance = new SysInfo();
+		SysInfo::_instance = std::unique_ptr<SysInfo>(new SysInfo());
 
 	return SysInfo::_instance->_sysinfo;
 }

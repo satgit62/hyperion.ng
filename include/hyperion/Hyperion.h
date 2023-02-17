@@ -24,11 +24,13 @@
 #include <hyperion/ColorAdjustment.h>
 #include <hyperion/ComponentRegister.h>
 
+#if defined(ENABLE_EFFECTENGINE)
 // Effect engine includes
 #include <effectengine/EffectDefinition.h>
 #include <effectengine/Effect.h>
 #include <effectengine/ActiveEffectDefinition.h>
 #include <effectengine/EffectSchema.h>
+#endif
 
 #include <leddevice/LedDevice.h>
 
@@ -38,15 +40,19 @@
 // Forward class declaration
 class HyperionDaemon;
 class ImageProcessor;
+#if defined(ENABLE_FORWARDER)
 class MessageForwarder;
+#endif
 class LinearColorSmoothing;
+#if defined(ENABLE_EFFECTENGINE)
 class EffectEngine;
+#endif
 class MultiColorAdjustment;
 class ColorAdjustment;
 class SettingsManager;
 class BGEffectHandler;
 class CaptureCont;
-#if defined(ENABLE_BOBLIGHT)
+#if defined(ENABLE_BOBLIGHT_SERVER)
 class BoblightServer;
 #endif
 class LedDeviceWrapper;
@@ -136,7 +142,7 @@ public slots:
 	/// @param  clearEffect  Should be true when NOT called from an effect
 	/// @return              True on success, false when priority is not found
 	///
-	bool setInput(int priority, const std::vector<ColorRgb>& ledColors, int timeout_ms = -1, bool clearEffect = true);
+	bool setInput(int priority, const std::vector<ColorRgb>& ledColors, int timeout_ms = PriorityMuxer::ENDLESS, bool clearEffect = true);
 
 	///
 	/// @brief   Update the current image of a priority (prev registered with registerInput())
@@ -147,7 +153,7 @@ public slots:
 	/// @param  clearEffect  Should be true when NOT called from an effect
 	/// @return              True on success, false when priority is not found
 	///
-	bool setInputImage(int priority, const Image<ColorRgb>& image, int64_t timeout_ms = -1, bool clearEffect = true);
+	bool setInputImage(int priority, const Image<ColorRgb>& image, int64_t timeout_ms = PriorityMuxer::ENDLESS, bool clearEffect = true);
 
 	///
 	/// Writes a single color to all the leds for the given time and priority
@@ -160,7 +166,7 @@ public slots:
 	/// @param[in] origin   The setter
 	/// @param     clearEffect  Should be true when NOT called from an effect
 	///
-	void setColor(int priority, const std::vector<ColorRgb> &ledColors, int timeout_ms = -1, const QString& origin = "System" ,bool clearEffects = true);
+	void setColor(int priority, const std::vector<ColorRgb> &ledColors, int timeout_ms = PriorityMuxer::ENDLESS, const QString& origin = "System" ,bool clearEffects = true);
 
 	///
 	/// @brief Set the given priority to inactive
@@ -194,14 +200,15 @@ public slots:
 	///
 	bool clear(int priority, bool forceClearAll=false);
 
+#if defined(ENABLE_EFFECTENGINE)
 	/// #############
 	/// EFFECTENGINE
 	///
 	/// @brief Get a pointer to the effect engine
 	/// @return     EffectEngine instance pointer
 	///
-
 	EffectEngine* getEffectEngineInstance() const { return _effectEngine; }
+
 	///
 	/// @brief Save an effect
 	/// @param  obj  The effect args
@@ -220,7 +227,7 @@ public slots:
 	/// @param effectName Name of the effec to run
 	///	@param priority The priority channel of the effect
 	/// @param timeout The timeout of the effect (after the timout, the effect will be cleared)
-	int setEffect(const QString & effectName, int priority, int timeout = Effect::ENDLESS, const QString & origin="System");
+	int setEffect(const QString & effectName, int priority, int timeout = PriorityMuxer::ENDLESS, const QString & origin="System");
 
 	/// Run the specified effect on the given priority channel and optionally specify a timeout
 	/// @param effectName Name of the effec to run
@@ -230,7 +237,7 @@ public slots:
 	int setEffect(const QString &effectName
 				, const QJsonObject &args
 				, int priority
-				, int timeout = Effect::ENDLESS
+				, int timeout = PriorityMuxer::ENDLESS
 				, const QString &pythonScript = ""
 				, const QString &origin="System"
 				, const QString &imageData = ""
@@ -247,6 +254,7 @@ public slots:
 	/// Get the list of available effect schema files
 	/// @return The list of available effect schema files
 	std::list<EffectSchema> getEffectSchemas() const;
+#endif
 
 	/// #############
 	/// PRIORITYMUXER
@@ -254,7 +262,7 @@ public slots:
 	/// @brief Get a pointer to the priorityMuxer instance
 	/// @return      PriorityMuxer instance pointer
 	///
-	PriorityMuxer* getMuxerInstance() { return &_muxer; }
+	PriorityMuxer* getMuxerInstance() { return _muxer; }
 
 	///
 	/// @brief enable/disable automatic/priorized source selection
@@ -324,13 +332,21 @@ public slots:
 	///
 	bool saveSettings(const QJsonObject& config, bool correct = false);
 
+	///
+	/// @brief Restore a complete json config
+	/// @param config  The entire config object
+	/// @param correct If true will correct json against schema before save
+	/// @return        True on success else false
+	///
+	bool restoreSettings(const QJsonObject& config, bool correct = false);
+
 	/// ############
 	/// COMPONENTREGISTER
 	///
 	/// @brief Get the component Register
 	/// return Component register pointer
 	///
-	ComponentRegister & getComponentRegister() { return _componentRegister; }
+	ComponentRegister* getComponentRegister() { return _componentRegister; }
 
 	///
 	/// @brief Called from components to update their current state. DO NOT CALL FROM USERS
@@ -373,6 +389,20 @@ public slots:
 
 	int getLatchTime() const;
 
+	///
+	/// @brief Set hyperion in suspend mode or resume from suspend/idle.
+	/// All instances and components will be disabled/enabled.
+	/// @param isSupend True, components will be deactivated, else put into their previous state before suspend
+	///
+	void setSuspend(bool isSupend);
+
+	///
+	/// @brief Set hyperion in idle /working mode.
+	/// In idle, all instances and components will be disabled besides the output processing (LED-Devices, smoothing).
+	/// @param isIdle True, selected components will be deactivated, else put into their previous state before idle
+	///
+	void setIdle(bool isIdle);
+
 signals:
 	/// Signal which is emitted when a priority channel is actively cleared
 	/// This signal will not be emitted when a priority channel time out
@@ -389,6 +419,18 @@ signals:
 	/// @param enabled    The new state of the component
 	///
 	void compStateChangeRequest(hyperion::Components component, bool enabled);
+
+	///
+	/// @brief Emits when all (besides excluded) components are subject to state changes
+	///	@param isActive The new state for all components
+	/// @param execlude List of excluded components
+	void compStateChangeRequestAll(bool isActive, const ComponentList& excludeList = {});
+
+	/// Signal which is emitted, when system is to be suspended/resumed
+	void suspendRequest(bool isSuspend);
+
+	/// Signal which is emitted, when system should go into idle/working mode
+	void idleRequest(bool isIdle);
 
 	///
 	/// @brief Emits whenever the imageToLedsMapping has changed
@@ -412,6 +454,11 @@ signals:
 	/// Signal which is emitted, when a new V4l proto image should be forwarded
 	void forwardV4lProtoMessage(const QString&, const Image<ColorRgb>&);
 
+#if defined(ENABLE_FLATBUF_SERVER) || defined(ENABLE_PROTOBUF_SERVER)
+	/// Signal which is emitted, when a new Flat-/Proto- Buffer image should be forwarded
+	void forwardBufferMessage(const QString&, const Image<ColorRgb>&);
+#endif
+
 	///
 	/// @brief Is emitted from clients who request a videoMode change
 	///
@@ -434,10 +481,12 @@ signals:
 	///
 	void adjustmentChanged();
 
+#if defined(ENABLE_EFFECTENGINE)
 	///
 	/// @brief Signal pipe from EffectEngine to external, emits when effect list has been updated
 	///
 	void effectListUpdated();
+#endif
 
 	///
 	/// @brief Emits whenever new data should be pushed to the LedDeviceWrapper which forwards it to the threaded LedDevice
@@ -482,7 +531,7 @@ private slots:
 	/// @brief Handle the scenario when no/an input source is available
 	///	@param priority   Current priority
 	///
-	void handleSourceAvailability(const quint8& priority);
+	void handleSourceAvailability(int priority);
 
 private:
 	friend class HyperionDaemon;
@@ -501,7 +550,7 @@ private:
 	SettingsManager* _settingsManager;
 
 	/// Register that holds component states
-	ComponentRegister _componentRegister;
+	ComponentRegister* _componentRegister;
 
 	/// The specifiation of the led frame construction and picture integration
 	LedString _ledString;
@@ -512,7 +561,7 @@ private:
 	std::vector<ColorOrder> _ledStringColorOrder;
 
 	/// The priority muxer
-	PriorityMuxer _muxer;
+	PriorityMuxer* _muxer;
 
 	/// The adjustment from raw colors to led colors
 	MultiColorAdjustment * _raw2ledAdjustment;
@@ -523,11 +572,15 @@ private:
 	/// The smoothing LedDevice
 	LinearColorSmoothing * _deviceSmooth;
 
+#if defined(ENABLE_EFFECTENGINE)
 	/// Effect engine
 	EffectEngine * _effectEngine;
+#endif
 
+#if defined(ENABLE_FORWARDER)
 	// Message forwarder
 	MessageForwarder * _messageForwarder;
+#endif
 
 	/// Logger instance
 	Logger * _log;
@@ -547,7 +600,7 @@ private:
 
 	VideoMode _currVideoMode = VideoMode::VIDEO_2D;
 
-#if defined(ENABLE_BOBLIGHT)
+#if defined(ENABLE_BOBLIGHT_SERVER)
 	/// Boblight instance
 	BoblightServer* _boblightServer;
 #endif

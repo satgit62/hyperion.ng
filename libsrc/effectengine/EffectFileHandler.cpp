@@ -10,28 +10,6 @@
 #include <QMap>
 #include <QByteArray>
 
-// createEffect helper
-struct find_schema : std::unary_function<EffectSchema, bool>
-{
-	QString pyFile;
-	find_schema(QString pyFile) :pyFile(std::move(pyFile)) { }
-	bool operator()(EffectSchema const& schema) const
-	{
-		return schema.pyFile == pyFile;
-	}
-};
-
-// deleteEffect helper
-struct find_effect : std::unary_function<EffectDefinition, bool>
-{
-	QString effectName;
-	find_effect(QString effectName) :effectName(std::move(effectName)) { }
-	bool operator()(EffectDefinition const& effectDefinition) const
-	{
-		return effectDefinition.name == effectName;
-	}
-};
-
 EffectFileHandler* EffectFileHandler::efhInstance;
 
 EffectFileHandler::EffectFileHandler(const QString& rootPath, const QJsonDocument& effectConfig, QObject* parent)
@@ -61,7 +39,9 @@ QString EffectFileHandler::deleteEffect(const QString& effectName)
 {
 	QString resultMsg;
 	std::list<EffectDefinition> effectsDefinition = getEffects();
-	std::list<EffectDefinition>::iterator it = std::find_if(effectsDefinition.begin(), effectsDefinition.end(), find_effect(effectName));
+	std::list<EffectDefinition>::iterator it = std::find_if(effectsDefinition.begin(), effectsDefinition.end(),
+		[&effectName](const EffectDefinition& effectDefinition) {return effectDefinition.name == effectName; }
+	);
 
 	if (it != effectsDefinition.end())
 	{
@@ -70,9 +50,9 @@ QString EffectFileHandler::deleteEffect(const QString& effectName)
 		{
 			if (effectConfigurationFile.exists())
 			{
-				if ((it->script == ":/effects/gif.py") && !it->args.value("image").toString("").isEmpty())
+				if ((it->script == ":/effects/gif.py") && !it->args.value("file").toString("").isEmpty())
 				{
-					QFileInfo effectImageFile(it->args.value("image").toString());
+					QFileInfo effectImageFile(it->args.value("file").toString());
 					if (effectImageFile.exists())
 					{
 						QFile::remove(effectImageFile.absoluteFilePath());
@@ -117,7 +97,9 @@ QString EffectFileHandler::saveEffect(const QJsonObject& message)
 		QString scriptName = message["script"].toString();
 
 		std::list<EffectSchema> effectsSchemas = getEffectSchemas();
-		std::list<EffectSchema>::iterator it = std::find_if(effectsSchemas.begin(), effectsSchemas.end(), find_schema(scriptName));
+		std::list<EffectSchema>::iterator it = std::find_if(effectsSchemas.begin(), effectsSchemas.end(),
+			[&scriptName](const EffectSchema& schema) {return schema.pyFile == scriptName; }
+		);
 
 		if (it != effectsSchemas.end())
 		{
@@ -132,17 +114,20 @@ QString EffectFileHandler::saveEffect(const QJsonObject& message)
 
 			if (!effectArray.empty())
 			{
-				if (message["name"].toString().trimmed().isEmpty() || message["name"].toString().trimmed().startsWith(":"))
+				QString effectName = message["name"].toString();
+				if (effectName.trimmed().isEmpty() || effectName.trimmed().startsWith(":"))
 				{
 					return "Can't save new effect. Effect name is empty or begins with a dot.";
 				}
 
-				effectJson["name"] = message["name"].toString();
+				effectJson["name"] = effectName;
 				effectJson["script"] = message["script"].toString();
 				effectJson["args"] = message["args"].toObject();
 
 				std::list<EffectDefinition> availableEffects = getEffects();
-				std::list<EffectDefinition>::iterator iter = std::find_if(availableEffects.begin(), availableEffects.end(), find_effect(message["name"].toString()));
+				std::list<EffectDefinition>::iterator iter = std::find_if(availableEffects.begin(), availableEffects.end(),
+					[&effectName](const EffectDefinition& effectDefinition) {return effectDefinition.name == effectName; }
+				);
 
 				QFileInfo newFileName;
 				if (iter != availableEffects.end())
@@ -150,28 +135,35 @@ QString EffectFileHandler::saveEffect(const QJsonObject& message)
 					newFileName.setFile(iter->file);
 					if (newFileName.absoluteFilePath().startsWith(':'))
 					{
-						return "The effect name '" + message["name"].toString() + "' is assigned to an internal effect. Please rename your effect.";
+						return "The effect name '" + effectName + "' is assigned to an internal effect. Please rename your effect.";
 					}
 				}
 				else
 				{
-					QString f = effectArray[0].toString().replace("$ROOT", _rootPath) + '/' + message["name"].toString().replace(QString(" "), QString("")) + QString(".json");
+					QString f = effectArray[0].toString().replace("$ROOT", _rootPath) + '/' + effectName.replace(QString(" "), QString("")) + QString(".json");
 					newFileName.setFile(f);
 				}
 
-				if (!message["imageData"].toString("").isEmpty() && !message["args"].toObject().value("image").toString("").isEmpty())
+				if (!message["imageData"].toString("").isEmpty() && !message["args"].toObject().value("file").toString("").isEmpty())
 				{
 					QJsonObject args = message["args"].toObject();
-					QString imageFilePath = effectArray[0].toString().replace("$ROOT", _rootPath) + '/' + args.value("image").toString();
+					QString imageFilePath = effectArray[0].toString().replace("$ROOT", _rootPath) + '/' + args.value("file").toString();
 
 					QFileInfo imageFileName(imageFilePath);
 					if (!FileUtils::writeFile(imageFileName.absoluteFilePath(), QByteArray::fromBase64(message["imageData"].toString("").toUtf8()), _log))
 					{
-						return "Error while saving image file '" + message["args"].toObject().value("image").toString() + ", please check the Hyperion Log";
+						return "Error while saving image file '" + message["args"].toObject().value("file").toString() + ", please check the Hyperion Log";
 					}
 
 					//Update json with image file location
-					args["image"] = imageFilePath;
+					args["file"] = imageFilePath;
+					effectJson["args"] = args;
+				}
+
+				if (message["args"].toObject().value("imageSource").toString("") == "url" || message["args"].toObject().value("imageSource").toString("") == "file")
+				{
+					QJsonObject args = message["args"].toObject();
+					args.remove(args.value("imageSource").toString("") == "url" ? "file" : "url");
 					effectJson["args"] = args;
 				}
 

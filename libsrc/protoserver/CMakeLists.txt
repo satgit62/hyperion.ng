@@ -11,7 +11,6 @@ include_directories(
 set(ProtoServer_PROTOS ${CURRENT_SOURCE_DIR}/message.proto )
 
 protobuf_generate_cpp(ProtoServer_PROTO_SRCS ProtoServer_PROTO_HDRS ${ProtoServer_PROTOS} )
-
 ### Split protoclient from protoserver as protoserver relates to HyperionDaemon and standalone capture binarys can't link to it
 
 add_library(protoclient
@@ -27,18 +26,26 @@ add_library(protoserver
 )
 
 # disable warnings for auto generated proto files, we can't change the files ....
-SET_SOURCE_FILES_PROPERTIES ( ${ProtoServer_PROTO_SRCS} ${ProtoServer_PROTO_HDRS} ${ProtoServer_PROTOS} PROPERTIES COMPILE_FLAGS -w )
+if (CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
+	set_source_files_properties(${ProtoServer_PROTO_SRCS} ${ProtoServer_PROTO_HDRS} ${ProtoServer_PROTOS} PROPERTIES COMPILE_FLAGS "-w -Wno-return-local-addr")
+elseif(MSVC)
+	set_source_files_properties(${ProtoServer_PROTO_SRCS} ${ProtoServer_PROTO_HDRS} ${ProtoServer_PROTOS} PROPERTIES COMPILE_FLAGS "/W0")
+endif()
 
 target_link_libraries(protoclient
 	hyperion
 	hyperion-utils
-	protobuf
-	Qt5::Gui
+	${PROTOBUF_LIBRARIES}
+	Qt${QT_VERSION_MAJOR}::Gui
 )
 
 target_link_libraries(protoserver
 	hyperion
 	hyperion-utils
 	protoclient
-	Qt5::Gui
+	Qt${QT_VERSION_MAJOR}::Gui
 )
+
+if(ENABLE_MDNS)
+	target_link_libraries(protoserver mdns)
+endif()

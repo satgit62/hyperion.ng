@@ -8,9 +8,9 @@ on:
 
 jobs:
 
-######################
-###### Linux #########
-######################
+###################
+###### Linux ######
+###################
 
   Linux:
     name: ${{ matrix.dockerName }}
@@ -33,11 +33,11 @@ jobs:
             platform: amlogic
 
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v3
         with:
           submodules: true
 
-      # build process
+      # Build process
       - name: Build packages
         env:
           DOCKER_IMAGE: ${{ matrix.dockerImage }}
@@ -47,91 +47,84 @@ jobs:
         shell: bash
         run: ./.ci/ci_build.sh
 
-      # upload artifacts (only on tagged commit)
+      # Upload artifacts (only on tagged commit)
       - name: Upload artifacts
         if: startsWith(github.event.ref, 'refs/tags')
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           path: deploy/Hyperion-*
 
-######################
-###### macOS #########
-######################
+###################
+###### macOS ######
+###################
 
   macOS:
     name: macOS
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v3
         with:
           submodules: true
 
-      # install dependencies
+      # Install dependencies
       - name: Install dependencies
         shell: bash
         run: ./.ci/ci_install.sh
 
-      # build process
+      # Build process
       - name: Build packages
         env:
           PLATFORM: osx
         shell: bash
         run: ./.ci/ci_build.sh
 
-      # upload artifacts (only on tagged commit)
+      # Upload artifacts (only on tagged commit)
       - name: Upload artifacts
         if: startsWith(github.event.ref, 'refs/tags')
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           path: build/Hyperion-*
 
-######################
-###### Windows #######
-######################
+#####################
+###### Windows ######
+#####################
 
   windows:
     name: Windows
-    runs-on: windows-latest
+    runs-on: windows-2022
     env:
-      VCINSTALLDIR: 'C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC'
-      QT_VERSION: 5.15.0
+      VCINSTALLDIR: 'C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC'
+      QT_VERSION: 5.15.2
     steps:
       - name: Checkout
-        uses: actions/checkout@v1
+        uses: actions/checkout@v3
         with:
           submodules: true
 
-      - name: Cache Qt
-        uses: actions/cache@v2
-        id: cache-qt-windows
-        with:
-          path: ${{ runner.workspace }}/Qt
-          key: ${{ runner.os }}-Qt.${{ env.QT_VERSION }}
-
       - name: Install Qt
-        uses: jurplel/install-qt-action@v2
+        uses: jurplel/install-qt-action@v3
         with:
-          version: ${{ env.QT_VERSION }}
+          version: ${{env.QT_VERSION}}
           target: 'desktop'
           arch: 'win64_msvc2019_64'
-          cached: ${{ steps.cache-qt-windows.outputs.cache-hit }}
+          cache: 'true'
+          cache-key-prefix: 'cache-qt-windows'
 
       - name: Cache Chocolatey downloads
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: C:\Users\runneradmin\AppData\Local\Temp\chocolatey
           key: ${{ runner.os }}-chocolatey
 
-      - name: "Remove Redistributable"
-        shell: cmd
-        run: |
-          MsiExec.exe /passive /X{F0C3E5D1-1ADE-321E-8167-68EF0DE699A5}
-          MsiExec.exe /passive /X{1D8E6291-B0D5-35EC-8441-6616F567A0F7}
+#      - name: Install Python
+#        shell: powershell
+#        run: |
+#          choco install --no-progress python -y
 
-      - name: Install Python, NSIS, OpenSSL, DirectX SDK
+      - name: Install OpenSSL, DirectX SDK
         shell: powershell
         run: |
-          choco install --no-progress python nsis openssl directx-sdk -y
+          choco install --no-progress openssl directx-sdk -y
 
       - name: Install libjpeg-turbo
         run: |
@@ -149,41 +142,17 @@ jobs:
         shell: bash
         run: ./.ci/ci_build.sh
 
-      # upload artifacts (only on tagged commit)
+      # Upload artifacts (only on tagged commit)
       - name: Upload artifacts
         if: startsWith(github.event.ref, 'refs/tags')
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           path: build/Hyperion-*
+          retention-days: 1
 
-##########################
-#### Snap (x86_64) #######
-##########################
-
-  snap:
-    name: Snap (x86_64)
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
-
-      # Build snap package
-      - name: Build snap
-        id: build
-        uses: snapcore/action-build@v1
-
-      # Upload snap artifact (only on tagged commit)
-      - name: Upload snap artifact
-        if: startsWith(github.event.ref, 'refs/tags')
-        uses: actions/upload-artifact@v2
-        with:
-          name: snap
-          path: ${{ steps.build.outputs.snap }}
-
-#######################################
-###### Publish GitHub Releases ########
-#######################################
+#####################################
+###### Publish GitHub Releases ######
+#####################################
 
   github_publish:
     name: Publish GitHub Releases
@@ -192,27 +161,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
-      # generate environment variables
-      - name: Generate environment variables from version and tag
+      # Generate environment variables
+      - name: Generate environment variables from .version and tag
         run: |
           echo "TAG=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
-          echo "VERSION=$(tr -d '\n' < version)" >> $GITHUB_ENV
-          echo "preRelease=false" >> $GITHUB_ENV
-
-      # If version contains alpha or beta, mark draft release as pre-release
-      - name: Mark release as pre-release
-        if: contains(env.VERSION, 'alpha') || contains(env.VERSION, 'beta')
-        run: echo "preRelease=true" >> $GITHUB_ENV
+          echo "VERSION=$(tr -d '\n' < .version)" >> $GITHUB_ENV
 
       # Download artifacts from previous build process
       - name: Download artifacts
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3.0.2
         with:
           path: artifacts
 
-      # create draft release and upload artifacts
+      # Create draft release and upload artifacts
       - name: Create draft release
         uses: softprops/action-gh-release@v1
         with:
@@ -220,38 +183,20 @@ jobs:
           tag_name: ${{ env.TAG }}
           files: "artifacts/**"
           draft: true
-          prerelease: ${{ env.preRelease }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-############################
-###### Snap Release ########
-############################
+##########################
+###### APT workflow ######
+##########################
 
-  snap_publish:
-    name: Publish Snap Release
+  apt_build:
+    name: APT Build GitHub Releases
     if: startsWith(github.event.ref, 'refs/tags')
-    needs: [snap]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-
-      # Download snap from snap job
-      - name: Download snap from snap build
-        id: download-artifact
-        uses: actions/download-artifact@v2
-        with:
-          name: snap
-
-      # Get file name of the snap
-      - name: Get file name of the snap
-        run: echo "snap=$(ls ${{ steps.download-artifact.outputs.download-path }}/hyperion-ng_*.snap)" >> $GITHUB_ENV
-
-      # Publish snap build to edge channel
-      - name: Publish snap build to edge channel
-        uses: snapcore/action-publish@v1
-        with:
-          store_login: ${{ secrets.SNAP_STORE_LOGIN }}
-          snap: ${{ env.snap }}
-          release: edge
+    needs: [Linux, macOS, windows]
+    uses: ./.github/workflows/apt.yml
+    secrets:
+      APT_GPG: ${{ secrets.APT_GPG }}
+      APT_USER: ${{ secrets.APT_USER }}
+      APT_PASSWORD: ${{ secrets.APT_PASSWORD }}
+      APT_DRAFT: ${{ secrets.APT_DRAFT }}

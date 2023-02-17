@@ -1,7 +1,7 @@
-cmake_minimum_required(VERSION 3.0.0)
+cmake_minimum_required(VERSION 3.1.0)
 project(hyperion-aml)
 
-find_package(Qt5Widgets REQUIRED)
+find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Core Network Widgets REQUIRED)
 
 include_directories(
 	${CMAKE_CURRENT_BINARY_DIR}/../../libsrc/flatbufserver
@@ -25,15 +25,20 @@ add_executable(${PROJECT_NAME}
 target_link_libraries(${PROJECT_NAME}
 	commandline
 	hyperion-utils
-	flatbufserver
+	flatbufconnect
 	flatbuffers
 	amlogic-grabber
 	framebuffer-grabber
-	ssdp
-	Qt5::Core
-	Qt5::Gui
-	Qt5::Network
+	Qt${QT_VERSION_MAJOR}::Core
+	Qt${QT_VERSION_MAJOR}::Network
+	Qt${QT_VERSION_MAJOR}::Widgets
 )
+
+if(ENABLE_MDNS)
+        target_link_libraries(${PROJECT_NAME} mdns)
+else()
+        target_link_libraries(${PROJECT_NAME} ssdp)
+endif()
 
 if (ENABLE_AMLOGIC)
 	target_link_libraries(${PROJECT_NAME}

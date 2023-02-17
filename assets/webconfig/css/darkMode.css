@@ -274,6 +274,10 @@ select.form-control {
     color: #DDDDDD;
 }
 
+.keystone_correction_corners {
+    border:1px solid white;
+}
+
 .checkbox label::before {
     border-color: #616161;
     background-color: #212121;
@@ -298,6 +302,10 @@ select.form-control {
 .checkbox input[type="checkbox"]:checked + label::after, .checkbox-success input[type="checkbox"]:checked + label::after, .checkbox-success input[type="radio"]:checked + label::after {
     color: #DDDDDD;
 }
+
+.radio__field:checked ~ .radio__icon::before {
+    background: #fff;
+  }
 
 .btn-group>.btn:first-child:not(:last-child):not(.dropdown-toggle) {
     border-bottom-right-radius: 4px;

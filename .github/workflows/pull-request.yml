@@ -32,16 +32,16 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v1
+        uses: actions/checkout@v3
         with:
           submodules: true
 
-      # Append PR number to version
+      # Append PR number to .version
       - name: Append PR number to version
         shell: bash
         run: |
-          tr -d '\n' < version > temp && mv temp version
-          echo -n "+PR${{ github.event.pull_request.number }}" >> version
+          tr -d '\n' < .version > temp && mv temp .version
+          echo -n "+PR${{ github.event.pull_request.number }}" >> .version
 
       # Build packages
       - name: Build packages
@@ -59,15 +59,13 @@ jobs:
         run: |
           mkdir -p ${{ matrix.dockerImage }}
           mv deploy/*.tar.gz ${{ matrix.dockerImage }}
-        if: matrix.dockerImage != 'aarch64'
 
       # Upload artifacts
       - name: Upload artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: ${{ matrix.dockerImage }}
           path: ${{ matrix.dockerImage }}
-        if: matrix.dockerImage != 'aarch64'
 
 ######################
 ###### macOS #########
@@ -78,16 +76,16 @@ jobs:
     runs-on: macos-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v1
+        uses: actions/checkout@v3
         with:
           submodules: true
 
-      # Append PR number to version
+      # Append PR number to .version
       - name: Append PR number to version
         shell: bash
         run: |
-          tr -d '\n' < version > temp && mv temp version
-          echo -n "+PR${{ github.event.pull_request.number }}" >> version
+          tr -d '\n' < .version > temp && mv temp .version
+          echo -n "+PR${{ github.event.pull_request.number }}" >> .version
 
       # Install dependencies
       - name: Install dependencies
@@ -106,11 +104,11 @@ jobs:
         shell: bash
         run: |
           mkdir -p macOS
-          mv build/*.tar.gz macOS
+          mv build/*.dmg macOS
 
       # Upload artifacts
       - name: Upload artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: macOS
           path: macOS
@@ -121,54 +119,47 @@ jobs:
 
   windows:
     name: Windows
-    runs-on: windows-latest
+    runs-on: windows-2022
     env:
-      VCINSTALLDIR: 'C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC'
-      QT_VERSION: 5.15.0
+      VCINSTALLDIR: 'C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC'
+      QT_VERSION: 5.15.2
     steps:
       - name: Checkout
-        uses: actions/checkout@v1
+        uses: actions/checkout@v3
         with:
           submodules: true
 
-      # Append PR number to version
+      # Append PR number to .version
       - name: Append PR number to version
         shell: bash
         run: |
-          tr -d '\n' < version > temp && mv temp version
-          echo -n "+PR${{ github.event.pull_request.number }}" >> version
-
-      - name: Cache Qt
-        uses: actions/cache@v2
-        id: cache-qt-windows
-        with:
-          path: ${{ runner.workspace }}/Qt
-          key: ${{ runner.os }}-Qt.${{ env.QT_VERSION }}
+          tr -d '\n' < .version > temp && mv temp .version
+          echo -n "+PR${{ github.event.pull_request.number }}" >> .version
 
       - name: Install Qt
-        uses: jurplel/install-qt-action@v2
+        uses: jurplel/install-qt-action@v3
         with:
           version: ${{env.QT_VERSION}}
           target: 'desktop'
           arch: 'win64_msvc2019_64'
-          cached: ${{ steps.cache-qt-windows.outputs.cache-hit }}
+          cache: 'true'
+          cache-key-prefix: 'cache-qt-windows'
 
       - name: Cache Chocolatey downloads
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: C:\Users\runneradmin\AppData\Local\Temp\chocolatey
           key: ${{ runner.os }}-chocolatey
+        
+#      - name: Install Python
+#        shell: powershell
+#        run: |
+#          choco install --no-progress python -y
 
-      - name: "Remove Redistributable"
-        shell: cmd
-        run: |
-          MsiExec.exe /passive /X{F0C3E5D1-1ADE-321E-8167-68EF0DE699A5}
-          MsiExec.exe /passive /X{1D8E6291-B0D5-35EC-8441-6616F567A0F7}
-
-      - name: Install Python, NSIS, OpenSSL, DirectX SDK
+      - name: Install OpenSSL, DirectX SDK
         shell: powershell
         run: |
-          choco install --no-progress python nsis openssl directx-sdk -y
+          choco install --no-progress openssl directx-sdk -y          
 
       - name: Install libjpeg-turbo
         run: |
@@ -195,31 +186,7 @@ jobs:
 
       # Upload artifacts
       - name: Upload artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: windows
           path: windows
-
-##########################
-#### Snap (x86_64) #######
-##########################
-
-  snap:
-    name: Snap (x86_64)
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
-
-      # Build snap package
-      - name: Build snap
-        id: build
-        uses: snapcore/action-build@v1
-
-      # Upload snap artifact (only on tagged commit)
-      - name: Upload snap artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: snap
-          path: ${{ steps.build.outputs.snap }}

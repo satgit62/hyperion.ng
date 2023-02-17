@@ -1,12 +1,24 @@
-cmake_minimum_required(VERSION 3.0.0)
+cmake_minimum_required(VERSION 3.1.0)
 
 message( STATUS "CMake Version: ${CMAKE_VERSION}" )
+
+macro(addIndent text)
+if(${CMAKE_VERSION} VERSION_GREATER "3.16.0")
+	list(APPEND CMAKE_MESSAGE_INDENT ${text})
+endif()
+endmacro()
+
+macro(removeIndent)
+if(${CMAKE_VERSION} VERSION_GREATER "3.16.0")
+	list(POP_BACK CMAKE_MESSAGE_INDENT)
+endif()
+endmacro()
 
 PROJECT(hyperion)
 
 # Parse semantic version of version file and write version to config
 include (${CMAKE_CURRENT_SOURCE_DIR}/cmake/version.cmake)
-file (STRINGS "version" HYPERION_VERSION)
+file (STRINGS ".version" HYPERION_VERSION)
 SetVersionNumber(HYPERION ${HYPERION_VERSION})
 set(DEFAULT_JSON_CONFIG_FILE ${CMAKE_CURRENT_SOURCE_DIR}/config/hyperion.config.json.default)
 file(READ ${DEFAULT_JSON_CONFIG_FILE} DEFAULT_JSON_CONFIG_VAR)
@@ -19,10 +31,6 @@ set(CMAKE_AUTOMOC ON)
 # auto prepare .qrc files
 set(CMAKE_AUTORCC ON)
 
-if ( POLICY CMP0026 )
-	CMAKE_POLICY( SET CMP0026 OLD )
-endif()
-
 # Configure CCache if available
 find_program(CCACHE_FOUND ccache)
 if ( CCACHE_FOUND )
@@ -30,55 +38,91 @@ if ( CCACHE_FOUND )
 	set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
 endif(CCACHE_FOUND)
 
-if ("${CMAKE_VERSION}" VERSION_LESS "3.12.0")
-	set(Python_ADDITIONAL_VERSIONS 3.5)
-	find_package(PythonInterp 3.5 REQUIRED)
-else()
-	find_package(Python3 3.5 COMPONENTS Interpreter Development REQUIRED)
-	if(Python3_FOUND)
-		set(PYTHON_EXECUTABLE ${Python3_EXECUTABLE})
+# enable C++14; MSVC doesn't have c++14 feature switch
+if(NOT CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+	if(APPLE)
+		include(CheckCXXCompilerFlag)
+		CHECK_CXX_COMPILER_FLAG("Werror=unguarded-availability" REQUIRED_UNGUARDED_AVAILABILITY)
+		if(REQUIRED_UNGUARDED_AVAILABILITY)
+			list(APPEND CMAKE_REQUIRED_FLAGS ${CMAKE_REQUIRED_FLAGS} "Werror=unguarded-availability")
+		endif()
 	endif()
+
+	if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_C_COMPILER_ID MATCHES "GNU")
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-psabi")
+		set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-psabi")
+	endif()
+
+	set(CMAKE_CXX_STANDARD 14)
+	set(CXX_STANDARD_REQUIRED ON)
+	set(CXX_EXTENSIONS OFF)
 endif()
 
 # Set build variables
+# Grabber
 SET ( DEFAULT_AMLOGIC                     OFF )
-SET ( DEFAULT_BOBLIGHT                    ON  )
 SET ( DEFAULT_DISPMANX                    OFF )
 SET ( DEFAULT_DX                          OFF )
 SET ( DEFAULT_MF                          OFF )
 SET ( DEFAULT_OSX                         OFF )
 SET ( DEFAULT_QT                          ON  )
+SET ( DEFAULT_V4L2                        OFF )
 SET ( DEFAULT_X11                         OFF )
 SET ( DEFAULT_XCB                         OFF )
-SET ( DEFAULT_V4L2                        OFF )
-SET ( DEFAULT_WS281XPWM                   OFF )
-SET ( DEFAULT_AVAHI                       OFF )
-SET ( DEFAULT_USE_SHARED_AVAHI_LIBS       ON  )
+
+# Input
+SET ( DEFAULT_BOBLIGHT_SERVER             ON  )
+SET ( DEFAULT_CEC                         OFF )
+SET ( DEFAULT_FLATBUF_SERVER              ON  )
+SET ( DEFAULT_PROTOBUF_SERVER             ON  )
+
+# Output
+SET ( DEFAULT_FORWARDER                   ON  )
+SET ( DEFAULT_FLATBUF_CONNECT             ON  )
+
+# LED-Devices
+SET ( DEFAULT_DEV_NETWORK                 ON  )
+SET ( DEFAULT_DEV_SERIAL                  ON  )
+SET ( DEFAULT_DEV_SPI                     OFF )
+SET ( DEFAULT_DEV_TINKERFORGE             OFF )
+SET ( DEFAULT_DEV_USB_HID                 OFF )
+SET ( DEFAULT_DEV_WS281XPWM               OFF )
+
+# Services
+SET ( DEFAULT_EFFECTENGINE                ON  )
+SET ( DEFAULT_EXPERIMENTAL                OFF )
+SET ( DEFAULT_MDNS                        ON  )
+SET ( DEFAULT_REMOTE_CTL                  ON  )
+
+# Build
+SET ( DEFAULT_JSONCHECKS                  ON  )
+SET ( DEFAULT_DEPLOY_DEPENDENCIES         ON  )
 SET ( DEFAULT_USE_SYSTEM_FLATBUFFERS_LIBS OFF )
 SET ( DEFAULT_USE_SYSTEM_PROTO_LIBS       OFF )
 SET ( DEFAULT_USE_SYSTEM_MBEDTLS_LIBS     OFF )
+SET ( DEFAULT_USE_SYSTEM_QMDNS_LIBS       OFF )
 SET ( DEFAULT_TESTS                       OFF )
-SET ( DEFAULT_EXPERIMENTAL                OFF )
-SET ( DEFAULT_CEC                         OFF )
-SET ( DEFAULT_DEPLOY_DEPENDENCIES         ON  )
+
+# Build Hyperion with a reduced set of functionality, overwrites other default values
+SET ( DEFAULT_HYPERION_LIGHT              OFF )
 
 IF ( ${CMAKE_SYSTEM} MATCHES "Linux" )
-	SET ( DEFAULT_V4L2        ON )
-	SET ( DEFAULT_SPIDEV      ON )
-	SET ( DEFAULT_TINKERFORGE ON )
-	SET ( DEFAULT_FB          ON )
-	SET ( DEFAULT_USB_HID     ON )
-	SET ( DEFAULT_CEC         ON )
+	SET ( DEFAULT_FB              ON )
+	SET ( DEFAULT_V4L2            ON )
+	SET ( DEFAULT_DEV_SPI         ON )
+	SET ( DEFAULT_DEV_TINKERFORGE ON )
+	SET ( DEFAULT_DEV_USB_HID     ON )
+	SET ( DEFAULT_CEC             ON )
 ELSEIF ( WIN32 )
 	SET ( DEFAULT_DX ON )
 	SET ( DEFAULT_MF ON )
 ELSE()
-	SET ( DEFAULT_V4L2        OFF )
-	SET ( DEFAULT_FB          OFF )
-	SET ( DEFAULT_SPIDEV      OFF )
-	SET ( DEFAULT_TINKERFORGE OFF )
-	SET ( DEFAULT_USB_HID     OFF )
-	SET ( DEFAULT_CEC         OFF )
+	SET ( DEFAULT_FB              OFF )
+	SET ( DEFAULT_V4L2            OFF )
+	SET ( DEFAULT_DEV_SPI         OFF )
+	SET ( DEFAULT_DEV_TINKERFORGE OFF )
+	SET ( DEFAULT_DEV_USB_HID     OFF )
+	SET ( DEFAULT_CEC             OFF )
 ENDIF()
 
 if ( NOT DEFINED PLATFORM )
@@ -112,31 +156,33 @@ MACRO(FIRSTSUBDIR result curdir)
   FILE(GLOB children RELATIVE ${curdir} ${curdir}/*)
   SET(dirlist "")
   FOREACH(child ${children})
-    IF(IS_DIRECTORY ${curdir}/${child})
-      LIST(APPEND dirlist "${curdir}/${child}")
-	  	BREAK()
-    ENDIF()
+	IF(IS_DIRECTORY ${curdir}/${child})
+	  LIST(APPEND dirlist "${curdir}/${child}")
+		BREAK()
+	ENDIF()
   ENDFOREACH()
   SET(${result} ${dirlist})
 ENDMACRO()
 
 if ( "${PLATFORM}" MATCHES "osx" )
+	# specify the min version of the target platform
+	SET ( CMAKE_OSX_DEPLOYMENT_TARGET "10.15" )
 	# add specific prefix paths
-	FIRSTSUBDIR(SUBDIRQT "/usr/local/Cellar/qt")
 	FIRSTSUBDIR(SUBDIRPY "/usr/local/opt/python3/Frameworks/Python.framework/Versions")
-	SET(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} ${SUBDIRQT} ${SUBDIRPY} "/usr/local/opt/qt5" )
+	set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} ${SUBDIRPY})
+
 	include_directories("/opt/X11/include/")
 	SET ( DEFAULT_OSX        ON )
-	SET ( DEFAULT_USB_HID    ON )
+	SET ( DEFAULT_DEV_USB_HID    ON )
 elseif ( "${PLATFORM}" MATCHES "rpi" )
 	SET ( DEFAULT_DISPMANX   ON )
-	SET ( DEFAULT_WS281XPWM  ON )
+	SET ( DEFAULT_DEV_WS281XPWM  ON )
 elseif ( "${PLATFORM}" STREQUAL "amlogic" )
 	SET ( DEFAULT_AMLOGIC     ON )
 elseif ( "${PLATFORM}" STREQUAL "amlogic-dev" )
 	SET ( DEFAULT_AMLOGIC     ON )
 	SET ( DEFAULT_DISPMANX    OFF )
-	SET ( DEFAULT_QT 		  OFF )
+	SET ( DEFAULT_QT          OFF )
 	SET ( DEFAULT_CEC         OFF )
 elseif ( "${PLATFORM}" STREQUAL "amlogic64" )
 	SET ( DEFAULT_AMLOGIC     ON )
@@ -145,12 +191,10 @@ elseif ( "${PLATFORM}" MATCHES "x11" )
 	SET ( DEFAULT_XCB        ON )
 	if ( "${PLATFORM}" STREQUAL "x11-dev" )
 		SET ( DEFAULT_AMLOGIC    ON)
-		SET ( DEFAULT_WS281XPWM  ON )
+		SET ( DEFAULT_DEV_WS281XPWM  ON )
 	endif()
 elseif ( "${PLATFORM}" STREQUAL "imx6" )
 	SET ( DEFAULT_FB         ON )
-elseif (WIN32)
-	SET ( DEFAULT_AVAHI    OFF)
 endif()
 
 # enable tests for -dev builds
@@ -164,49 +208,68 @@ ADD_DEFINITIONS( ${PLATFORM_DEFINE} )
 
 # set the build options
 
-option(ENABLE_BOBLIGHT "Enable BOBLIGHT server" ${DEFAULT_BOBLIGHT} )
-message(STATUS "ENABLE_BOBLIGHT = ${ENABLE_BOBLIGHT}")
+option(HYPERION_LIGHT "Build Hyperion with a reduced set of functionality" ${DEFAULT_HYPERION_LIGHT} )
+message(STATUS "HYPERION_LIGHT = ${HYPERION_LIGHT}")
+
+if (HYPERION_LIGHT)
+	message(STATUS "HYPERION_LIGHT: Hyperion is build with a reduced set of functionality.")
+	# Disable Grabbers
+	SET ( DEFAULT_AMLOGIC                     OFF )
+	SET ( DEFAULT_DISPMANX                    OFF )
+	SET ( DEFAULT_DX                          OFF )
+	SET ( DEFAULT_FB                          OFF )
+	SET ( DEFAULT_MF                          OFF )
+	SET ( DEFAULT_OSX                         OFF )
+	SET ( DEFAULT_QT                          OFF )
+	SET ( DEFAULT_V4L2                        OFF )
+	SET ( DEFAULT_X11                         OFF )
+	SET ( DEFAULT_XCB                         OFF )
+
+	# Disable Input Servers
+	SET ( DEFAULT_BOBLIGHT_SERVER             OFF )
+	SET ( DEFAULT_CEC                         OFF )
+	SET ( DEFAULT_FLATBUF_SERVER              OFF )
+	SET ( DEFAULT_PROTOBUF_SERVER             OFF )
+
+	# Disable Output Connectors
+	SET ( DEFAULT_FORWARDER                   OFF )
+	SET ( DEFAULT_FLATBUF_CONNECT             OFF )
+
+	# Disable Services
+	SET ( DEFAULT_EFFECTENGINE                OFF )
+endif()
+
+message(STATUS "Grabber options:")
+
+addIndent(" - ")
 
 option(ENABLE_AMLOGIC "Enable the AMLOGIC video grabber" ${DEFAULT_AMLOGIC} )
 message(STATUS "ENABLE_AMLOGIC = ${ENABLE_AMLOGIC}")
 
-if (ENABLE_AMLOGIC)
-	SET(ENABLE_FB ON)
-else()
-	option(ENABLE_FB "Enable the framebuffer grabber" ${DEFAULT_FB} )
-endif()
-
-message(STATUS "ENABLE_FB = ${ENABLE_FB}")
-
 option(ENABLE_DISPMANX "Enable the RPi dispmanx grabber" ${DEFAULT_DISPMANX} )
 message(STATUS "ENABLE_DISPMANX = ${ENABLE_DISPMANX}")
 
-option(ENABLE_OSX "Enable the OSX grabber" ${DEFAULT_OSX} )
-message(STATUS "ENABLE_OSX = ${ENABLE_OSX}")
+option(ENABLE_DX "Enable the DirectX grabber" ${DEFAULT_DX})
+message(STATUS "ENABLE_DX = ${ENABLE_DX}")
 
-option(ENABLE_SPIDEV   "Enable the SPIDEV device" ${DEFAULT_SPIDEV} )
-message(STATUS "ENABLE_SPIDEV   = ${ENABLE_SPIDEV}")
-
-option(ENABLE_TINKERFORGE "Enable the TINKERFORGE device" ${DEFAULT_TINKERFORGE})
-message(STATUS "ENABLE_TINKERFORGE = ${ENABLE_TINKERFORGE}")
-
-option(ENABLE_V4L2 "Enable the V4L2 grabber" ${DEFAULT_V4L2})
-message(STATUS "ENABLE_V4L2 = ${ENABLE_V4L2}")
+if (ENABLE_AMLOGIC)
+	SET(ENABLE_FB ON)
+else()
+	option(ENABLE_FB " Enable the framebuffer grabber" ${DEFAULT_FB} )
+endif()
+message(STATUS "ENABLE_FB = ${ENABLE_FB}")
 
 option(ENABLE_MF "Enable the Media Foundation grabber" ${DEFAULT_MF})
 message(STATUS "ENABLE_MF = ${ENABLE_MF}")
 
-option(ENABLE_WS281XPWM "Enable the WS281x-PWM device" ${DEFAULT_WS281XPWM} )
-message(STATUS "ENABLE_WS281XPWM = ${ENABLE_WS281XPWM}")
+option(ENABLE_OSX "Enable the OSX grabber" ${DEFAULT_OSX} )
+message(STATUS "ENABLE_OSX = ${ENABLE_OSX}")
 
-option(ENABLE_AVAHI "Enable Zeroconf" ${DEFAULT_AVAHI})
-message(STATUS "ENABLE_AVAHI = " ${ENABLE_AVAHI})
+option(ENABLE_QT "Enable the Qt grabber" ${DEFAULT_QT})
+message(STATUS "ENABLE_QT = ${ENABLE_QT}")
 
-option(ENABLE_USB_HID "Enable the libusb and hid devices" ${DEFAULT_USB_HID} )
-message(STATUS "ENABLE_USB_HID = ${ENABLE_USB_HID}")
-
-option(ENABLE_CEC "Enable the libcec and CEC control" ${DEFAULT_CEC} )
-message(STATUS "ENABLE_CEC = ${ENABLE_CEC}")
+option(ENABLE_V4L2 "Enable the V4L2 grabber" ${DEFAULT_V4L2})
+message(STATUS "ENABLE_V4L2 = ${ENABLE_V4L2}")
 
 option(ENABLE_X11 "Enable the X11 grabber" ${DEFAULT_X11})
 message(STATUS "ENABLE_X11 = ${ENABLE_X11}")
@@ -214,23 +277,111 @@ message(STATUS "ENABLE_X11 = ${ENABLE_X11}")
 option(ENABLE_XCB "Enable the XCB grabber" ${DEFAULT_XCB})
 message(STATUS "ENABLE_XCB = ${ENABLE_XCB}")
 
-option(ENABLE_QT "Enable the Qt grabber" ${DEFAULT_QT})
-message(STATUS "ENABLE_QT = ${ENABLE_QT}")
+removeIndent()
 
-option(ENABLE_DX "Enable the DirectX grabber" ${DEFAULT_DX})
-message(STATUS "ENABLE_DX = ${ENABLE_DX}")
+message(STATUS "Input options:")
+addIndent(" - ")
 
-option(ENABLE_TESTS "Compile additional test applications" ${DEFAULT_TESTS})
-message(STATUS "ENABLE_TESTS = ${ENABLE_TESTS}")
+option(ENABLE_BOBLIGHT_SERVER "Enable BOBLIGHT server" ${DEFAULT_BOBLIGHT_SERVER} )
+message(STATUS "ENABLE_BOBLIGHT_SERVER = ${ENABLE_BOBLIGHT_SERVER}")
 
-option(ENABLE_PROFILER "enable profiler capabilities - not for release code" OFF)
-message(STATUS "ENABLE_PROFILER = ${ENABLE_PROFILER}")
+option(ENABLE_CEC "Enable the libcec and CEC control" ${DEFAULT_CEC} )
+message(STATUS "ENABLE_CEC = ${ENABLE_CEC}")
+
+option(ENABLE_FLATBUF_SERVER "Enable Flatbuffers server" ${DEFAULT_FLATBUF_SERVER} )
+message(STATUS "ENABLE_FLATBUF_SERVER = ${ENABLE_FLATBUF_SERVER}")
+
+option(ENABLE_PROTOBUF_SERVER "Enable Protocol Buffers server" ${DEFAULT_PROTOBUF_SERVER} )
+message(STATUS "ENABLE_PROTOBUF_SERVER = ${ENABLE_PROTOBUF_SERVER}")
+
+removeIndent()
+
+message(STATUS "Output options:")
+addIndent(" - ")
+
+option(ENABLE_FORWARDER "Enable Hyperion forwarding" ${DEFAULT_FORWARDER} )
+message(STATUS "ENABLE_FORWARDER = ${ENABLE_FORWARDER}")
+
+if (ENABLE_FORWARDER)
+	SET(ENABLE_FLATBUF_CONNECT ON)
+else()
+	option(ENABLE_FLATBUF_CONNECT "Enable Flatbuffers connecting remotely" ${DEFAULT_FLATBUF_CONNECT} )
+endif()
+message(STATUS "ENABLE_FLATBUF_CONNECT = ${ENABLE_FLATBUF_CONNECT}")
+
+removeIndent()
+
+message(STATUS "LED-Device options:")
+addIndent(" - ")
+
+option(ENABLE_DEV_NETWORK "Enable the Network devices" ${DEFAULT_DEV_NETWORK} )
+message(STATUS "ENABLE_DEV_NETWORK = ${ENABLE_DEV_NETWORK}")
+
+option(ENABLE_DEV_SERIAL "Enable the Serial devices" ${DEFAULT_DEV_SERIAL} )
+message(STATUS "ENABLE_DEV_SERIAL = ${ENABLE_DEV_SERIAL}")
+
+option(ENABLE_DEV_SPI "Enable the SPI device" ${DEFAULT_DEV_SPI} )
+message(STATUS "ENABLE_DEV_SPI = ${ENABLE_DEV_SPI}")
+
+option(ENABLE_DEV_TINKERFORGE "Enable the TINKERFORGE device" ${DEFAULT_DEV_TINKERFORGE})
+message(STATUS "ENABLE_DEV_TINKERFORGE = ${ENABLE_DEV_TINKERFORGE}")
+
+option(ENABLE_DEV_USB_HID "Enable the libusb and hid devices" ${DEFAULT_DEV_USB_HID} )
+message(STATUS "ENABLE_DEV_USB_HID = ${ENABLE_DEV_USB_HID}")
+
+option(ENABLE_DEV_WS281XPWM "Enable the WS281x-PWM device" ${DEFAULT_DEV_WS281XPWM} )
+message(STATUS "ENABLE_DEV_WS281XPWM = ${ENABLE_DEV_WS281XPWM}")
+
+removeIndent()
+
+message(STATUS "Services options:")
+addIndent(" - ")
+
+option(ENABLE_EFFECTENGINE "Enable Effect-Engine" ${DEFAULT_EFFECTENGINE})
+message(STATUS "ENABLE_EFFECTENGINE = ${ENABLE_EFFECTENGINE}")
 
 option(ENABLE_EXPERIMENTAL "Compile experimental features" ${DEFAULT_EXPERIMENTAL})
 message(STATUS "ENABLE_EXPERIMENTAL = ${ENABLE_EXPERIMENTAL}")
 
+option(ENABLE_MDNS "Enable mDNS (aka Zeroconf)" ${DEFAULT_MDNS})
+message(STATUS "ENABLE_MDNS = ${ENABLE_MDNS}")
+
+option(ENABLE_REMOTE_CTL "Enable Hyperion remote control" ${DEFAULT_REMOTE_CTL})
+message(STATUS "ENABLE_REMOTE_CTL = ${ENABLE_REMOTE_CTL}")
+
+removeIndent()
+
+message(STATUS "Build options:")
+addIndent(" - ")
+
+option(ENABLE_JSONCHECKS "Validate json schema files" ${DEFAULT_JSONCHECKS})
+message(STATUS "ENABLE_JSONCHECKS = ${ENABLE_JSONCHECKS}")
+
 option(ENABLE_DEPLOY_DEPENDENCIES "Deploy with dependencies" ${DEFAULT_DEPLOY_DEPENDENCIES})
 message(STATUS "ENABLE_DEPLOY_DEPENDENCIES = ${ENABLE_DEPLOY_DEPENDENCIES}")
+
+if(ENABLE_FLATBUF_SERVER OR ENABLE_FLATBUF_CONNECT)
+	message(STATUS "DEFAULT_USE_SYSTEM_FLATBUFFERS_LIBS = ${DEFAULT_USE_SYSTEM_FLATBUFFERS_LIBS}")
+endif()
+
+if(ENABLE_PROTOBUF_SERVER)
+	message(STATUS "DEFAULT_USE_SYSTEM_PROTO_LIBS = ${DEFAULT_USE_SYSTEM_PROTO_LIBS}")
+endif()
+
+message(STATUS "DEFAULT_USE_SYSTEM_MBEDTLS_LIBS = ${DEFAULT_USE_SYSTEM_MBEDTLS_LIBS}")
+
+if (ENABLE_MDNS)
+	message(STATUS "DEFAULT_USE_SYSTEM_QMDNS_LIBS = ${DEFAULT_USE_SYSTEM_QMDNS_LIBS}")
+endif()
+
+
+option(ENABLE_PROFILER "enable profiler capabilities - not for release code" OFF)
+message(STATUS "ENABLE_PROFILER = ${ENABLE_PROFILER}")
+
+option(ENABLE_TESTS "Compile additional test applications" ${DEFAULT_TESTS})
+message(STATUS "ENABLE_TESTS = ${ENABLE_TESTS}")
+
+removeIndent()
 
 SET ( FLATBUFFERS_INSTALL_BIN_DIR ${CMAKE_BINARY_DIR}/flatbuf )
 SET ( FLATBUFFERS_INSTALL_LIB_DIR ${CMAKE_BINARY_DIR}/flatbuf )
@@ -238,40 +389,53 @@ SET ( FLATBUFFERS_INSTALL_LIB_DIR ${CMAKE_BINARY_DIR}/flatbuf )
 SET ( PROTOBUF_INSTALL_BIN_DIR ${CMAKE_BINARY_DIR}/proto )
 SET ( PROTOBUF_INSTALL_LIB_DIR ${CMAKE_BINARY_DIR}/proto )
 
-# check all json files
-FILE ( GLOB_RECURSE HYPERION_SCHEMAS RELATIVE ${CMAKE_SOURCE_DIR} ${CMAKE_SOURCE_DIR}/libsrc/*schema*.json )
-SET( JSON_FILES ${CMAKE_BINARY_DIR}/config/hyperion.config.json.default	${HYPERION_SCHEMAS})
+if(ENABLE_JSONCHECKS OR ENABLE_EFFECTENGINE)
+	if ("${CMAKE_VERSION}" VERSION_LESS "3.12.0")
+			set(Python_ADDITIONAL_VERSIONS 3.5)
+			find_package(PythonInterp 3.5 REQUIRED)
+	else()
+		find_package(Python3 3.5 COMPONENTS Interpreter Development REQUIRED)
+		if(Python3_FOUND)
+			set(PYTHON_EXECUTABLE ${Python3_EXECUTABLE})
+		endif()
+	endif()
+endif()
 
-EXECUTE_PROCESS (
-	COMMAND ${PYTHON_EXECUTABLE} test/jsonchecks/checkjson.py ${JSON_FILES}
-	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-	RESULT_VARIABLE CHECK_JSON_FAILED
-)
-IF ( ${CHECK_JSON_FAILED} )
-	MESSAGE (FATAL_ERROR "check of json files failed" )
-ENDIF ()
+if(ENABLE_JSONCHECKS)
+	# check all json files
+	FILE ( GLOB_RECURSE HYPERION_SCHEMAS RELATIVE ${CMAKE_SOURCE_DIR} ${CMAKE_SOURCE_DIR}/libsrc/*schema*.json )
+	SET( JSON_FILES ${CMAKE_BINARY_DIR}/config/hyperion.config.json.default	${HYPERION_SCHEMAS})
 
-EXECUTE_PROCESS (
-	COMMAND ${PYTHON_EXECUTABLE} test/jsonchecks/checkeffects.py effects effects/schema
-	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-	RESULT_VARIABLE CHECK_EFFECTS_FAILED
-)
-IF ( ${CHECK_EFFECTS_FAILED} )
-	MESSAGE (FATAL_ERROR "check of json effect files failed" )
-ENDIF ()
-
-# for python 3 the checkschema.py file must be rewritten
-# TODO on windows it can't resolve the path inside the file (Das System kann den angegebenen Pfad nicht finden: '\\schema\\schema-general.json')
-IF (NOT WIN32)
 	EXECUTE_PROCESS (
-		COMMAND python test/jsonchecks/checkschema.py ${CMAKE_BINARY_DIR}/config/hyperion.config.json.default libsrc/hyperion/hyperion.schema.json
+		COMMAND ${PYTHON_EXECUTABLE} test/jsonchecks/checkjson.py ${JSON_FILES}
+		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+		RESULT_VARIABLE CHECK_JSON_FAILED
+	)
+	IF ( ${CHECK_JSON_FAILED} )
+		MESSAGE (FATAL_ERROR "check of json files failed" )
+	ENDIF ()
+
+	if(ENABLE_EFFECTENGINE)
+		EXECUTE_PROCESS (
+			COMMAND ${PYTHON_EXECUTABLE} test/jsonchecks/checkeffects.py effects effects/schema
+			WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+			RESULT_VARIABLE CHECK_EFFECTS_FAILED
+		)
+		IF ( ${CHECK_EFFECTS_FAILED} )
+			MESSAGE (FATAL_ERROR "check of json effect files failed" )
+		ENDIF ()
+	endif()
+
+	EXECUTE_PROCESS (
+		COMMAND ${PYTHON_EXECUTABLE} test/jsonchecks/checkschema.py ${CMAKE_BINARY_DIR}/config/hyperion.config.json.default libsrc/hyperion/hyperion.schema.json
 		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 		RESULT_VARIABLE CHECK_CONFIG_FAILED
 	)
-ENDIF()
-IF ( ${CHECK_CONFIG_FAILED} )
-	MESSAGE (FATAL_ERROR "check of json default config failed" )
-ENDIF ()
+
+	IF ( ${CHECK_CONFIG_FAILED} )
+		MESSAGE (FATAL_ERROR "check of json default config failed" )
+	ENDIF ()
+endif(ENABLE_JSONCHECKS)
 
 # Add project specific cmake modules (find, etc)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
@@ -297,70 +461,12 @@ include_directories(${CMAKE_SOURCE_DIR}/include)
 # Prefer static linking over dynamic
 #set(CMAKE_FIND_LIBRARY_SUFFIXES ".a;.so")
 
-# enable C++11; MSVC doesn't have c++11 feature switch
-if(NOT CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
-	include(CheckCXXCompilerFlag)
-	CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
-	CHECK_CXX_COMPILER_FLAG("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
-
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
-	if (CMAKE_COMPILER_IS_GNUCXX)
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-psabi")
-		set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-psabi")
-	endif()
-	if(COMPILER_SUPPORTS_CXX11)
-			set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-	elseif(COMPILER_SUPPORTS_CXX0X)
-			set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
-	else()
-			message(STATUS "No support for C++11 detected. Compilation will most likely fail on your compiler")
-	endif()
-endif()
-
 # MSVC options
 if (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
 	# Search for Windows SDK
 	find_package(WindowsSDK REQUIRED)
 	message(STATUS "WINDOWS SDK: ${WINDOWSSDK_LATEST_DIR} ${WINDOWSSDK_LATEST_NAME}")
 	message(STATUS "MSVC VERSION: ${MSVC_VERSION}")
-
-	# Qt5 default install path with msvc2017 64bit component
-	# The Qt5_DIR should point to Qt5Config.cmake   -> C:/Qt/5.xx/msvc2017_64/lib/cmake/Qt5
-	# The CMAKE_PREFIX_PATH should point to the install directory -> C:/Qt/5.xx/msvc2017_64
-	#
-	# Alternatively, use Qt5_BASE_DIR environment variable to point to Qt version to be used
-	# In MSVC19 add into CMakeSettings.json
-	#
-	#      "environments": [
-	#    {
-	#      "Qt5_BASE_DIR": "D:/Qt/5.15.1/msvc2019_64"
-	#    }
-	#  ]
-
-	if (NOT DEFINED ENV{Qt5_BASE_DIR})
-		FIRSTSUBDIR(SUBDIRQT "C:/Qt")
-		SET(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "${SUBDIRQT}/msvc2019_64")
-	else()
-		message(STATUS "Qt5_BASE_DIR: $ENV{Qt5_BASE_DIR}")
-		message(STATUS "Add Qt5_BASE_DIR: $ENV{Qt5_BASE_DIR} to CMAKE_PREFIX_PATH")
-		SET(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "$ENV{Qt5_BASE_DIR}")
-	endif()
-
-	if (NOT DEFINED ENV{Qt5_DIR})
-		if (NOT DEFINED ENV{Qt5_BASE_DIR})
-			SET (qt_module_path "${SUBDIRQT}/msvc2019_64/lib/cmake/Qt5")
-		else ()
-			SET (qt_module_path "$ENV{Qt5_BASE_DIR}/lib/cmake/Qt5")
-		endif()
-	else()
-		SET (qt_module_path "$ENV{Qt5_DIR}")
-	endif()
-
-	message(STATUS "Add ${qt_module_path} to CMAKE_MODULE_PATH")
-	SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${qt_module_path}")
-
-	#message(STATUS "CMAKE_PREFIX_PATH: ${CMAKE_PREFIX_PATH}")
-	#message(STATUS "CMAKE_MODULE_PATH: ${CMAKE_MODULE_PATH}")
 
 	# Search for DirectX9
 	if (ENABLE_DX)
@@ -370,59 +476,89 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
 endif()
 
 # Use GNU gold linker if available
-if (NOT WIN32)
+if (NOT WIN32 AND NOT APPLE)
 	include (${CMAKE_CURRENT_SOURCE_DIR}/cmake/LDGold.cmake)
 endif()
 
-if (ENABLE_DEPLOY_DEPENDENCIES)
-	# Don't create new dynamic tags (RUNPATH)
-	if (NOT CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
-		set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--disable-new-dtags")
-	endif()
-
-	# setup -rpath to search for shared libs in BINARY/../lib folder
-	if (UNIX AND NOT APPLE)
-		SET(CMAKE_SKIP_BUILD_RPATH FALSE)
-		SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
-		SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}:$ORIGIN/../lib")
-		SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-	endif ()
+# Don't create new dynamic tags (RUNPATH) and setup -rpath to search for shared libs in BINARY/../lib folder (only for Unix)
+if (ENABLE_DEPLOY_DEPENDENCIES AND UNIX AND NOT APPLE)
+	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--disable-new-dtags")
+	SET(CMAKE_SKIP_BUILD_RPATH FALSE)
+	SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
+	SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}:$ORIGIN/../lib")
+	SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 endif ()
-
-# add QT5 dependency
-IF ( CMAKE_CROSSCOMPILING )
-
-	file(GLOB QT_BIN ${QT_BIN_PATH})
-
-	set(QT_MOC_EXECUTABLE ${QT_BIN}/moc)
-	add_executable(Qt5::moc IMPORTED)
-	set_property(TARGET Qt5::moc PROPERTY IMPORTED_LOCATION ${QT_MOC_EXECUTABLE})
-
-	set(QT_RCC_EXECUTABLE ${QT_BIN}/rcc)
-	add_executable(Qt5::rcc IMPORTED)
-	set_property(TARGET Qt5::rcc PROPERTY IMPORTED_LOCATION ${QT_RCC_EXECUTABLE})
-
-	message(STATUS "QT_BIN_PATH = ${QT_BIN}")
-	message(STATUS "QT_MOC_EXECUTABLE = ${QT_MOC_EXECUTABLE}")
-	message(STATUS "QT_RCC_EXECUTABLE = ${QT_RCC_EXECUTABLE}")
-
-ENDIF()
-
-SET(QT_MIN_VERSION "5.5.0")
-find_package(Qt5 COMPONENTS Core Gui Network SerialPort Sql REQUIRED)
-message( STATUS "Found Qt Version: ${Qt5Core_VERSION}" )
-IF ( "${Qt5Core_VERSION}" VERSION_LESS "${QT_MIN_VERSION}" )
-	message( FATAL_ERROR "Your Qt version is to old! Minimum required ${QT_MIN_VERSION}" )
-ENDIF()
-
-# Add libusb and pthreads
-find_package(libusb-1.0 REQUIRED)
-find_package(Threads REQUIRED)
-add_definitions(${QT_DEFINITIONS})
 
 if(APPLE)
 	set(CMAKE_EXE_LINKER_FLAGS "-framework CoreGraphics")
 endif()
+
+find_package(Threads REQUIRED)
+
+# Allow to overwrite QT base directory
+# Either supply QTDIR as -DQTDIR=<path> to cmake or set and environment variable QTDIR pointing to the Qt installation
+# For Windows and OSX, the default Qt installation path are tried to resolved automatically
+if (NOT DEFINED QTDIR)
+	if (DEFINED ENV{QTDIR})
+		set(QTDIR $ENV{QTDIR})
+	else()
+		if (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+			FIRSTSUBDIR(SUBDIRQT "C:/Qt")
+			if (NOT ${SUBDIRQT} STREQUAL "")
+				set(QTDIR "${SUBDIRQT}/msvc2019_64")
+			endif()
+		elseif ( "${PLATFORM}" MATCHES "osx" )
+			# QT6 x86_64 location
+			if (EXISTS /usr/local/opt/qt6)
+				set(QTDIR "/usr/local/opt/qt6")
+			# QT6 arm64 location
+			elseif (EXISTS /opt/homebrew/opt/qt@6)
+				set(QTDIR "/opt/homebrew/opt/qt@6")
+			# QT5 x86_64 location
+			elseif (EXISTS /usr/local/opt/qt5)
+				set(QTDIR "/usr/local/opt/qt5")
+			# QT5 arm64 location
+			elseif (EXISTS /opt/homebrew/opt/qt@5)
+				set(QTDIR "/opt/homebrew/opt/qt@5")
+			endif()
+		endif()
+	endif()
+endif()
+
+if (DEFINED QTDIR)
+	message(STATUS "Add QTDIR: ${QTDIR} to CMAKE_PREFIX_PATH")
+	list(PREPEND CMAKE_PREFIX_PATH ${QTDIR} "${QTDIR}/lib")
+endif()
+
+if (CMAKE_PREFIX_PATH)
+	message( STATUS "CMAKE_PREFIX_PATH used: ${CMAKE_PREFIX_PATH}" )
+endif()
+
+# find QT libs
+find_package(QT NAMES Qt6 Qt5 COMPONENTS Core Gui Network Sql Widgets REQUIRED)
+message( STATUS "Found Qt Version: ${QT_VERSION}" )
+
+if (${QT_VERSION_MAJOR} GREATER_EQUAL 6 )
+	SET(QT_MIN_VERSION "6.2.2")
+else()
+	SET(QT_MIN_VERSION "5.5.0")
+endif()
+
+if ( "${QT_VERSION}" VERSION_LESS "${QT_MIN_VERSION}" )
+	message( FATAL_ERROR "Your Qt version is to old! Minimum required ${QT_MIN_VERSION}" )
+endif()
+
+find_package(Qt${QT_VERSION_MAJOR} ${QT_VERSION} COMPONENTS Core Gui Network Sql Widgets REQUIRED)
+
+message( STATUS "Qt version used: ${QT_VERSION}" )
+
+if (APPLE AND (${QT_VERSION_MAJOR} GREATER_EQUAL 6) )
+	set(OPENSSL_ROOT_DIR /usr/local/opt/openssl)
+endif()
+
+# Add libusb and pthreads
+find_package(libusb-1.0 REQUIRED)
+add_definitions(${QT_DEFINITIONS})
 
 # Add the source/lib directories
 add_subdirectory(dependencies)
@@ -437,10 +573,16 @@ add_subdirectory(resources)
 
 # remove generated files on make cleaan too
 LIST( APPEND GENERATED_QRC
-	${CMAKE_BINARY_DIR}/EffectEngine.qrc
 	${CMAKE_BINARY_DIR}/WebConfig.qrc
 	${CMAKE_BINARY_DIR}/HyperionConfig.h
 )
+
+if(ENABLE_EFFECTENGINE)
+LIST( APPEND GENERATED_QRC
+	${CMAKE_BINARY_DIR}/EffectEngine.qrc
+)
+endif ()
+
 set_directory_properties(PROPERTIES ADDITIONAL_MAKE_CLEAN_FILES "${GENERATED_QRC}" )
 
 # uninstall target

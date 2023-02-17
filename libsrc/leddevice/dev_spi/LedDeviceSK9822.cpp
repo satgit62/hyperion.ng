@@ -39,10 +39,6 @@ bool LedDeviceSK9822::init(const QJsonObject &deviceConfig)
 
 		_ledBuffer.resize(0, 0x00);
 		_ledBuffer.resize(bufferSize, 0x00);
-		//_ledBuffer[0] = 0x00;
-		//_ledBuffer[1] = 0x00;
-		//_ledBuffer[2] = 0x00;
-		//_ledBuffer[3] = 0x00;
 
 		isInitOK = true;
 	}
@@ -121,10 +117,6 @@ void LedDeviceSK9822::bufferWithAdjustedCurrent(std::vector<uint8_t> &txBuf, con
 		txBuf[b + 1] = red;
 		txBuf[b + 2] = green;
 		txBuf[b + 3] = blue;
-
-		//if(iLed == 0) {
-		//	std::cout << std::to_string((int)rgb.red) << "," << std::to_string((int)rgb.green) << "," << std::to_string((int)rgb.blue) << ": " << std::to_string(maxValue) << (maxValue >= threshold ? " >= " : " < ") << std::to_string(threshold) << " -> " << std::to_string((int)(level&SK9822_GBC_MAX_LEVEL))<< "@" << std::to_string((int)red) << "," << std::to_string((int)green) << "," << std::to_string((int)blue) << std::endl;
-		//}
 	}
 }
 

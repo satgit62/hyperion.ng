@@ -2,7 +2,9 @@
 
 #include <ssdp/SSDPServer.h>
 
+#if (QT_VERSION < QT_VERSION_CHECK(6, 0, 0))
 #include <QNetworkConfiguration>
+#endif
 
 // utils
 #include <utils/settings.h>
@@ -20,7 +22,7 @@ class SSDPHandler : public SSDPServer
 {
 	Q_OBJECT
 public:
-	SSDPHandler(WebServer* webserver, quint16 flatBufPort, quint16 protoBufPort, quint16 jsonServerPort, quint16 sslPort, const QString &name,  QObject * parent = nullptr);
+	SSDPHandler(WebServer* webserver, quint16 flatBufPort, quint16 protoBufPort, quint16 jsonServerPort, quint16 sslPort, const QString& name, QObject* parent = nullptr);
 	~SSDPHandler() override;
 
 	///
@@ -85,17 +87,37 @@ private slots:
 	///
 	void handleMSearchRequest(const QString& target, const QString& mx, const QString address, quint16 port);
 
-	///
-	/// @brief Handle changes in the network configuration
-	/// @param conig New config
-	///
-	void handleNetworkConfigurationChanged(const QNetworkConfiguration &config);
-
 private:
 	WebServer* _webserver;
 	QString    _localAddress;
-	QNetworkConfigurationManager* _NCA;
 	QString _uuid;
+
 	/// Targets for announcement
 	std::vector<QString> _deviceList;
+
+//Handle elements deprecated from Qt 6.x and reported as deprecatedsince 5.15.x
+#if (QT_VERSION >= QT_VERSION_CHECK(5, 15, 0))
+QT_WARNING_PUSH
+QT_WARNING_DISABLE_DEPRECATED
+#endif
+
+private slots:
+
+///
+/// @brief Handle changes in the network configuration
+/// @param conig New config
+///
+#if (QT_VERSION < QT_VERSION_CHECK(6, 0, 0))
+	void handleNetworkConfigurationChanged(const QNetworkConfiguration& config);
+#endif
+
+private:
+
+#if (QT_VERSION < QT_VERSION_CHECK(6, 0, 0))
+	QNetworkConfigurationManager* _NCA;
+#endif
+
+#if (QT_VERSION >= QT_VERSION_CHECK(5, 15, 0))
+QT_WARNING_POP
+#endif
 };

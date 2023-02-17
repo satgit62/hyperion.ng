@@ -16,6 +16,8 @@
 #include <utils/settings.h>
 #include <utils/VideoStandard.h>
 
+#include <grabber/GrabberType.h>
+
 class Grabber;
 class GlobalSignals;
 class QTimer;
@@ -67,16 +69,17 @@ public:
 	///
 	/// @brief Get active grabber name
 	/// @param hyperionInd The instance index
+	/// @param type Filter for a given grabber type
 	/// @return Active grabbers
 	///
-	virtual QStringList getActive(int inst) const;
+	virtual QStringList getActive(int inst, GrabberTypeFilter type = GrabberTypeFilter::ALL) const;
 
 	bool getSysGrabberState() const { return GLOBAL_GRABBER_SYS_ENABLE; }
 	void setSysGrabberState(bool sysGrabberState){ GLOBAL_GRABBER_SYS_ENABLE = sysGrabberState; }
 	bool getV4lGrabberState() const { return GLOBAL_GRABBER_V4L_ENABLE; }
 	void setV4lGrabberState(bool v4lGrabberState){ GLOBAL_GRABBER_V4L_ENABLE = v4lGrabberState; }
 
-	static QStringList availableGrabbers();
+	static QStringList availableGrabbers(GrabberTypeFilter type = GrabberTypeFilter::ALL);
 
 public:
 	template <typename Grabber_T>
@@ -144,10 +147,7 @@ private slots:
 	void handleSourceRequest(hyperion::Components component, int hyperionInd, bool listen);
 
 	///
-	/// @brief Update Update capture rate
-	/// @param type   interval between frames in milliseconds
-	///
-	void updateTimer(int interval);
+
 
 protected:
 
@@ -164,6 +164,11 @@ protected:
 	/// @return True on success (i.e. device is closed)
 	///
 	virtual bool close() { return true; }
+
+	/// @brief Update Update capture rate
+	/// @param type   interval between frames in milliseconds
+	///
+	void updateTimer(int interval);
 
 
 	QString _grabberName;

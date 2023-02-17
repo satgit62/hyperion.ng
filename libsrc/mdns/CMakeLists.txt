@@ -7,5 +7,10 @@ FILE ( GLOB MDNS_SOURCES "${CURRENT_HEADER_DIR}/*.h"  "${CURRENT_SOURCE_DIR}/*.h
 add_library(mdns ${MDNS_SOURCES})
 
 include_directories(${QMDNS_INCLUDE_DIR})
-target_link_libraries(mdns Qt5::Network ${QMDNS_LIBRARIES})
+
+target_link_libraries(mdns
+hyperion-utils
+${QMDNS_LIBRARIES}
+)
+
 target_include_directories(mdns PUBLIC ${QMDNS_INCLUDE_DIR})

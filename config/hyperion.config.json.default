@@ -16,10 +16,13 @@
 	{
 		"type"       : "file",
 		"hardwareLedCount" : 1,
+		"autoStart" : true,
 		"output"     : "/dev/null",
 		"colorOrder" : "rgb",
 		"latchTime" : 0,
-		"rewriteTime": 0
+		"rewriteTime": 0,
+		"enableAttempts": 6,
+		"enableAttemptsInterval": 15
 	},
 
 	"color" :
@@ -40,10 +43,12 @@
 				"gammaRed": 1.5,
 				"gammaGreen": 1.5,
 				"gammaBlue": 1.5,
-				"backlightThreshold": 0,
-				"backlightColored": false,
-				"brightness": 100,
-				"brightnessCompensation": 100
+				"backlightThreshold"  : 0,
+				"backlightColored"  : false,
+				"brightness" : 100,
+				"brightnessCompensation" : 100,
+				"saturationGain" : 1.0,
+				"brightnessGain" : 1.0
 			}
 		]
 	},
@@ -55,7 +60,6 @@
 		"time_ms"           : 200,
 		"updateFrequency"   : 25.0000,
 		"interpolationRate" : 25.0000,
-		"outputRate"        : 25.0000,
 		"decay"             : 1,
 		"dithering"         : false,
 		"updateDelay"       : 0
@@ -136,9 +140,9 @@
 
 	"forwarder" :
 	{
-		"enable" : false,
-		"json"   : ["127.0.0.1:19446"],
-		"flat"  : ["127.0.0.1:19401"]
+		"enable"     : false,
+		"jsonapi"    : [],
+		"flatbuffer" : []
 	},
 
 	"jsonServer" :
@@ -229,13 +233,13 @@
 			"pbrv"		: 100
  		},
 
-		"matrix":
-		{
+		"matrix": {
 			"ledshoriz": 1,
-			"ledsvert" : 1,
-			"cabling"  : "snake",
-			"start"    : "top-left"
-    		}
+			"ledsvert": 1,
+			"cabling": "snake",
+			"direction": "horizontal",
+			"start": "top-left"
+		}
 	},
 
 	"leds":

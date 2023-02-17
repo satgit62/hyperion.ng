@@ -6,7 +6,11 @@
 #include <utils/ColorRgb.h>
 #include <utils/Components.h>
 
-#include <QMutex>
+#if (QT_VERSION >= QT_VERSION_CHECK(5, 14, 0))
+	#include <QRecursiveMutex>
+#else
+	#include <QMutex>
+#endif
 
 class LedDevice;
 class Hyperion;
@@ -38,7 +42,7 @@ public:
 	///
 	/// @brief add all device constructors to the map
 	///
-	static int addToDeviceMap(const QString& name, LedDeviceCreateFuncType funcPtr);
+	static int addToDeviceMap(QString name, LedDeviceCreateFuncType funcPtr);
 
 	///
 	/// @brief Return all available device constructors
@@ -70,7 +74,7 @@ public:
 	///
 	/// @brief Get the number of LEDs from device
 	///
-	int getLedCount() const;
+	unsigned int getLedCount() const;
 
 public slots:
 	///
@@ -91,16 +95,6 @@ signals:
 	int updateLeds(const std::vector<ColorRgb>& ledValues);
 
 	///
-	/// @brief Enables the LED-Device.
-	///
-	void enable();
-
-	///
-	/// @brief Disables the LED-Device.
-	///
-	void disable();
-
-	///
 	/// @brief Switch the LEDs on.
 	///
 	void switchOn();
@@ -109,7 +103,7 @@ signals:
 	/// @brief Switch the LEDs off.
 	///
 	void switchOff();
-
+	
 	void stopLedDevice();
 
 private slots:
@@ -124,8 +118,12 @@ private slots:
 protected:
 	/// contains all available led device constructors
 	static LedDeviceRegistry _ledDeviceMap;
-	static QMutex _ledDeviceMapLock;
-
+	
+#if (QT_VERSION >= QT_VERSION_CHECK(5, 14, 0))
+	static QRecursiveMutex       _ledDeviceMapLock;
+#else
+	static QMutex                _ledDeviceMapLock;
+#endif
 private:
 	///
 	/// @brief switchOff() the device and Stops the device thread
@@ -139,7 +137,6 @@ private:
 	LedDevice* _ledDevice;
 	// the enable state
 	bool _enabled;
-
 };
 
 #endif // LEDEVICEWRAPPER_H

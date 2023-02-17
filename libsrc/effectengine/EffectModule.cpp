@@ -12,6 +12,10 @@
 #include <QDateTime>
 #include <QImageReader>
 #include <QBuffer>
+#include <QUrl>
+#include <QNetworkReply>
+#include <QNetworkAccessManager>
+#include <QEventLoop>
 
 // Get the effect from the capsule
 #define getEffect() static_cast<Effect*>((Effect*)PyCapsule_Import("hyperion.__effectObj", 0))
@@ -49,9 +53,12 @@ PyObject *EffectModule::json2python(const QJsonValue &jsonData)
 			Py_RETURN_NOTIMPLEMENTED;
 		case QJsonValue::Double:
 		{
-			if (std::round(jsonData.toDouble()) != jsonData.toDouble())
+			double doubleIntegratlPart;
+			double doubleFractionalPart = std::modf(jsonData.toDouble(), &doubleIntegratlPart);
+			if (doubleFractionalPart > std::numeric_limits<double>::epsilon())
+			{
 				return Py_BuildValue("d", jsonData.toDouble());
-
+			}
 			return Py_BuildValue("i", jsonData.toInt());
 		}
 		case QJsonValue::Bool:
@@ -180,7 +187,8 @@ PyObject* EffectModule::wrapSetColor(PyObject *self, PyObject *args)
 PyObject* EffectModule::wrapSetImage(PyObject *self, PyObject *args)
 {
 	// bytearray of values
-	int width, height;
+	int width = 0;
+	int height = 0;
 	PyObject * bytearray = nullptr;
 	if (PyArg_ParseTuple(args, "iiO", &width, &height, &bytearray))
 	{
@@ -219,31 +227,57 @@ PyObject* EffectModule::wrapSetImage(PyObject *self, PyObject *args)
 
 PyObject* EffectModule::wrapGetImage(PyObject *self, PyObject *args)
 {
-	QString file;
 	QBuffer buffer;
 	QImageReader reader;
+	char *source;
+	int cropLeft = 0, cropTop = 0, cropRight = 0, cropBottom = 0;
+	int grayscale = false;
 
 	if (getEffect()->_imageData.isEmpty())
 	{
 		Q_INIT_RESOURCE(EffectEngine);
 
-		char *source;
-		if(!PyArg_ParseTuple(args, "s", &source))
+		if(!PyArg_ParseTuple(args, "s|iiiip", &source, &cropLeft, &cropTop, &cropRight, &cropBottom, &grayscale))
 		{
 			PyErr_SetString(PyExc_TypeError, "String required");
 			return nullptr;
 		}
 
-		file = QString::fromUtf8(source);
+		const QUrl url = QUrl(source);
+		if (url.isValid())
+		{
+			QNetworkAccessManager *networkManager = new QNetworkAccessManager();
+			QNetworkReply * networkReply = networkManager->get(QNetworkRequest(url));
 
-		if (file.mid(0, 1)  == ":")
-			file = ":/effects/"+file.mid(1);
+			QEventLoop eventLoop;
+			connect(networkReply, &QNetworkReply::finished, &eventLoop, &QEventLoop::quit);
+			eventLoop.exec();
 
-		reader.setDecideFormatFromContent(true);
-		reader.setFileName(file);
+			if (networkReply->error() == QNetworkReply::NoError)
+			{
+				buffer.setData(networkReply->readAll());
+				buffer.open(QBuffer::ReadOnly);
+				reader.setDecideFormatFromContent(true);
+				reader.setDevice(&buffer);
+			}
+
+			delete networkReply;
+    		delete networkManager;
+		}
+		else
+		{
+			QString file = QString::fromUtf8(source);
+
+			if (file.mid(0, 1)  == ":")
+				file = ":/effects/"+file.mid(1);
+
+			reader.setDecideFormatFromContent(true);
+			reader.setFileName(file);
+		}
 	}
 	else
 	{
+		PyArg_ParseTuple(args, "|siiiip", &source, &cropLeft, &cropTop, &cropRight, &cropBottom, &grayscale);
 		buffer.setData(QByteArray::fromBase64(getEffect()->_imageData.toUtf8()));
 		buffer.open(QBuffer::ReadOnly);
 		reader.setDecideFormatFromContent(true);
@@ -260,19 +294,33 @@ PyObject* EffectModule::wrapGetImage(PyObject *self, PyObject *args)
 			if (reader.canRead())
 			{
 				QImage qimage = reader.read();
-
 				int width = qimage.width();
 				int height = qimage.height();
 
+				if (cropLeft > 0 || cropTop > 0 || cropRight > 0 || cropBottom > 0)
+				{
+					if (cropLeft + cropRight >= width || cropTop + cropBottom >= height)
+					{
+						QString errorStr = QString("Rejecting invalid crop values: left: %1, right: %2, top: %3, bottom: %4, higher than height/width %5/%6").arg(cropLeft).arg(cropRight).arg(cropTop).arg(cropBottom).arg(height).arg(width);
+						PyErr_SetString(PyExc_RuntimeError, qPrintable(errorStr));
+						return nullptr;
+					}
+
+					qimage = qimage.copy(cropLeft, cropTop, width - cropLeft - cropRight, height - cropTop - cropBottom);
+					width = qimage.width();
+					height = qimage.height();
+				}
+
 				QByteArray binaryImage;
-				for (int i = 0; i<height; ++i)
+				for (int i = 0; i<height; i++)
 				{
 					const QRgb *scanline = reinterpret_cast<const QRgb *>(qimage.scanLine(i));
-					for (int j = 0; j< width; ++j)
+					const QRgb *end = scanline + qimage.width();
+					for (; scanline != end; scanline++)
 					{
-						binaryImage.append((char) qRed(scanline[j]));
-						binaryImage.append((char) qGreen(scanline[j]));
-						binaryImage.append((char) qBlue(scanline[j]));
+						binaryImage.append(!grayscale ? (char) qRed(scanline[0]) : (char) qGray(scanline[0]));
+						binaryImage.append(!grayscale ? (char) qGreen(scanline[1]) : (char) qGray(scanline[1]));
+						binaryImage.append(!grayscale ? (char) qBlue(scanline[2]) : (char) qGray(scanline[2]));
 					}
 				}
 				PyList_SET_ITEM(result, i, Py_BuildValue("{s:i,s:i,s:O}", "imageWidth", width, "imageHeight", height, "imageData", PyByteArray_FromStringAndSize(binaryImage.constData(),binaryImage.size())));
@@ -283,6 +331,7 @@ PyObject* EffectModule::wrapGetImage(PyObject *self, PyObject *args)
 				return nullptr;
 			}
 		}
+
 		return result;
 	}
 	else
@@ -346,8 +395,10 @@ PyObject* EffectModule::wrapImageLinearGradient(PyObject *self, PyObject *args)
 	int startRY = 0;
 	int startX = 0;
 	int startY = 0;
-	int endX, width = getEffect()->_imageSize.width();
-	int endY, height = getEffect()->_imageSize.height();
+	int width = getEffect()->_imageSize.width();
+	int endX {width};
+	int height = getEffect()->_imageSize.height();
+	int endY {height};
 	int spread = 0;
 
 	bool argsOK = false;
@@ -409,7 +460,9 @@ PyObject* EffectModule::wrapImageConicalGradient(PyObject *self, PyObject *args)
 {
 	int argCount = PyTuple_Size(args);
 	PyObject * bytearray = nullptr;
-	int centerX, centerY, angle;
+	int centerX = 0;
+	int centerY = 0;
+	int angle = 0;
 	int startX = 0;
 	int startY = 0;
 	int width  = getEffect()->_imageSize.width();
@@ -475,7 +528,13 @@ PyObject* EffectModule::wrapImageRadialGradient(PyObject *self, PyObject *args)
 {
 	int argCount = PyTuple_Size(args);
 	PyObject * bytearray = nullptr;
-	int centerX, centerY, radius, focalX, focalY, focalRadius, spread;
+	int centerX = 0;
+	int centerY = 0;
+	int radius = 0;
+	int focalX = 0;
+	int focalY = 0;
+	int focalRadius =0;
+	int spread = 0;
 	int startX = 0;
 	int startY = 0;
 	int width  = getEffect()->_imageSize.width();
@@ -554,7 +613,9 @@ PyObject* EffectModule::wrapImageDrawPolygon(PyObject *self, PyObject *args)
 	PyObject * bytearray = nullptr;
 
 	int argCount = PyTuple_Size(args);
-	int r, g, b;
+	int r = 0;
+	int g = 0;
+	int b = 0;
 	int a = 255;
 
 	bool argsOK = false;
@@ -613,7 +674,9 @@ PyObject* EffectModule::wrapImageDrawPie(PyObject *self, PyObject *args)
 
 	QString brush;
 	int argCount = PyTuple_Size(args);
-	int radius, centerX, centerY;
+	int radius = 0;
+	int centerX = 0;
+	int centerY = 0;
 	int startAngle = 0;
 	int spanAngle = 360;
 	int r = 0;
@@ -704,7 +767,9 @@ PyObject* EffectModule::wrapImageDrawPie(PyObject *self, PyObject *args)
 PyObject* EffectModule::wrapImageSolidFill(PyObject *self, PyObject *args)
 {
 	int argCount = PyTuple_Size(args);
-	int r, g, b;
+	int r = 0;
+	int g = 0;
+	int b = 0;
 	int a = 255;
 	int startX = 0;
 	int startY = 0;
@@ -743,8 +808,10 @@ PyObject* EffectModule::wrapImageSolidFill(PyObject *self, PyObject *args)
 PyObject* EffectModule::wrapImageDrawLine(PyObject *self, PyObject *args)
 {
 	int argCount = PyTuple_Size(args);
-	int r, g, b;
-	int a      = 255;
+	int r = 0;
+	int g = 0;
+	int b = 0;
+	int a = 255;
 	int startX = 0;
 	int startY = 0;
 	int thick  = 1;
@@ -781,8 +848,12 @@ PyObject* EffectModule::wrapImageDrawLine(PyObject *self, PyObject *args)
 PyObject* EffectModule::wrapImageDrawPoint(PyObject *self, PyObject *args)
 {
 	int argCount = PyTuple_Size(args);
-	int r, g, b, x, y;
-	int a      = 255;
+	int r = 0;
+	int g = 0;
+	int b = 0;
+	int x = 0;
+	int y = 0;
+	int a = 255;
 	int thick  = 1;
 
 	bool argsOK = false;
@@ -814,8 +885,10 @@ PyObject* EffectModule::wrapImageDrawPoint(PyObject *self, PyObject *args)
 PyObject* EffectModule::wrapImageDrawRect(PyObject *self, PyObject *args)
 {
 	int argCount = PyTuple_Size(args);
-	int r, g, b;
-	int a      = 255;
+	int r = 0;
+	int g = 0;
+	int b = 0;
+	int a = 255;
 	int startX = 0;
 	int startY = 0;
 	int thick  = 1;
@@ -853,7 +926,11 @@ PyObject* EffectModule::wrapImageDrawRect(PyObject *self, PyObject *args)
 PyObject* EffectModule::wrapImageSetPixel(PyObject *self, PyObject *args)
 {
 	int argCount = PyTuple_Size(args);
-	int r, g, b, x, y;
+	int r = 0;
+	int g = 0;
+	int b = 0;
+	int x = 0;
+	int y = 0;
 
 	if ( argCount == 5 && PyArg_ParseTuple(args, "iiiii", &x, &y, &r, &g, &b ) )
 	{
@@ -868,7 +945,8 @@ PyObject* EffectModule::wrapImageSetPixel(PyObject *self, PyObject *args)
 PyObject* EffectModule::wrapImageGetPixel(PyObject *self, PyObject *args)
 {
 	int argCount = PyTuple_Size(args);
-	int x, y;
+	int x = 0;
+	int y = 0;
 
 	if ( argCount == 2 && PyArg_ParseTuple(args, "ii", &x, &y) )
 	{
@@ -889,7 +967,8 @@ PyObject* EffectModule::wrapImageSave(PyObject *self, PyObject *args)
 PyObject* EffectModule::wrapImageMinSize(PyObject *self, PyObject *args)
 {
 	int argCount = PyTuple_Size(args);
-	int w, h;
+	int w = 0;
+	int h = 0;
 	int width   = getEffect()->_imageSize.width();
 	int height  = getEffect()->_imageSize.height();
 
@@ -949,7 +1028,8 @@ PyObject* EffectModule::wrapImageCOffset(PyObject *self, PyObject *args)
 
 PyObject* EffectModule::wrapImageCShear(PyObject *self, PyObject *args)
 {
-	int sh,sv;
+	int sh = 0;
+	int sv = 0;
 	int argCount = PyTuple_Size(args);
 
 	if ( argCount == 2 && PyArg_ParseTuple(args, "ii", &sh, &sv ))

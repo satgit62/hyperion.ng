@@ -36,6 +36,13 @@ public:
 	///
 	~BoblightClientConnection() override;
 
+	///
+	/// Get the Boblight client's IP-address
+	///
+	/// @returns IP-address as QString
+	///
+	QString getClientAddress() { return _clientAddress; }
+
 signals:
 	///
 	/// Signal which is emitted when the connection is being closed
@@ -67,7 +74,7 @@ private:
 	///
 	/// @param message The boblight message to send
 	///
-	void sendMessage(const QByteArray &message) { _socket->write(message); };
+	void sendMessage(const QByteArray &message);
 
 	///
 	/// Send a lights message the to connected client
@@ -81,7 +88,7 @@ private:
 	/// @param ok whether the result is ok
 	/// @return the parsed byte value in range 0 to 255, or 0
 	///
-	uint8_t parseByte(const QStringRef& s, bool *ok = nullptr) const;
+	uint8_t parseByte(const QString& s, bool *ok = nullptr) const;
 
 	///
 	/// Parse the given QString as unsigned int value.
@@ -90,7 +97,7 @@ private:
 	/// @param ok whether the result is ok
 	/// @return the parsed unsigned int value
 	///
-	unsigned parseUInt(const QStringRef& s, bool *ok = nullptr) const;
+	unsigned parseUInt(const QString& s, bool *ok = nullptr) const;
 
 	///
 	/// Parse the given QString as float value, e.g. the 16-bit (wide char) QString "1" shall represent 1, "0.5" is 0.5 and so on.
@@ -99,7 +106,7 @@ private:
 	/// @param ok whether the result is ok
 	/// @return the parsed float value, or 0
 	///
-	float parseFloat(const QStringRef& s, bool *ok = nullptr) const;
+	float parseFloat(const QString& s, bool *ok = nullptr) const;
 
 	///
 	/// Read an incoming boblight message as QString

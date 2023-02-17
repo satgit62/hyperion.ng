@@ -1,10 +1,26 @@
 #ifdef _WIN32
+#include <QCoreApplication>
+#include <QProcess>
 #include <utils/Logger.h>
 #include <QString>
 #include <QByteArray>
+
 namespace Process {
 
-void restartHyperion(bool asNewProcess) {}
+void restartHyperion(int exitCode)
+{
+	Logger* log = Logger::getInstance("Process");
+	Info(log, "Restarting hyperion ...");
+
+	auto arguments = QCoreApplication::arguments();
+	if (!arguments.contains("--wait-hyperion"))
+		arguments << "--wait-hyperion";
+
+	QProcess::startDetached(QCoreApplication::applicationFilePath(), arguments);
+
+	//Exit with non-zero code to ensure service deamon restarts hyperion
+	QCoreApplication::exit(exitCode);
+}
 
 QByteArray command_exec(const QString& /*cmd*/, const QByteArray& /*data*/)
 {
@@ -27,9 +43,15 @@ QByteArray command_exec(const QString& /*cmd*/, const QByteArray& /*data*/)
 #include <memory>
 #include <stdexcept>
 
+#include <csignal>
+
+#include <QDebug>
+#include <QMetaObject>
+
 namespace Process {
 
-void restartHyperion(bool asNewProcess)
+
+void restartHyperion(int exitCode)
 {
 	Logger* log = Logger::getInstance("Process");
 	Info(log, "Restarting hyperion ...");
@@ -45,10 +67,11 @@ void restartHyperion(bool asNewProcess)
 
 	QProcess::startDetached(QCoreApplication::applicationFilePath(), arguments);
 
-	QCoreApplication::quit();
+	//Exit with non-zero code to ensure service deamon restarts hyperion
+	QCoreApplication::exit(exitCode);
 }
 
-QByteArray command_exec(const QString& cmd, const QByteArray& data)
+QByteArray command_exec(const QString& cmd, const QByteArray& /*data*/)
 {
 	char buffer[128];
 	QString result;
@@ -58,7 +81,7 @@ QByteArray command_exec(const QString& cmd, const QByteArray& data)
 	{
 		while (!feof(pipe.get()))
 		{
-			if (fgets(buffer, 128, pipe.get()) != NULL)
+			if (fgets(buffer, 128, pipe.get()) != nullptr)
 				result += buffer;
 		}
 	}

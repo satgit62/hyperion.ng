@@ -27,7 +27,9 @@ static const QString UPNP_ALIVE_MESSAGE = "NOTIFY * HTTP/1.1\r\n"
                                           "NTS: ssdp:alive\r\n"
                                           "SERVER: %4\r\n"
                                           "USN: uuid:%5\r\n"
+#if defined(ENABLE_FLATBUF_SERVER)
                                           "HYPERION-FBS-PORT: %6\r\n"
+#endif
                                           "HYPERION-JSS-PORT: %7\r\n"
                                           "HYPERION-NAME: %8\r\n"
                                           "\r\n";
@@ -72,7 +74,9 @@ static const QString UPNP_MSEARCH_RESPONSE = "HTTP/1.1 200 OK\r\n"
                                              "SERVER: %4\r\n"
                                              "ST: %5\r\n"
                                              "USN: uuid:%6\r\n"
+#if defined(ENABLE_FLATBUF_SERVER)
                                              "HYPERION-FBS-PORT: %7\r\n"
+#endif
                                              "HYPERION-JSS-PORT: %8\r\n"
                                              "HYPERION-NAME: %9\r\n"
                                              "\r\n";
@@ -161,7 +165,6 @@ void SSDPServer::readPendingDatagrams()
 
 		if (headers.value("man") == "\"ssdp:discover\"")
 		{
-			//Debug(_log, "Received msearch from '%s:%d'. Search target: %s",QSTRING_CSTR(sender.toString()), senderPort, QSTRING_CSTR(headers.value("st")));
 			emit msearchRequestReceived(headers.value("st"), headers.value("mx"), sender.toString(), senderPort);
 		}
     }
@@ -175,7 +178,9 @@ void SSDPServer::sendMSearchResponse(const QString& st, const QString& senderIp,
 		, _serverHeader
 		, st
 		, _uuid
+#if defined(ENABLE_FLATBUF_SERVER)
 		, _fbsPort
+#endif
 		, _jssPort
 		, _name );
 
@@ -202,7 +207,9 @@ void SSDPServer::sendAlive(const QString& st)
 		, st
 		, _serverHeader
 		, tempUSN
+#if defined(ENABLE_FLATBUF_SERVER)
 		, _fbsPort
+#endif
 		, _jssPort
 		, _name );
 

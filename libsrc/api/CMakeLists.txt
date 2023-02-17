@@ -1,12 +1,3 @@
-# Find the BCM-package (VC control)
-IF ( "${PLATFORM}" MATCHES rpi)
-	find_package(BCM REQUIRED)
-	include_directories(${BCM_INCLUDE_DIRS})
-ELSE()
-	SET(BCM_INCLUDE_DIRS "")
-	SET(BCM_LIBRARIES "")
-ENDIF()
-
 # Define the current source locations
 
 SET(CURRENT_HEADER_DIR ${CMAKE_SOURCE_DIR}/include/api)
@@ -29,7 +20,7 @@ endif(ENABLE_DX)
 target_link_libraries(hyperion-api
 	hyperion
 	hyperion-utils
-	Qt5::Core
-	Qt5::Gui
-	Qt5::Network
+	Qt${QT_VERSION_MAJOR}::Core
+	Qt${QT_VERSION_MAJOR}::Gui
+	Qt${QT_VERSION_MAJOR}::Network
 )

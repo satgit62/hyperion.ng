@@ -3,39 +3,33 @@
 
 // Qt includes
 #include <QRgb>
-#include <QThread>
 
 // flatbuffer includes
 #include <flatbufserver/FlatBufferConnection.h>
-
-// mDNS/bonjour wrapper
-#ifndef __APPLE__
-#include <mdns/mdnsEngineWrapper.h>
-#endif
 
 // flatbuffer FBS
 #include "hyperion_reply_generated.h"
 #include "hyperion_request_generated.h"
 
-FlatBufferConnection::FlatBufferConnection(const QString& origin, const QString & address, int priority, bool skipReply)
+FlatBufferConnection::FlatBufferConnection(const QString& origin, const QString& host, int priority, bool skipReply, quint16 port)
 	: _socket()
 	, _origin(origin)
 	, _priority(priority)
+	, _host(host)
+	, _port(port)
 	, _prevSocketState(QAbstractSocket::UnconnectedState)
 	, _log(Logger::getInstance("FLATBUFCONN"))
 	, _registered(false)
 {
-	_serviceName = address;
-
 	if(!skipReply)
 		connect(&_socket, &QTcpSocket::readyRead, this, &FlatBufferConnection::readData, Qt::UniqueConnection);
 
 	// init connect
-	Info(_log, "Connecting to Hyperion: %s", QSTRING_CSTR(_serviceName));
+	Info(_log, "Connecting to Hyperion: %s:%u", QSTRING_CSTR(_host), _port);
 	connectToHost();
 
 	// start the connection timer
-	_timer.setInterval(10000);
+	_timer.setInterval(5000);
 
 	connect(&_timer, &QTimer::timeout, this, &FlatBufferConnection::connectToHost);
 	_timer.start();
@@ -43,6 +37,7 @@ FlatBufferConnection::FlatBufferConnection(const QString& origin, const QString 
 
 FlatBufferConnection::~FlatBufferConnection()
 {
+	Debug(_log, "Closing connection to: %s:%u", QSTRING_CSTR(_host), _port);
 	_timer.stop();
 	_socket.close();
 }
@@ -147,42 +142,6 @@ void FlatBufferConnection::clearAll()
 
 void FlatBufferConnection::connectToHost()
 {
-
-	QString hostAddress;
-#ifndef __APPLE__
-	if (_serviceName.endsWith(".local."))
-	{
-		qDebug() << "MessageForwarder::connectToHost" << QThread::currentThread();
-
-		MdnsEngineWrapper* mdnsEngine = MdnsEngineWrapper::getInstance();
-
-		hostAddress = mdnsEngine->getHostByService(_serviceName.toUtf8());
-
-		if (hostAddress.isEmpty())
-		{
-			Error(_log, "Resolving IP-address:Port for service [%s] failed.", QSTRING_CSTR(_serviceName));
-		}
-	}
-#endif
-
-	QStringList parts = hostAddress.split(":");
-	if (parts.size() != 2)
-	{
-		Error(_log, "Unable to parse address (%s)", QSTRING_CSTR(hostAddress));
-		return;
-	}
-
-	bool ok;
-	parts[1].toUShort(&ok);
-	if (!ok)
-	{
-		Error(_log, "Unable to parse port number (%s)", QSTRING_CSTR(parts[1]));
-		return;
-	}
-
-	_host = parts[0];
-	_port = parts[1].toInt();
-
 	// try connection only when
 	if (_socket.state() == QAbstractSocket::UnconnectedState)
 	   _socket.connectToHost(_host, _port);
@@ -197,13 +156,13 @@ void FlatBufferConnection::sendMessage(const uint8_t* buffer, uint32_t size)
 		switch (_socket.state() )
 		{
 			case QAbstractSocket::UnconnectedState:
-				Info(_log, "No connection to Hyperion: %s:%d", _host.toStdString().c_str(), _port);
+				Info(_log, "No connection to Hyperion: %s:%u", QSTRING_CSTR(_host), _port);
 				break;
 			case QAbstractSocket::ConnectedState:
-				Info(_log, "Connected to Hyperion: %s:%d", _host.toStdString().c_str(), _port);
+				Info(_log, "Connected to Hyperion: %s:%u", QSTRING_CSTR(_host), _port);
 				break;
 			default:
-				Debug(_log, "Connecting to Hyperion: %s:%d", _host.toStdString().c_str(), _port);
+				Debug(_log, "Connecting to Hyperion: %s:%u", QSTRING_CSTR(_host), _port);
 				break;
 	  }
 	  _prevSocketState = _socket.state();

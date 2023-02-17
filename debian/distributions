@@ -1,7 +1,7 @@
 Origin: Hyperion-Project
 Label: apt.hyperion-project.org
 Codename: bionic
-Architectures: amd64
+Architectures: amd64 armhf arm64
 Components: main
 Description: Official APT Repository by Hyperion Project
 SignWith: yes
@@ -9,38 +9,30 @@ SignWith: yes
 Origin: Hyperion-Project
 Label: apt.hyperion-project.org
 Codename: focal
-Architectures: amd64
+Architectures: amd64 armhf arm64
 Components: main
 Description: Official APT Repository by Hyperion Project
 SignWith: yes
 
 Origin: Hyperion-Project
 Label: apt.hyperion-project.org
-Codename: groovy
-Architectures: amd64
+Codename: jammy
+Architectures: amd64 armhf arm64
 Components: main
 Description: Official APT Repository by Hyperion Project
 SignWith: yes
 
 Origin: Hyperion-Project
 Label: apt.hyperion-project.org
-Codename: hirsute
-Architectures: amd64
+Codename: kinetic
+Architectures: amd64 armhf arm64
 Components: main
 Description: Official APT Repository by Hyperion Project
 SignWith: yes
 
 Origin: Hyperion-Project
 Label: apt.hyperion-project.org
-Codename: impish
-Architectures: amd64
-Components: main
-Description: Official APT Repository by Hyperion Project
-SignWith: yes
-
-Origin: Hyperion-Project
-Label: apt.hyperion-project.org
-Suite: oldstable
+Suite: oldoldstable
 Codename: stretch
 Architectures: armhf amd64
 Components: main
@@ -49,9 +41,18 @@ SignWith: yes
 
 Origin: Hyperion-Project
 Label: apt.hyperion-project.org
-Suite: stable
+Suite: oldstable
 Codename: buster
-Architectures: armhf amd64
+Architectures: amd64 armhf arm64
+Components: main
+Description: Official APT Repository by Hyperion Project
+SignWith: yes
+
+Origin: Hyperion-Project
+Label: apt.hyperion-project.org
+Suite: stable
+Codename: bullseye
+Architectures: amd64 armhf arm64
 Components: main
 Description: Official APT Repository by Hyperion Project
 SignWith: yes
@@ -59,8 +60,8 @@ SignWith: yes
 Origin: Hyperion-Project
 Label: apt.hyperion-project.org
 Suite: unstable
-Codename: bullseye
-Architectures: armhf amd64
+Codename: bookworm
+Architectures: amd64
 Components: main
 Description: Official APT Repository by Hyperion Project
 SignWith: yes

@@ -82,7 +82,7 @@ bool LedDeviceLightpack::init(const QJsonObject &deviceConfig)
 		{
 			Debug(_log, "USB context initialized");
 
-			if ( _log->getLogLevel() == Logger::LogLevel::DEBUG )
+			if ( _log->getMinLevel() == Logger::LogLevel::DEBUG )
 			{
 				int logLevel = LIBUSB_LOG_LEVEL_INFO;
 				#if LIBUSB_API_VERSION >= 0x01000106
@@ -118,11 +118,11 @@ bool LedDeviceLightpack::init(const QJsonObject &deviceConfig)
 				QString errortext;
 				if (_serialNumber.isEmpty())
 				{
-					errortext = QString ("No Lightpack devices were found");
+					errortext = QString ("No working Lightpack devices were found");
 				}
 				else
 				{
-					errortext = QString ("No Lightpack device found with serial %1").arg( _serialNumber);
+					errortext = QString ("No working Lightpack device found with serial %1").arg( _serialNumber);
 				}
 				this->setInError( errortext );
 			}
@@ -198,8 +198,7 @@ bool LedDeviceLightpack::searchDevice(libusb_device * device, const QString & re
 	}
 
 	if ((deviceDescriptor.idVendor == USB_VENDOR_ID && deviceDescriptor.idProduct == USB_PRODUCT_ID) ||
-		 (deviceDescriptor.idVendor == USB_OLD_VENDOR_ID && deviceDescriptor.idProduct == USB_OLD_PRODUCT_ID)
-	   )
+		 (deviceDescriptor.idVendor == USB_OLD_VENDOR_ID && deviceDescriptor.idProduct == USB_OLD_PRODUCT_ID))
 	{
 		Info(_log, "Found a Lightpack device. Retrieving more information...");
 
@@ -332,8 +331,6 @@ const QString &LedDeviceLightpack::getSerialNumber() const
 int LedDeviceLightpack::writeBytes(uint8_t *data, int size)
 {
 	int rc = 0;
-	//Debug( _log, "[%s]", QSTRING_CSTR(uint8_t_to_hex_string(data, size, 32)) );
-
 	int error = libusb_control_transfer(_deviceHandle,
 								 static_cast<uint8_t>( LIBUSB_ENDPOINT_OUT | LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_INTERFACE ),
 	0x09,
@@ -344,7 +341,7 @@ int LedDeviceLightpack::writeBytes(uint8_t *data, int size)
 	if (error != size)
 	{
 		rc = -1;
-		Error(_log, "Unable to write %d bytes to Lightpack device (%d): %s", size, error, libusb_error_name(error));
+		Error(_log, "Unable to write %d bytes to Lightpack device(%d): %s", size, error, libusb_error_name(error));
 	}
 
 	return rc;
@@ -396,6 +393,7 @@ int LedDeviceLightpack::openDevice(libusb_device *device, libusb_device_handle *
 			rc = -1;
 		}
 	}
+
 	*deviceHandle = handle;
 	return rc;
 }

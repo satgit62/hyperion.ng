@@ -1,4 +1,5 @@
 $(document).ready(function () {
+
   // check if browser supports streaming
   if (window.navigator.mediaDevices && window.navigator.mediaDevices.getDisplayMedia) {
     $("#btn_streamer").toggle();
@@ -75,6 +76,7 @@ $(document).ready(function () {
       tracks.forEach(track => track.stop());
       videoElem.srcObject = null;
     }
+    requestPriorityClear(1);
   }
 
   function takePicture() {
@@ -84,7 +86,7 @@ $(document).ready(function () {
     context.drawImage(videoElem, 0, 0, streamImageWidth, streamImageHeight);
 
     var data = canvasElem.toDataURL('image/png').split(",")[1];
-    requestSetImage(data, 2, "Streaming");
+    requestSetImage(data, -1, "Streaming");
   }
 
   // start or update screenshot timer
@@ -105,4 +107,11 @@ $(document).ready(function () {
       stopCapture();
     }
   });
+
+  $(window.hyperion).on("stopBrowerScreenCapture", function (event) {
+    if (streamActive) {
+      stopCapture();
+    }
+  });
+
 });

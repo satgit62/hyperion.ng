@@ -14,54 +14,28 @@ function storageComp() {
   return false;
 }
 
-function getStorage(item, session) {
+function getStorage(item) {
   if (storageComp()) {
-    if (session === true)
-      return sessionStorage.getItem(item);
-    else
-      return localStorage.getItem(item);
+    return localStorage.getItem(item);
   }
   return null;
 }
 
-function setStorage(item, value, session) {
+function setStorage(item, value) {
   if (storageComp()) {
-    if (session === true)
-      sessionStorage.setItem(item, value);
-    else
-      localStorage.setItem(item, value);
+    localStorage.setItem(item, value);
   }
 }
 
-function removeStorage(item, session) {
+function removeStorage(item) {
   if (storageComp()) {
-    if (session === true)
-      sessionStorage.removeItem(item);
-    else
-      localStorage.removeItem(item);
+    localStorage.removeItem(item);
   }
 }
 
 function debugMessage(msg) {
   if (window.debugMessagesActive) {
     console.log(msg);
-  }
-}
-
-function updateSessions() {
-  var sess = window.serverInfo.sessions;
-  if (sess && sess.length) {
-    window.wSess = [];
-    for (var i = 0; i < sess.length; i++) {
-      if (sess[i].type == "_http._tcp." || sess[i].type == "_https._tcp." || sess[i].type == "_hyperiond-http._tcp.") {
-        window.wSess.push(sess[i]);
-      }
-    }
-
-    if (window.wSess.length > 1)
-      $('#btn_instanceswitch').toggle(true);
-    else
-      $('#btn_instanceswitch').toggle(false);
   }
 }
 
@@ -73,8 +47,8 @@ function validateDuration(d) {
 }
 
 function getHashtag() {
-  if (getStorage('lasthashtag', true) != null)
-    return getStorage('lasthashtag', true);
+  if (getStorage('lasthashtag') != null)
+    return getStorage('lasthashtag');
   else {
     var tag = document.URL;
     tag = tag.substr(tag.indexOf("#") + 1);
@@ -87,20 +61,20 @@ function getHashtag() {
 function loadContent(event, forceRefresh) {
   var tag;
 
-  var lastSelectedInstance = getStorage('lastSelectedInstance', false);
+  var lastSelectedInstance = getStorage('lastSelectedInstance');
 
   if (lastSelectedInstance && (lastSelectedInstance != window.currentHyperionInstance)) {
     if (window.serverInfo.instance[lastSelectedInstance] && window.serverInfo.instance[lastSelectedInstance].running) {
       instanceSwitch(lastSelectedInstance);
     } else {
-      removeStorage('lastSelectedInstance', false);
+      removeStorage('lastSelectedInstance');
     }
   }
 
   if (typeof event != "undefined") {
     tag = event.currentTarget.hash;
     tag = tag.substr(tag.indexOf("#") + 1);
-    setStorage('lasthashtag', tag, true);
+    setStorage('lasthashtag', tag);
   }
   else
     tag = getHashtag();
@@ -112,7 +86,7 @@ function loadContent(event, forceRefresh) {
       if (status == "error") {
         tag = 'dashboard';
         console.log("Could not find page:", prevTag, ", Redirecting to:", tag);
-        setStorage('lasthashtag', tag, true);
+        setStorage('lasthashtag', tag);
 
         $("#page-content").load("/content/" + tag + ".html", function (response, status, xhr) {
           if (status == "error") {
@@ -197,7 +171,11 @@ function initLanguageSelection() {
 }
 
 function updateUiOnInstance(inst) {
-  $("#active_instance_friendly_name").text(window.serverInfo.instance[inst].friendly_name);
+
+  window.currentHyperionInstance = inst;
+  window.currentHyperionInstanceName = getInstanceNameByIndex(inst);
+
+  $("#active_instance_friendly_name").text(getInstanceNameByIndex(inst));
   if (window.serverInfo.instance.filter(entry => entry.running).length > 1) {
     $('#btn_hypinstanceswitch').toggle(true);
     $('#active_instance_dropdown').prop('disabled', false);
@@ -215,8 +193,7 @@ function instanceSwitch(inst) {
   requestInstanceSwitch(inst)
   window.currentHyperionInstance = inst;
   window.currentHyperionInstanceName = getInstanceNameByIndex(inst);
-  setStorage('lastSelectedInstance', inst, false)
-  updateHyperionInstanceListing()
+  setStorage('lastSelectedInstance', inst)
 }
 
 function loadContentTo(containerId, fileName) {
@@ -332,7 +309,7 @@ function showInfoDialog(type, header, message) {
   if (type == "select" || type == "iswitch")
     $('#id_body').append('<select id="id_select" class="form-control" style="margin-top:10px;width:auto;"></select>');
 
-  if (getStorage("darkMode", false) == "on")
+  if (getStorage("darkMode") == "on")
     $('#id_logo').attr("src", 'img/hyperion/logo_negativ.png');
 
   $(type == "renInst" || type == "changePassword" ? "#modal_dialog_rename" : "#modal_dialog").modal({
@@ -343,7 +320,7 @@ function showInfoDialog(type, header, message) {
 
   $(document).on('click', '[data-dismiss-modal]', function () {
     var target = $(this).attr('data-dismiss-modal');
-    $(target).modal('hide'); // lgtm [js/xss-through-dom]
+    $.find(target).modal('hide');
   });
 }
 
@@ -434,7 +411,33 @@ function isJsonString(str) {
   return "";
 }
 
-function createJsonEditor(container, schema, setconfig, usePanel, arrayre = undefined) {
+const getObjectProperty = (obj, path) => path.split(".").reduce((o, key) => o && typeof o[key] !== 'undefined' ? o[key] : undefined, obj);
+
+const setObjectProperty = (object, path, value) => {
+  const parts = path.split('.');
+  const limit = parts.length - 1;
+  for (let i = 0; i < limit; ++i) {
+    const key = parts[i];
+    if (key === "__proto__" || key === "constructor") continue;
+    object = object[key] ?? (object[key] = {});
+  }
+  const key = parts[limit];
+  object[key] = value;
+};
+
+function getLongPropertiesPath(path) {
+  if (path) {
+    var path = path.replace('root.', '');
+    const parts = path.split('.');
+    parts.forEach(function (part, index) {
+      this[index] += ".properties";
+    }, parts);
+    path = parts.join('.') + '.';
+  }
+  return path;
+}
+
+function createJsonEditor(container, schema, setconfig, usePanel, arrayre) {
   $('#' + container).off();
   $('#' + container).html("");
 
@@ -465,7 +468,7 @@ function createJsonEditor(container, schema, setconfig, usePanel, arrayre = unde
 
   var editor = new JSONEditor(document.getElementById(container),
     {
-      theme: 'bootstrap4',
+      theme: 'bootstrap3',
       iconlib: "fontawesome4",
       disable_collapse: 'true',
       form_name_root: 'sa',
@@ -497,7 +500,6 @@ function createJsonEditor(container, schema, setconfig, usePanel, arrayre = unde
 
   return editor;
 }
-
 
 function updateJsonEditorSelection(rootEditor, path, key, addElements, newEnumVals, newTitelVals, newDefaultVal, addSelect, addCustom, addCustomAsFirst, customText) {
   var editor = rootEditor.getEditor(path);
@@ -535,11 +537,12 @@ function updateJsonEditorSelection(rootEditor, path, key, addElements, newEnumVa
     }
   }
 
-  if (newTitelVals.length === 0) {
-    newTitelVals = [...newEnumVals];
-  }
-
   if (addCustom) {
+
+    if (newTitelVals.length === 0) {
+      newTitelVals = [...newEnumVals];
+    }
+
     if (!!!customText) {
       customText = "edt_conf_enum_custom";
     }
@@ -577,7 +580,8 @@ function updateJsonEditorSelection(rootEditor, path, key, addElements, newEnumVa
 
   editor.original_schema.properties[key] = orginalProperties;
   editor.schema.properties[key] = newSchema[key];
-  rootEditor.validator.schema.properties[editor.key].properties[key] = newSchema[key];
+  //Update schema properties for validator
+  setObjectProperty(rootEditor.validator.schema.properties, getLongPropertiesPath(path) + key, newSchema[key]);
 
   editor.removeObjectProperty(key);
   delete editor.cached_editors[key];
@@ -595,8 +599,8 @@ function updateJsonEditorMultiSelection(rootEditor, path, key, addElements, newE
   var editor = rootEditor.getEditor(path);
   var orginalProperties = editor.schema.properties[key];
 
-  //var orginalWatchFunctions = rootEditor.watchlist[path + "." + key];
-  //rootEditor.unwatch(path + "." + key);
+  var orginalWatchFunctions = rootEditor.watchlist[path + "." + key];
+  rootEditor.unwatch(path + "." + key);
 
   var newSchema = [];
   newSchema[key] =
@@ -646,18 +650,19 @@ function updateJsonEditorMultiSelection(rootEditor, path, key, addElements, newE
 
   editor.original_schema.properties[key] = orginalProperties;
   editor.schema.properties[key] = newSchema[key];
-  rootEditor.validator.schema.properties[editor.key].properties[key] = newSchema[key];
+  //Update schema properties for validator
+  setObjectProperty(rootEditor.validator.schema.properties, getLongPropertiesPath(path) + key, newSchema[key]);
 
   editor.removeObjectProperty(key);
   delete editor.cached_editors[key];
   editor.addObjectProperty(key);
 
-  //if (orginalWatchFunctions) {
-  //  for (var i = 0; i < orginalWatchFunctions.length; i++) {
-  //    rootEditor.watch(path + "." + key, orginalWatchFunctions[i]);
-  //  }
-  //}
-  //rootEditor.notifyWatchers(path + "." + key);
+  if (orginalWatchFunctions) {
+    for (var i = 0; i < orginalWatchFunctions.length; i++) {
+      rootEditor.watch(path + "." + key, orginalWatchFunctions[i]);
+    }
+  }
+  rootEditor.notifyWatchers(path + "." + key);
 }
 
 function updateJsonEditorRange(rootEditor, path, key, minimum, maximum, defaultValue, step, clear) {
@@ -694,7 +699,8 @@ function updateJsonEditorRange(rootEditor, path, key, minimum, maximum, defaultV
 
   editor.original_schema.properties[key] = orginalProperties;
   editor.schema.properties[key] = newSchema[key];
-  rootEditor.validator.schema.properties[editor.key].properties[key] = newSchema[key];
+  //Update schema properties for validator
+  setObjectProperty(rootEditor.validator.schema.properties, getLongPropertiesPath(path) + key, newSchema[key]);
 
   editor.removeObjectProperty(key);
   delete editor.cached_editors[key];
@@ -702,6 +708,68 @@ function updateJsonEditorRange(rootEditor, path, key, minimum, maximum, defaultV
 
   // Restore current (new default) value for new range
   rootEditor.getEditor(path + "." + key).setValue(currentValue);
+}
+
+function addJsonEditorHostValidation() {
+
+  JSONEditor.defaults.custom_validators.push(function (schema, value, path) {
+    var errors = [];
+
+    if (!jQuery.isEmptyObject(value)) {
+      switch (schema.format) {
+        case "hostname_or_ip":
+          if (!isValidHostnameOrIP(value)) {
+            errors.push({
+              path: path,
+              property: 'format',
+              message: $.i18n('edt_msgcust_error_hostname_ip')
+            });
+          }
+          break;
+        case "hostname_or_ip4":
+          if (!isValidHostnameOrIP4(value)) {
+            errors.push({
+              path: path,
+              property: 'format',
+              message: $.i18n('edt_msgcust_error_hostname_ip4')
+            });
+          }
+          break;
+
+        //Remove, when new json-editor 2.x is used
+        case "ipv4":
+          if (!isValidIPv4(value)) {
+            errors.push({
+              path: path,
+              property: 'format',
+              message: $.i18n('edt_msg_error_ipv4')
+            });
+          }
+          break;
+        case "ipv6":
+          if (!isValidIPv6(value)) {
+            errors.push({
+              path: path,
+              property: 'format',
+              message: $.i18n('edt_msg_error_ipv6')
+            });
+          }
+          break;
+        case "hostname":
+          if (!isValidHostname(value)) {
+            errors.push({
+              path: path,
+              property: 'format',
+              message: $.i18n('edt_msg_error_hostname')
+            });
+          }
+          break;
+
+        default:
+      }
+    }
+    return errors;
+  });
 }
 
 function buildWL(link, linkt, cl) {
@@ -781,8 +849,8 @@ function showNotification(type, message, title = "", addhtml = "") {
     // settings
     type: type,
     animate: {
-      enter: 'animated fadeInDown',
-      exit: 'animated fadeOutUp'
+      enter: 'animate__animated animate__fadeInDown',
+      exit: 'animate__animated animate__fadeOutUp'
     },
     placement: {
       align: 'center'
@@ -877,7 +945,11 @@ function createTableRow(list, head, align) {
     if (align)
       el.style.verticalAlign = "middle";
 
-    el.innerHTML = list[i];
+    var purifyConfig = {
+            ADD_TAGS: ['button'],
+            ADD_ATTR: ['onclick']
+    };
+    el.innerHTML = DOMPurify.sanitize(list[i], purifyConfig);
     row.appendChild(el);
   }
   return row;
@@ -1161,38 +1233,42 @@ function getSystemInfo() {
   var sys = window.sysInfo.system;
   var shy = window.sysInfo.hyperion;
 
-  var info = "Hyperion Server: \n";
-  info += '- Build:           ' + shy.build + '\n';
-  info += '- Build time:      ' + shy.time + '\n';
-  info += '- Git Remote:      ' + shy.gitremote + '\n';
-  info += '- Version:         ' + shy.version + '\n';
-  info += '- UI Lang:         ' + storedLang + ' (BrowserLang: ' + navigator.language + ')\n';
-  info += '- UI Access:       ' + storedAccess + '\n';
-  //info += '- Log lvl:         ' + window.serverConfig.logger.level + '\n';
-  info += '- Avail Capt:      ' + window.serverInfo.grabbers.available + '\n';
-  info += '- Config path:     ' + shy.rootPath + '\n';
-  info += '- Database:        ' + (shy.readOnlyMode ? "ready-only" : "read/write") + '\n';
+  var info = "Hyperion Server:\n";
+  info += '- Build:             ' + shy.build + '\n';
+  info += '- Build time:        ' + shy.time + '\n';
+  info += '- Git Remote:        ' + shy.gitremote + '\n';
+  info += '- Version:           ' + shy.version + '\n';
+  info += '- UI Lang:           ' + storedLang + ' (BrowserLang: ' + navigator.language + ')\n';
+  info += '- UI Access:         ' + storedAccess + '\n';
+  //info += '- Log lvl:           ' + window.serverConfig.logger.level + '\n';
+  info += '- Avail Screen Cap.: ' + window.serverInfo.grabbers.screen.available + '\n';
+  info += '- Avail Video  Cap.: ' + window.serverInfo.grabbers.video.available + '\n';
+  info += '- Avail Services:    ' + window.serverInfo.services + '\n';
+  info += '- Config path:       ' + shy.rootPath + '\n';
+  info += '- Database:          ' + (shy.readOnlyMode ? "ready-only" : "read/write") + '\n';
 
   info += '\n';
 
-  info += 'Hyperion Server OS: \n';
-  info += '- Distribution:   ' + sys.prettyName + '\n';
-  info += '- Architecture:   ' + sys.architecture + '\n';
+  info += 'Hyperion Server OS:\n';
+  info += '- Distribution:      ' + sys.prettyName + '\n';
+  info += '- Architecture:      ' + sys.architecture + '\n';
 
   if (sys.cpuModelName)
-    info += '- CPU Model:      ' + sys.cpuModelName + '\n';
+    info += '- CPU Model:         ' + sys.cpuModelName + '\n';
   if (sys.cpuModelType)
-    info += '- CPU Type:       ' + sys.cpuModelType + '\n';
+    info += '- CPU Type:          ' + sys.cpuModelType + '\n';
   if (sys.cpuRevision)
-    info += '- CPU Revision:   ' + sys.cpuRevision + '\n';
+    info += '- CPU Revision:      ' + sys.cpuRevision + '\n';
   if (sys.cpuHardware)
-    info += '- CPU Hardware:   ' + sys.cpuHardware + '\n';
+    info += '- CPU Hardware:      ' + sys.cpuHardware + '\n';
 
-  info += '- Kernel:         ' + sys.kernelType + ' (' + sys.kernelVersion + ' (WS: ' + sys.wordSize + '))\n';
-  info += '- Root/Admin:     ' + sys.isUserAdmin + '\n';
-  info += '- Qt Version:     ' + sys.qtVersion + '\n';
-  info += '- Python Version: ' + sys.pyVersion + '\n';
-  info += '- Browser:        ' + navigator.userAgent;
+  info += '- Kernel:            ' + sys.kernelType + ' (' + sys.kernelVersion + ' (WS: ' + sys.wordSize + '))\n';
+  info += '- Root/Admin:        ' + sys.isUserAdmin + '\n';
+  info += '- Qt Version:        ' + sys.qtVersion + '\n';
+  if (jQuery.inArray("effectengine", window.serverInfo.services) !== -1) {
+    info += '- Python Version:    ' + sys.pyVersion + '\n';
+  }
+  info += '- Browser:           ' + navigator.userAgent;
   return info;
 }
 
@@ -1203,7 +1279,7 @@ function handleDarkMode() {
     href: "../css/darkMode.css"
   }).appendTo("head");
 
-  setStorage("darkMode", "on", false);
+  setStorage("darkMode", "on");
   $('#btn_darkmode_icon').removeClass('fa fa-moon-o');
   $('#btn_darkmode_icon').addClass('mdi mdi-white-balance-sunny');
   $('#navbar_brand_logo').attr("src", 'img/hyperion/logo_negativ.png');
@@ -1226,15 +1302,26 @@ function isAccessLevelCompliant(accessLevel) {
 }
 
 function showInputOptions(path, elements, state) {
+
+  if (!path.startsWith("root.")) {
+    path = ["root", path].join('.');
+  }
+
   for (var i = 0; i < elements.length; i++) {
-    $('[data-schemapath="root.' + path + '.' + elements[i] + '"]').toggle(state);
+    $('[data-schemapath="' + path + '.' + elements[i] + '"]').toggle(state);
   }
 }
 
 function showInputOptionForItem(editor, path, item, state) {
-  var accessLevel = editor.schema.properties[path].properties[item].access;
+  //Get access level for full path and item
+  var accessLevel = getObjectProperty(editor.schema.properties, getLongPropertiesPath(path) + item + ".access");
   // Enable element only, if access level compliant
   if (!state || isAccessLevelCompliant(accessLevel)) {
+
+    if (!path) {
+      debugger;
+      path = editor.path;
+    }
     showInputOptions(path, [item], state);
   }
 }
@@ -1249,7 +1336,7 @@ function showInputOptionsForKey(editor, item, showForKeys, state) {
     if (typeof showForKeys === 'string') {
       keysToshow.push(showForKeys);
     } else {
-      return
+      return;
     }
   }
 
@@ -1257,9 +1344,18 @@ function showInputOptionsForKey(editor, item, showForKeys, state) {
     if ($.inArray(key, keysToshow) === -1) {
       var accessLevel = editor.schema.properties[item].properties[key].access;
 
+      var hidden = false;
+      if (editor.schema.properties[item].properties[key].options) {
+        hidden = editor.schema.properties[item].properties[key].options.hidden;
+        if (typeof hidden === 'undefined') {
+          hidden = false;
+        }
+      }
       //Always disable all elements, but only enable elements, if access level compliant
       if (!state || isAccessLevelCompliant(accessLevel)) {
-        elements.push(key);
+        if (!hidden) {
+          elements.push(key);
+        }
       }
     }
   }
@@ -1270,70 +1366,51 @@ function encodeHTML(s) {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
 }
 
-/**
- * Module for displaying "Waiting for..." dialog using Bootstrap
- *
- * @author Eugene Maslovich <ehpc@em42.ru>
- */
-
-var waitingDialog = waitingDialog || (function ($) {
-  'use strict';
-
-  // Creating modal dialog's DOM
-  var $dialog = $(
-    '<div class="modal" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-hidden="true" style="padding-top:15%; overflow-y:visible;">' +
-    '<div class="modal-dialog modal-m">' +
-    '<div class="modal-content">' +
-    '<div class="modal-header"><h3 style="margin:0;"></h3></div>' +
-    '<div class="modal-body">' +
-    '<div class="progress progress-striped active" style="margin-bottom:0;"><div class="progress-bar" style="width: 100%"></div></div>' +
-    '</div>' +
-    '</div></div></div>');
-
-  return {
-    /**
-     * Opens our dialog
-     * @param message Custom message
-     * @param options Custom options:
-     * 				  options.dialogSize - bootstrap postfix for dialog size, e.g. "sm", "m";
-     * 				  options.progressType - bootstrap postfix for progress bar type, e.g. "success", "warning".
-     */
-    show: function (message, options) {
-      // Assigning defaults
-      if (typeof options === 'undefined') {
-        options = {};
-      }
-      if (typeof message === 'undefined') {
-        message = 'Loading';
-      }
-      var settings = $.extend({
-        dialogSize: 'm',
-        progressType: '',
-        onHide: null // This callback runs after the dialog was hidden
-      }, options);
-
-      // Configuring dialog
-      $dialog.find('.modal-dialog').attr('class', 'modal-dialog').addClass('modal-' + settings.dialogSize);
-      $dialog.find('.progress-bar').attr('class', 'progress-bar');
-      if (settings.progressType) {
-        $dialog.find('.progress-bar').addClass('progress-bar-' + settings.progressType);
-      }
-      $dialog.find('h3').text(message);
-      // Adding callbacks
-      if (typeof settings.onHide === 'function') {
-        $dialog.off('hidden.bs.modal').on('hidden.bs.modal', function (e) {
-          settings.onHide.call($dialog);
-        });
-      }
-      // Opening dialog
-      $dialog.modal();
-    },
-    /**
-     * Closes dialog
-     */
-    hide: function () {
-      $dialog.modal('hide');
+function isValidIPv4(value) {
+  const parts = value.split('.')
+  if (parts.length !== 4) {
+    return false;
+  }
+  for (let part of parts) {
+    if (isNaN(part) || part < 0 || part > 255) {
+      return false;
     }
-  };
+  }
+  return true;
+}
 
-})(jQuery);
+function isValidIPv6(value) {
+  if (value.match(
+    '^(?:(?:(?:[a-fA-F0-9]{1,4}:){6}|(?=(?:[a-fA-F0-9]{0,4}:){2,6}(?:[0-9]{1,3}.){3}[0-9]{1,3}$)(([0-9a-fA-F]{1,4}:){1,5}|:)((:[0-9a-fA-F]{1,4}){1,5}:|:)|::(?:[a-fA-F0-9]{1,4}:){5})(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9]).){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])|(?:[a-fA-F0-9]{1,4}:){7}[a-fA-F0-9]{1,4}|(?=(?:[a-fA-F0-9]{0,4}:){0,7}[a-fA-F0-9]{0,4}$)(([0-9a-fA-F]{1,4}:){1,7}|:)((:[0-9a-fA-F]{1,4}){1,7}|:)|(?:[a-fA-F0-9]{1,4}:){7}:|:(:[a-fA-F0-9]{1,4}){7})$'
+  ))
+    return true;
+  else
+    return false;
+}
+
+function isValidHostname(value) {
+  if (value.match(
+    '^([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9])(.([a-zA-Z0-9]|[_a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]))*$'
+  ))
+    return true;
+  else
+    return false;
+}
+
+function isValidServicename(value) {
+  if (value.match(
+    '^([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9 -]{0,61}[a-zA-Z0-9])(.([a-zA-Z0-9]|[_a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]))*$'
+  ))
+    return true;
+  else
+    return false;
+}
+
+function isValidHostnameOrIP4(value) {
+  return (isValidHostname(value) || isValidIPv4(value));
+}
+
+function isValidHostnameOrIP(value) {
+  return (isValidHostnameOrIP4(value) || isValidIPv6(value) || isValidServicename(value));
+}
+

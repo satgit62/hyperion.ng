@@ -48,7 +48,7 @@ GrabberWrapper::GrabberWrapper(const QString& grabberName, Grabber * ggrabber, i
 
 GrabberWrapper::~GrabberWrapper()
 {
-	Debug(_log,"Close grabber: %s", QSTRING_CSTR(_grabberName));
+	GrabberWrapper::instance = nullptr;
 }
 
 bool GrabberWrapper::start()
@@ -83,58 +83,70 @@ bool GrabberWrapper::isActive() const
 	return _timer->isActive();
 }
 
-QStringList GrabberWrapper::getActive(int inst) const
+QStringList GrabberWrapper::getActive(int inst, GrabberTypeFilter type) const
 {
 	QStringList result = QStringList();
 
-	if(GRABBER_V4L_CLIENTS.contains(inst))
-		result << GRABBER_V4L_CLIENTS.value(inst);
+	if (type == GrabberTypeFilter::SCREEN || type == GrabberTypeFilter::ALL)
+	{
+		if (GRABBER_SYS_CLIENTS.contains(inst))
+			result << GRABBER_SYS_CLIENTS.value(inst);
+	}
 
-	if(GRABBER_SYS_CLIENTS.contains(inst))
-		result << GRABBER_SYS_CLIENTS.value(inst);
+	if (type == GrabberTypeFilter::VIDEO || type == GrabberTypeFilter::ALL)
+	{
+		if (GRABBER_V4L_CLIENTS.contains(inst))
+			result << GRABBER_V4L_CLIENTS.value(inst);
+	}
 
 	return result;
 }
 
-QStringList GrabberWrapper::availableGrabbers()
+QStringList GrabberWrapper::availableGrabbers(GrabberTypeFilter type)
 {
 	QStringList grabbers;
 
-#ifdef ENABLE_DISPMANX
-	grabbers << "dispmanx";
-#endif
+	if (type == GrabberTypeFilter::SCREEN || type == GrabberTypeFilter::ALL)
+	{
+		#ifdef ENABLE_DISPMANX
+				grabbers << "dispmanx";
+		#endif
 
-#if defined(ENABLE_V4L2) || defined(ENABLE_MF)
-	grabbers << "v4l2";
-#endif
+		#ifdef ENABLE_FB
+				grabbers << "framebuffer";
+		#endif
 
-#ifdef ENABLE_FB
-	grabbers << "framebuffer";
-#endif
+		#ifdef ENABLE_AMLOGIC
+				grabbers << "amlogic";
+		#endif
 
-#ifdef ENABLE_AMLOGIC
-	grabbers << "amlogic";
-#endif
+		#ifdef ENABLE_OSX
+				grabbers << "osx";
+		#endif
 
-#ifdef ENABLE_OSX
-	grabbers << "osx";
-#endif
+		#ifdef ENABLE_X11
+				grabbers << "x11";
+		#endif
 
-#ifdef ENABLE_X11
-	grabbers << "x11";
-#endif
+		#ifdef ENABLE_XCB
+				grabbers << "xcb";
+		#endif
 
-#ifdef ENABLE_XCB
-	grabbers << "xcb";
-#endif
+		#ifdef ENABLE_QT
+				grabbers << "qt";
+		#endif
 
-#ifdef ENABLE_QT
-	grabbers << "qt";
-#endif
+		#ifdef ENABLE_DX
+				grabbers << "dx";
+		#endif
+	}
 
-#ifdef ENABLE_DX
-	grabbers << "dx";
-#endif
+	if (type == GrabberTypeFilter::VIDEO || type == GrabberTypeFilter::ALL)
+	{
+		#if defined(ENABLE_V4L2) || defined(ENABLE_MF)
+			grabbers << "v4l2";
+		#endif
+	}
 
 	return grabbers;
 }
@@ -174,11 +186,12 @@ void GrabberWrapper::updateTimer(int interval)
 }
 
 void GrabberWrapper::handleSettingsUpdate(settings::type type, const QJsonDocument& config)
-{	if(type == settings::SYSTEMCAPTURE && !_grabberName.startsWith("V4L"))
+{
+	if(type == settings::SYSTEMCAPTURE && !_grabberName.startsWith("V4L"))
 	{
 		// extract settings
 		const QJsonObject& obj = config.object();
-		
+
 		// save current state
 		bool isEnabled = getSysGrabberState();
 
@@ -206,7 +219,7 @@ void GrabberWrapper::handleSettingsUpdate(settings::type type, const QJsonDocume
 			_ggrabber->setFramerate(obj["fps"].toInt(DEFAULT_RATE_HZ));
 			// eval new update time
 			updateTimer(_ggrabber->getUpdateInterval());
-			
+
 			// start if current state is not true
 			if (!isEnabled)
 			{
