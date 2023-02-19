@@ -1017,6 +1017,14 @@ $(document).ready(function () {
     return errors;
   });
 
+  JSONEditor.defaults.callbacks = {
+    "button" : {
+      "generateToken" : function (jseditor, e) {
+        alert('generateToken action')
+      }
+    }
+  }
+
   $("#leddevices").off().on("change", function () {
     var generalOptions = window.serverSchema.properties.device;
 

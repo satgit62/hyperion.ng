@@ -19,6 +19,7 @@
 	    "accuracyLevel": {
 		    "type": "integer",
 		    "title": "edt_conf_color_accuracyLevel_title",
+			"required" : true,
 		    "minimum": 1,
 		    "maximum": 4,
 		    "default": 2,
@@ -31,8 +32,8 @@
 		},
 	    "reducedPixelSetFactorFactor": {
 		    "type": "string",
+			"required" : true,
 		    "title": "edt_conf_color_reducedPixelSetFactorFactor_title",
-		    "default": 0,
 			"enum" : ["0", "1", "2", "3"],
 			"default" : "0",
 			"options" : {

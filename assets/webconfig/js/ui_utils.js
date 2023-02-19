@@ -437,7 +437,7 @@ function getLongPropertiesPath(path) {
   return path;
 }
 
-function createJsonEditor(container, schema, setconfig, usePanel, arrayre) {
+function createJsonEditor(container, schema, setconfig, usePanel, arrayre = undefined) {
   $('#' + container).off();
   $('#' + container).html("");
 
@@ -468,10 +468,10 @@ function createJsonEditor(container, schema, setconfig, usePanel, arrayre) {
 
   var editor = new JSONEditor(document.getElementById(container),
     {
-      theme: 'bootstrap3',
+      theme: 'bootstrap4',
       iconlib: "fontawesome4",
       disable_collapse: 'true',
-      form_name_root: 'sa',
+      form_name_root: 'root',
       disable_edit_json: true,
       disable_properties: true,
       disable_array_reorder: arrayre,
@@ -479,7 +479,6 @@ function createJsonEditor(container, schema, setconfig, usePanel, arrayre) {
       disable_array_delete_all_rows: true,
       disable_array_delete_last_row: true,
       access: storedAccess,
-      form_name_root: 'root',
       schema: {
         title: ' ',
         properties: schema

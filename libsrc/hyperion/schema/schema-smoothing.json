@@ -11,6 +11,7 @@
     },
     "type": {
       "type": "string",
+      "required" : true,
       "title": "edt_conf_smooth_type_title",
       "enum": [ "linear", "decay" ],
       "default": "linear",
