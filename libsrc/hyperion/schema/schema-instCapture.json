@@ -52,6 +52,7 @@
 		},
 		"audioEnable": {
 			"type": "boolean",
+			"format": "checkbox",			
 			"required": true,
 			"title": "edt_conf_instC_audioEnable_title",
 			"default": false,

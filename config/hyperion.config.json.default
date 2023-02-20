@@ -100,12 +100,12 @@
 		"audioEffect": "vuMeter",
 		"vuMeter": {
 			"flip": "NO_CHANGE",
-			"hotColor": [ 255, 0, 0 ],
+			"hotColor": "#ff0000",
 			"multiplier": 1,
-			"safeColor": [ 0, 255, 0 ],
+			"safeColor": "#00ff00",
 			"safeValue": 45,
 			"tolerance": 5,
-			"warnColor": [ 255, 255, 0 ],
+			"warnColor": "#ffff00",
 			"warnValue": 80
 		}
 	},

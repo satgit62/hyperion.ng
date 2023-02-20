@@ -5,6 +5,7 @@
     "properties": {
         "enable": {
             "type": "boolean",
+			"format": "checkbox",            
             "title": "edt_conf_general_enable_title",
             "required": true,
             "default": false,
@@ -44,7 +45,7 @@
         },
         "vuMeter": {
             "type": "object",
-            "title": "",
+            "title": " ",
             "required": true,
             "propertyOrder": 5,
             "options": {
@@ -75,33 +76,19 @@
                     "comment": "The tolerance is a percentage value from 0 - 100 used during auto multiplier calculation."
                 },
                 "hotColor": {
-                    "type": "array",
+                    "type": "string",
+                    "format": "color",                    
                     "title": "edt_conf_audio_effect_hotcolor_title",
-                    "default": [ 255, 0, 0 ],
-                    "format": "colorpicker",
-                    "items": {
-                        "type": "integer",
-                        "minimum": 0,
-                        "maximum": 255
-                    },
-                    "minItems": 3,
-                    "maxItems": 3,
+                    "default": "#ff0000",
                     "required": true,
                     "propertyOrder": 3,
                     "comment": "Hot Color is the color the led's will reach when audio level exceeds the warn percentage"
                 },
                 "warnColor": {
-                    "type": "array",
+                    "type": "string",
+                    "format": "color",                    
                     "title": "edt_conf_audio_effect_warncolor_title",
-                    "default": [ 255, 255, 0 ],
-                    "format": "colorpicker",
-                    "items": {
-                        "type": "integer",
-                        "minimum": 0,
-                        "maximum": 255
-                    },
-                    "minItems": 3,
-                    "maxItems": 3,
+                    "default": "#ffff00",
                     "required": true,
                     "propertyOrder": 4,
                     "comment": "Warn Color is the color the led's will reach when audio level exceeds the safe percentage"
@@ -118,17 +105,10 @@
                     "comment": "Warn percentage is the percentage used to determine the maximum percentage of the audio warning level"
                 },
                 "safeColor": {
-                    "type": "array",
+                    "type": "string",
+                    "format": "color",                    
                     "title": "edt_conf_audio_effect_safecolor_title",
-                    "default": [ 0, 255, 0 ],
-                    "format": "colorpicker",
-                    "items": {
-                        "type": "integer",
-                        "minimum": 0,
-                        "maximum": 255
-                    },
-                    "minItems": 3,
-                    "maxItems": 3,
+                    "default": "#00ff00",
                     "required": true,
                     "propertyOrder": 6,
                     "comment": "Safe Color is the color the led's will reach when audio level is below the warning percentage"

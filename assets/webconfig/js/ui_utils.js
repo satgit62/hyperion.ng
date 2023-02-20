@@ -456,12 +456,13 @@ function createJsonEditor(container, schema, setconfig, usePanel, arrayre = unde
   };
 
   JSONEditor.defaults.translateElement = function (key, variables) {
-    //JSONEditor.defaults.translateProperty = function (key, variables) {
+  // From 2.5.4 onwards replace translateElement with translateProperty
+  //JSONEditor.defaults.translateProperty = function (key, variables) {
 
     var text;
     if (key !== null) {
       text = $.i18n(key, variables);
-      //console.log("translateProperty - key[", key, "] var[", variables, "]-> ", text);        
+      //console.log("translateProperty - key[", key, "] var[", variables, "]-> ", text);
     }
     return text;
   };
@@ -1342,7 +1343,7 @@ function showInputOptionsForKey(editor, item, showForKeys, state) {
 
   for (let key in editor.schema.properties[item].properties) {
     if ($.inArray(key, keysToshow) === -1) {
-      const accessLevel = editor.schema.properties[item].properties[key].access;
+      var accessLevel = editor.schema.properties[item].properties[key].access;
 
       var hidden = false;
       if (editor.schema.properties[item].properties[key].options) {
