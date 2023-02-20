@@ -537,11 +537,11 @@ function updateJsonEditorSelection(rootEditor, path, key, addElements, newEnumVa
     }
   }
 
-  if (addCustom) {
+  if (newTitelVals.length === 0) {
+    newTitelVals = [...newEnumVals];
+  }
 
-    if (newTitelVals.length === 0) {
-      newTitelVals = [...newEnumVals];
-    }
+  if (addCustom) {
 
     if (!!!customText) {
       customText = "edt_conf_enum_custom";
