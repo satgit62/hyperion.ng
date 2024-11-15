@@ -6,6 +6,7 @@
 #include <utils/ColorRgb.h>
 #include <utils/ColorRgba.h>
 #include <utils/Components.h>
+#include "utils/ImageResampler.h"
 
 // flatbuffer FBS
 #include "hyperion_reply_generated.h"
@@ -147,6 +148,8 @@ private:
 	int _priority;
 
 	QByteArray _receiveBuffer;
+
+	ImageResampler _imageResampler;
 
 	// Flatbuffers builder
 	flatbuffers::FlatBufferBuilder _builder;

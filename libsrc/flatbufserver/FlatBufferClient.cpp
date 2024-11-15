@@ -1,4 +1,5 @@
 #include "FlatBufferClient.h"
+#include <utils/PixelFormat.h>
 
 // qt
 #include <QTcpSocket>
@@ -183,6 +184,24 @@ void FlatBufferClient::handleImageCommand(const hyperionnet::Image *image)
 
 		emit setGlobalInputImage(_priority, imageRGB, duration);
 		emit setBufferImage("FlatBuffer", imageRGB);
+	}
+	else if ((reqPtr = image->data_as_NV12Image()) != nullptr)
+	{
+		const auto *img = static_cast<const hyperionnet::NV12Image*>(reqPtr);
+		const auto & imageData = img->data_y();
+		const int width = img->width();
+		const int height = img->height();
+		const int yStride = img->stride_y();
+
+		Image<ColorRgb> imageRGB(width, height);
+		_imageResampler.processImage(reinterpret_cast<const uint8_t *>(imageData), width, height, yStride, PixelFormat::NV12, imageRGB);
+		emit setGlobalInputImage(_priority, imageRGB, duration);
+		emit setBufferImage("FlatBuffer", imageRGB);
+	}
+	else
+	{
+		sendErrorReply("No or unknown image data provided");
+		return;
 	}
 
 	// send reply
