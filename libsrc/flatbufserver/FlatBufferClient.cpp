@@ -188,13 +188,32 @@ void FlatBufferClient::handleImageCommand(const hyperionnet::Image *image)
 	else if ((reqPtr = image->data_as_NV12Image()) != nullptr)
 	{
 		const auto *img = static_cast<const hyperionnet::NV12Image*>(reqPtr);
-		const auto & imageData = img->data_y();
 		const int width = img->width();
 		const int height = img->height();
-		const int yStride = img->stride_y();
+		const int stride_y = img->stride_y();
+		const int stride_uv = img->stride_uv();
+		const auto & data_y = img->data_y();
+		const auto & data_uv = img->data_uv();
+
+		// Allocate memory for NV12 data (Y + UV)
+		uint8_t* NV12Data = new uint8_t[height * width + (height / 2) * width];
+
+		// Copy Y-plane (luminance)
+		for (int row = 0; row < height; ++row)
+		{
+			std::memcpy(NV12Data + row * width, data_y + row * stride_y, width);
+		}
+
+		// Copy UV-plane (chroma, interleaved U and V)
+		uint8_t* uvStart = NV12Data + height * width;
+		int uvHeight = height / 2;
+		for (int row = 0; row < uvHeight; ++row)
+		{
+			std::memcpy(uvStart + row * width, data_uv + row * stride_uv, width);
+		}
 
 		Image<ColorRgb> imageRGB(width, height);
-		_imageResampler.processImage(reinterpret_cast<const uint8_t *>(imageData), width, height, yStride, PixelFormat::NV12, imageRGB);
+		_imageResampler.processImage(reinterpret_cast<const uint8_t *>(NV12Data), width, height, width, PixelFormat::NV12, imageRGB);
 		emit setGlobalInputImage(_priority, imageRGB, duration);
 		emit setBufferImage("FlatBuffer", imageRGB);
 	}
