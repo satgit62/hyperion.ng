@@ -16,6 +16,9 @@ FlatBufferClient::FlatBufferClient(QTcpSocket* socket, int timeout, QObject *par
 	, _timeout(timeout * 1000)
 	, _priority()
 {
+	_imageResampler.setHorizontalPixelDecimation(1);
+	_imageResampler.setVerticalPixelDecimation(1);
+	
 	// timer setup
 	_timeoutTimer->setSingleShot(true);
 	_timeoutTimer->setInterval(_timeout);
