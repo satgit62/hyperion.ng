@@ -139,6 +139,8 @@ private:
 	///
 	void sendErrorReply(const std::string & error);
 
+	void processNV12Image(const hyperionnet::NV12ImageT& nv12_image, ImageResampler& resampler, Image<ColorRgb>& outputImage);
+
 private:
 	Logger *_log;
 	QTcpSocket *_socket;

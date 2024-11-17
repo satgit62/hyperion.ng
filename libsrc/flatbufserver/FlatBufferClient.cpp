@@ -187,36 +187,21 @@ void FlatBufferClient::handleImageCommand(const hyperionnet::Image *image)
 	}
 	else if ((reqPtr = image->data_as_NV12Image()) != nullptr)
 	{
-		const auto *img = static_cast<const hyperionnet::NV12Image*>(reqPtr);
-		const int width = img->width();
-		const int height = img->height();
-		const int stride_y = img->stride_y();
-		const int stride_uv = img->stride_uv();
-		const auto & data_y = img->data_y();
-		const auto & data_uv = img->data_uv();
+		const auto* img = static_cast<const hyperionnet::NV12Image*>(reqPtr);
 
-		// Allocate memory for NV12 data (Y + UV)
-		uint8_t* NV12Data = new uint8_t[height * width + (height / 2) * width];
+		hyperionnet::NV12ImageT nv12ImageNative;
+		img->UnPackTo(&nv12ImageNative);
 
-		// Copy Y-plane (luminance)
-		for (int row = 0; row < height; ++row)
-		{
-			std::memcpy(NV12Data + row * width, data_y + row * stride_y, width);
-		}
-
-		// Copy UV-plane (chroma, interleaved U and V)
-		uint8_t* uvStart = NV12Data + height * width;
-		int uvHeight = height / 2;
-		for (int row = 0; row < uvHeight; ++row)
-		{
-			std::memcpy(uvStart + row * width, data_uv + row * stride_uv, width);
-		}
+		const int width = nv12ImageNative.width;
+		const int height = nv12ImageNative.height;
 
 		Image<ColorRgb> imageRGB(width, height);
-		_imageResampler.processImage(reinterpret_cast<const uint8_t *>(NV12Data), width, height, width, PixelFormat::NV12, imageRGB);
+		processNV12Image(nv12ImageNative, _imageResampler, imageRGB);
+
 		emit setGlobalInputImage(_priority, imageRGB, duration);
 		emit setBufferImage("FlatBuffer", imageRGB);
 	}
+
 	else
 	{
 		sendErrorReply("No or unknown image data provided");
@@ -279,4 +264,32 @@ void FlatBufferClient::sendErrorReply(const std::string &error)
 	sendMessage();
 
 	_builder.Clear();
+}
+
+void FlatBufferClient::processNV12Image(const hyperionnet::NV12ImageT& nv12_image, ImageResampler& resampler, Image<ColorRgb>& outputImage) {
+	// Combine data_y and data_uv into a single buffer
+	int width = nv12_image.width;
+	int height = nv12_image.height;
+
+	size_t y_size = nv12_image.data_y.size();
+	size_t uv_size = nv12_image.data_uv.size();
+	std::vector<uint8_t> combined_buffer(y_size + uv_size);
+
+	std::memcpy(combined_buffer.data(), nv12_image.data_y.data(), y_size);
+	std::memcpy(combined_buffer.data() + y_size, nv12_image.data_uv.data(), uv_size);
+
+	// Determine line length (stride_y)
+	int lineLength = nv12_image.stride_y > 0 ? nv12_image.stride_y : width;
+
+	PixelFormat pixelFormat = PixelFormat::NV12;
+
+	// Process the image
+	resampler.processImage(
+		combined_buffer.data(),   // Combined NV12 buffer
+		width,                    // Image width
+		height,                   // Image height
+		lineLength,               // Line length for Y plane
+		pixelFormat,              // Pixel format (NV12)
+		outputImage               // Output image
+	);
 }
