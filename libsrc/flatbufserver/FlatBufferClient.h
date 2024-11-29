@@ -34,6 +34,8 @@ public:
 	///
 	explicit FlatBufferClient(QTcpSocket* socket, int timeout, QObject *parent = nullptr);
 
+	void setPixelDecimation(int decimator);
+
 signals:
 	///
 	/// @brief forward register data to HyperionDaemon

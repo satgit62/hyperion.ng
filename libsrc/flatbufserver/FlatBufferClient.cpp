@@ -16,8 +16,7 @@ FlatBufferClient::FlatBufferClient(QTcpSocket* socket, int timeout, QObject *par
 	, _timeout(timeout * 1000)
 	, _priority()
 {
-	_imageResampler.setHorizontalPixelDecimation(1);
-	_imageResampler.setVerticalPixelDecimation(1);
+	_imageResampler.setPixelDecimation(1);
 	
 	// timer setup
 	_timeoutTimer->setSingleShot(true);
@@ -27,6 +26,11 @@ FlatBufferClient::FlatBufferClient(QTcpSocket* socket, int timeout, QObject *par
 	// connect socket signals
 	connect(_socket, &QTcpSocket::readyRead, this, &FlatBufferClient::readyRead);
 	connect(_socket, &QTcpSocket::disconnected, this, &FlatBufferClient::disconnected);
+}
+
+void FlatBufferClient::setPixelDecimation(int decimator)
+{
+	_imageResampler.setPixelDecimation(decimator);
 }
 
 void FlatBufferClient::readyRead()
