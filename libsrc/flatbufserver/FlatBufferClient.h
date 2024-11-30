@@ -141,6 +141,7 @@ private:
 	///
 	void sendErrorReply(const std::string & error);
 
+	void processRawImage(const hyperionnet::RawImageT& raw_image, int bytesPerPixel, ImageResampler& resampler, Image<ColorRgb>& outputImage);
 	void processNV12Image(const hyperionnet::NV12ImageT& nv12_image, ImageResampler& resampler, Image<ColorRgb>& outputImage);
 
 private:
