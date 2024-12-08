@@ -5,7 +5,6 @@
 #include "QtHttpClientWrapper.h"
 
 #include <api/JsonAPI.h>
-#include <api/JsonCallbacks.h>
 
 WebJsonRpc::WebJsonRpc(QtHttpRequest* request, QtHttpServer* server, bool localConnection, QtHttpClientWrapper* parent)
 	: QObject(parent)
@@ -15,10 +14,8 @@ WebJsonRpc::WebJsonRpc(QtHttpRequest* request, QtHttpServer* server, bool localC
 {
 	const QString client = request->getClientInfo().clientAddress.toString();
 	_jsonAPI = new JsonAPI(client, _log, localConnection, this, true);
-	connect(_jsonAPI, &JsonAPI::callbackReady, this, &WebJsonRpc::sendCallbackMessage);
+	connect(_jsonAPI, &JsonAPI::callbackMessage, this, &WebJsonRpc::handleCallback);
 	connect(_jsonAPI, &JsonAPI::forceClose, [&]() { _wrapper->closeConnection(); _stopHandle = true; });
-	connect(_jsonAPI->getCallBack().get(), &JsonCallbacks::callbackReady, this, &WebJsonRpc::sendCallbackMessage);
-
 	_jsonAPI->initialize();
 }
 
@@ -34,7 +31,7 @@ void WebJsonRpc::handleMessage(QtHttpRequest* request)
 	}
 }
 
-void WebJsonRpc::sendCallbackMessage(QJsonObject obj)
+void WebJsonRpc::handleCallback(QJsonObject obj)
 {
 	// guard against wrong callbacks; TODO: Remove when JSONAPI is more solid
 	if(!_unlocked) return;

@@ -93,7 +93,7 @@ signals:
 	/// @brief Emits whenever a new json mesage callback is ready to send
 	/// @param The JsonObject message
 	///
-	void callbackReady(QJsonObject);
+	void newCallback(QJsonObject);
 
 private slots:
 	///
@@ -182,8 +182,6 @@ private:
 
 	/// construct callback msg
 	void doCallback(Subscription::Type cmd, const QVariant& data);
-	void doCallback(Subscription::Type cmd, const QJsonArray& data);
-	void doCallback(Subscription::Type cmd, const QJsonObject& data);
 
 	Logger *_log;
 	Hyperion* _hyperion;

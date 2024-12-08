@@ -26,5 +26,5 @@ private:
 	bool _unlocked = false;
 
 private slots:
-	void sendCallbackMessage(QJsonObject obj);
+	void handleCallback(QJsonObject obj);
 };
