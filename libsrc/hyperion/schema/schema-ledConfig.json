@@ -124,11 +124,13 @@
 				"ledshoriz": {
 					"type": "integer",
 					"minimum": 0,
+					"maximum": 50,
 					"default": 0
 				},
 				"ledsvert": {
 					"type": "integer",
 					"minimum": 0,
+					"maximum": 50,
 					"default": 0
 				},
 				"cabling": {
