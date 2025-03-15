@@ -524,7 +524,6 @@ if(APPLE)
 	set(CMAKE_EXE_LINKER_FLAGS "-framework CoreGraphics")
 endif()
 
-find_package(WebSockets REQUIRED)
 find_package(Threads REQUIRED)
 find_package(libusb-1.0 REQUIRED)
 
