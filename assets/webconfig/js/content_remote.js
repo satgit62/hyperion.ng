@@ -7,18 +7,20 @@ $(document).ready(function () {
 
   const DEFAULT_EFFECTS_COLOR = '#B500FF';
   const BG_PRIORITY = 254;
+  const COLOR_INPUT_SELECTOR = String.raw`#root\[colorEffects\]\[color\]`;
+  const IMAGE_INPUT_SELECTOR = String.raw`#root\[colorEffects\]\[image\]`;
+  const IMAGE_FIELD_SELECTOR = '[data-schemapath="root.colorEffects.image"]';
+  const EFFECTS_SELECT_INPUT_SELECTOR = String.raw`#root\[colorEffects\]\[effect\]`;
   const EFFECTS_DURATION_INPUT_SELECTOR = String.raw`#root\[colorEffects\]\[duration\]`;
   const EFFECTS_DURATION_ENDLESS_HINT_ID = 'duration-endless-hint';
+  const COLOR_RERUN_BUTTON_ID = 'btn_rerun_colorEffects_color';
+  const IMAGE_RERUN_BUTTON_ID = 'btn_rerun_colorEffects_upload';
+  const EFFECTS_RERUN_BUTTON_ID = 'btn_rerun_colorEffects_effect';
+  const COLOR_RERUN_WRAPPER_ID = 'colorEffects-color-rerun-wrap';
+  const IMAGE_RERUN_WRAPPER_ID = 'colorEffects-image-rerun-wrap';
+  const EFFECTS_RERUN_WRAPPER_ID = 'colorEffects-effect-rerun-wrap';
 
   const editors = {}; // Store JSON editors in a structured way
-
-  // Update the list of Hyperion instances
-  updateHyperionInstanceListing();
-
-  // Initialize variables
-  //let oldEffects = [];
-  //  const mappingList = globalThis.serverSchema.properties.color.properties.imageProcessing.properties.imageToLedMappingType.enum;
-
   const initialEffectsColor = getStorage('remoteColorEffectsColor') || DEFAULT_EFFECTS_COLOR;
   let colorEffects = {
     color: initialEffectsColor,
@@ -28,29 +30,40 @@ $(document).ready(function () {
     duration_s: Number(getStorage('remoteColorEffectsDuration')) || 0, // 0 = Endless
     lastImgData: ""
   };
+  const parsePriorityOrigin = (priorityEntry) => {
+    const origin = priorityEntry.origin ? priorityEntry.origin : "System";
+    const [originName, ip] = origin.split("@");
+    return { originName, ip };
+  };
 
-  // // Create initial HTML structure
-  createTable('ssthead', 'sstbody', 'sstcont');
-  $('.ssthead').html(createTableRow([$.i18n('remote_input_origin'), $.i18n('remote_input_owner'), $.i18n('remote_input_priority'), $.i18n('remote_input_status')], true, true));
+  // Update the list of Hyperion instances
+  updateHyperionInstanceListing();
 
-  setupColorEditor();
-  setupImageProcessingEditor();
-  setupChannelAdjustmentEditor();
-
-
-  // Hide color effect table and reset color button if current instance is not running
-  if (!isCurrentInstanceRunning()) {
-    $("#color_effect_table").hide();
-    $("#reset_color").hide();
-    removeOverlay();
-    return;
+  if (isCurrentInstanceRunning()) {
+    initializeUI();
+    initComponents();
+    updateInputSelect();
+    updateVideoMode();
+    setupEventListenersForUpdates();
   }
 
-  // Create introduction hints if the help option is enabled
-  if (globalThis.showOptHelp) {
-    createHint("intro", $.i18n('remote_input_intro', $.i18n('remote_losthint')), "sstcont");
-    createHint("intro", $.i18n('remote_components_intro', $.i18n('remote_losthint')), "comp_intro");
-    createHint("intro", $.i18n('remote_videoMode_intro', $.i18n('remote_losthint')), "videomode_intro");
+  removeOverlay();
+
+  function initializeUI() {
+    // // Create initial HTML structure
+    createTable('ssthead', 'sstbody', 'sstcont');
+    $('.ssthead').html(createTableRow([$.i18n('remote_input_origin'), $.i18n('remote_input_owner'), $.i18n('remote_input_priority'), $.i18n('remote_input_status')], true, true));
+
+    setupColorEditor();
+    setupImageProcessingEditor();
+    setupChannelAdjustmentEditor();
+
+    // Create introduction hints if the help option is enabled
+    if (globalThis.showOptHelp) {
+      createHint("intro", $.i18n('remote_input_intro', $.i18n('remote_losthint')), "sstcont");
+      createHint("intro", $.i18n('remote_components_intro', $.i18n('remote_losthint')), "comp_intro");
+      createHint("intro", $.i18n('remote_videoMode_intro', $.i18n('remote_losthint')), "videomode_intro");
+    }
   }
 
   /// Color and Effect Management
@@ -106,7 +119,7 @@ $(document).ready(function () {
     };
 
     if (EFFECTENGINE_ENABLED) {
-      const effectNames = [$.i18n('edt_conf_enum_please_select'),...getAvailableEffectNames()];
+      const effectNames = [$.i18n('edt_conf_enum_please_select'), ...getAvailableEffectNames()];
       colorEffectsSchema.colorEffects.properties.effect = {
         "type": "string",
         "format": "choices",
@@ -151,11 +164,225 @@ $(document).ready(function () {
       onSubmit: resetColorEffectsEditor,
       startval: startval
     });
+
+
+    
+  }
+
+  function appendRerunEffectButton(editor) {
+    if (!EFFECTENGINE_ENABLED || !editor?.ready) {
+      return;
+    }
+
+    const effectInput = $(EFFECTS_SELECT_INPUT_SELECTOR);
+    if (effectInput.length === 0 || document.getElementById(EFFECTS_RERUN_BUTTON_ID)) {
+      return;
+    }
+
+    const rerunButton = $('<button/>', {
+      id: EFFECTS_RERUN_BUTTON_ID,
+      type: 'button',
+      class: 'btn btn-secondary btn-sm'
+    }).html('<i class="fa fa-repeat"></i>');
+
+    rerunButton.css({
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      whiteSpace: 'nowrap',
+      flex: '0 0 auto',
+      margin: '0'
+    });
+
+    rerunButton.on('click', () => {
+      const selectedEffect = editor.getEditor('root.colorEffects.effect')?.getValue();
+      if (!selectedEffect || selectedEffect === $.i18n('edt_conf_enum_please_select')) {
+        return;
+      }
+
+      colorEffects.effect = selectedEffect;
+      requestPlayEffect(selectedEffect, colorEffects.duration_s);
+    });
+
+    const choicesContainer = effectInput.closest('.choices');
+    if (choicesContainer.length > 0) {
+      let wrapper = $(`#${EFFECTS_RERUN_WRAPPER_ID}`);
+      if (wrapper.length === 0) {
+        choicesContainer.wrap(`<div id="${EFFECTS_RERUN_WRAPPER_ID}" class="d-flex align-items-center gap-2"></div>`);
+        wrapper = $(`#${EFFECTS_RERUN_WRAPPER_ID}`);
+        wrapper.css({
+          display: 'flex',
+          alignItems: 'stretch',
+          gap: '0.5rem',
+          width: '100%'
+        });
+
+        choicesContainer.css({
+          flex: '1 1 auto',
+          minWidth: '0',
+          marginBottom: '0'
+        });
+      }
+
+      wrapper.append(rerunButton);
+      updateEffectActionButtonsVisibility();
+      return;
+    }
+
+    effectInput.after(rerunButton);
+    updateEffectActionButtonsVisibility();
+  }
+
+  function updateEffectActionButtonsVisibility() {
+    const selectedEffect = colorEffects.effect;
+    const hasEffect = Boolean(selectedEffect) && selectedEffect !== $.i18n('edt_conf_enum_please_select');
+    const rerunEffectButton = $(`#${EFFECTS_RERUN_BUTTON_ID}`);
+    if (rerunEffectButton.length > 0) {
+      rerunEffectButton.toggle(hasEffect);
+    }
+  }
+
+  function appendRerunColorButton(editor) {
+    if (!editor?.ready) {
+      return;
+    }
+
+    const colorInput = $(COLOR_INPUT_SELECTOR);
+    if (colorInput.length === 0 || document.getElementById(COLOR_RERUN_BUTTON_ID)) {
+      return;
+    }
+
+    const rerunButton = $('<button/>', {
+      id: COLOR_RERUN_BUTTON_ID,
+      type: 'button',
+      class: 'btn btn-secondary btn-sm',
+      title: $.i18n('remote_color_label_color')
+    }).html('<i class="fa fa-repeat"></i>');
+
+    rerunButton.css({
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      whiteSpace: 'nowrap',
+      flex: '0 0 auto'
+    });
+
+    rerunButton.on('click', () => {
+      const selectedColor = editor.getEditor('root.colorEffects.color')?.getValue();
+      const colorRgb = hexToRgb(selectedColor);
+      if (!colorRgb) {
+        return;
+      }
+
+      colorEffects.color = selectedColor;
+      colorEffects.colorRGB = colorRgb;
+      requestSetColor(colorRgb.r, colorRgb.g, colorRgb.b, colorEffects.duration_s);
+    });
+
+    let wrapper = $(`#${COLOR_RERUN_WRAPPER_ID}`);
+    if (wrapper.length === 0) {
+      colorInput.wrap(`<div id="${COLOR_RERUN_WRAPPER_ID}" class="d-flex align-items-center gap-2"></div>`);
+      wrapper = $(`#${COLOR_RERUN_WRAPPER_ID}`);
+      wrapper.css({
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.5rem',
+        width: '100%'
+      });
+
+      colorInput.css({
+        flex: '1 1 auto',
+        minWidth: '0',
+        marginBottom: '0'
+      });
+    }
+
+    wrapper.append(rerunButton);
+  }
+
+  function appendRerunUploadButton(editor) {
+    if (!editor?.ready) {
+      return;
+    }
+
+    const imageField = $(IMAGE_FIELD_SELECTOR).first();
+    const imageInput = $(IMAGE_INPUT_SELECTOR);
+    if ((imageField.length === 0 && imageInput.length === 0) || document.getElementById(IMAGE_RERUN_BUTTON_ID)) {
+      return;
+    }
+
+    const rerunButton = $('<button/>', {
+      id: IMAGE_RERUN_BUTTON_ID,
+      type: 'button',
+      class: 'btn btn-secondary btn-sm',
+      title: $.i18n('remote_effects_label_picture')
+    }).html('<i class="fa fa-repeat"></i>');
+
+    rerunButton.css({
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      whiteSpace: 'nowrap',
+      flex: '0 0 auto'
+    });
+
+    rerunButton.on('click', () => {
+      if (!colorEffects.lastImgData) {
+        return;
+      }
+
+      requestSetImage(colorEffects.lastImgData, colorEffects.duration_s);
+    });
+
+    const parentGroup = imageField.length > 0 ? imageField.find('.form-group').first() : imageInput.closest('.form-group');
+    const uploadButton = parentGroup.find('.json-editor-btn-upload').first();
+    if (uploadButton.length > 0) {
+      let wrapper = $(`#${IMAGE_RERUN_WRAPPER_ID}`);
+      if (wrapper.length === 0) {
+        wrapper = $('<div/>', {
+          id: IMAGE_RERUN_WRAPPER_ID,
+          class: 'd-flex align-items-center'
+        });
+        uploadButton.after(wrapper);
+        wrapper.append(uploadButton);
+      } else {
+        wrapper = $(`#${IMAGE_RERUN_WRAPPER_ID}`);
+        wrapper.append(uploadButton);
+      }
+
+      wrapper.css({
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        width: '100%',
+        marginTop: '0.5rem'
+      });
+
+      uploadButton.css({
+        margin: '0',
+        flex: '0 0 auto'
+      });
+
+      wrapper.append(rerunButton);
+      updateUploadActionButtonsVisibility();
+      return;
+    }
+
+    imageInput.after(rerunButton);
+    updateUploadActionButtonsVisibility();
+  }
+
+  function updateUploadActionButtonsVisibility() {
+    const hasImageData = Boolean(colorEffects.lastImgData);
+    const rerunUploadButton = $(`#${IMAGE_RERUN_BUTTON_ID}`);
+    if (rerunUploadButton.length > 0) {
+      rerunUploadButton.toggle(hasImageData);
+    }
   }
 
   function resetColorEffectsEditor() {
     //requestPriorityClear();
-    colorEffects.effect = "";    
+    colorEffects.effect = "";
     colorEffects.image = "";
     colorEffects.lastImgData = "";
     updateColorEffectsEditor();
@@ -165,7 +392,13 @@ $(document).ready(function () {
 
     editor.on('ready', () => {
       const duration = editor.getEditor("root.colorEffects.duration").getValue();
+      colorEffects.effect = editor.getEditor("root.colorEffects.effect")?.getValue() || "";
       syncDurationValue(duration);
+      appendRerunColorButton(editor);
+      appendRerunUploadButton(editor);
+      appendRerunEffectButton(editor);
+      updateUploadActionButtonsVisibility();
+      updateEffectActionButtonsVisibility();
     });
 
     editor.watch('root.colorEffects.color', () => {
@@ -185,6 +418,8 @@ $(document).ready(function () {
     editor.watch('root.colorEffects.effect', () => {
       if (!editor.ready) return;
       const effect = editor.getEditor("root.colorEffects.effect").getValue();
+      colorEffects.effect = effect;
+      updateEffectActionButtonsVisibility();
 
       debugMessage("Effect changed to: " + effect);
       requestPlayEffect(effect, colorEffects.duration_s);
@@ -200,12 +435,21 @@ $(document).ready(function () {
       const uploadedFileData = editor.getEditor("root.colorEffects.image").getValue();
       debugMessage("Uploaded file data changed to: " + JSON.stringify(uploadedFileData));
 
+      if (!uploadedFileData?.includes(",")) {
+        colorEffects.lastImgData = "";
+        updateUploadActionButtonsVisibility();
+        return;
+      }
+
       const [type, data] = uploadedFileData.split(",");
       if (!(type.includes("image") && type.includes("base64"))) {
+        colorEffects.lastImgData = "";
+        updateUploadActionButtonsVisibility();
         return;
       }
 
       colorEffects.lastImgData = data;
+      updateUploadActionButtonsVisibility();
       requestSetImage(colorEffects.lastImgData, colorEffects.duration_s);
     });
 
@@ -216,14 +460,6 @@ $(document).ready(function () {
       syncDurationValue(duration);
     });
   }
-
-  // // Reset Color Function
-  // function resetColor() {
-  //   requestPriorityClear();
-  //   lastImgData = "";
-  //   $("#effect_select").val("__none__");
-  //   $("#remote_input_img").val("");
-  // }
 
   function syncDurationValue(value) {
     setStorage('remoteColorEffectsDuration', value);
@@ -453,11 +689,7 @@ $(document).ready(function () {
 
   /// Input Source Management
 
-  const parsePriorityOrigin = (priorityEntry) => {
-    const origin = priorityEntry.origin ? priorityEntry.origin : "System";
-    const [originName, ip] = origin.split("@");
-    return { originName, ip };
-  };
+
 
   function resolveOwnerText(componentId, owner, value) {
     switch (componentId) {
@@ -511,6 +743,8 @@ $(document).ready(function () {
   function updateInputSelect() {
     // Clear existing elements
     $('.sstbody').empty().html('');
+    console.log("Updating input select with priorities: " + JSON.stringify(globalThis.serverInfo.priorities));
+
 
     const prios = globalThis.serverInfo.priorities;
     let clearAll = false;
@@ -740,21 +974,6 @@ $(document).ready(function () {
     });
   }
 
-
-  // Force First Update
-  function forceFirstUpdate() {
-    initComponents();
-    updateInputSelect();
-    //updateLedMapping();
-    updateVideoMode();
-    //updateChannelAdjustments();
-    // if (EFFECTENGINE_ENABLED) {
-    //   updateEffectlist();
-    // } else {
-    //   $('#effect_row').hide();
-    // }
-  }
-
   // Interval Updates and Event Handlers
   function setupEventListenersForUpdates() {
     $(globalThis.hyperion).on('components-updated', (e, comp) => updateComponent(comp));
@@ -789,17 +1008,8 @@ $(document).ready(function () {
       }
     });
 
-    removeOverlay();
+
   }
-
-  // Initialize everything
-  function init() {
-    forceFirstUpdate();
-    setupEventListenersForUpdates();
-  }
-
-  init();
-
 });
 
 function handleChannelAdjustmentChange(channelEditor) {
