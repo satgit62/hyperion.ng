@@ -132,6 +132,7 @@ $(document).ready(function () {
 
   // disable or enable control elements
   $("#name-input").on('change keyup', function (event) {
+    if (!effects_editor.ready) return;
     effectName = encodeHTML($(this).val());
     if ($(this).val() == '') {
       effects_editor.disable();

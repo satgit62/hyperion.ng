@@ -228,8 +228,8 @@ const ledLayout = (() => {
 
       let isVertical = direction === 'vertical'
       let ledLayout = [];
-      const hblock = (1.0 - gap.left - gap.right) / ledshoriz;
-      const vblock = (1.0 - gap.top - gap.bottom) / ledsvert;
+      const hblock = (1 - gap.left - gap.right) / ledshoriz;
+      const vblock = (1 - gap.top - gap.bottom) / ledsvert;
 
       const startEnd = calculateStartAndEnd(start, isVertical, ledshoriz, ledsvert);
       ledLayout = createMatrixLayout(startEnd, isParallel, isVertical, gap.left, hblock, gap.top, vblock);
