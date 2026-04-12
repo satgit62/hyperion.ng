@@ -705,47 +705,96 @@ function showNotification(type, message, title = "", addhtml = "") {
   });
 }
 
+function applyTableColumnWidths(table, columnWidths = []) {
+  if (!table || !Array.isArray(columnWidths) || columnWidths.length === 0) {
+    return;
+  }
+
+  const colgroup = document.createElement('colgroup');
+
+  for (const width of columnWidths) {
+    const col = document.createElement('col');
+
+    if (typeof width === 'string' && width.trim()) {
+      col.style.width = width.trim();
+    } else if (Number.isFinite(width)) {
+      col.style.width = `${width}%`;
+    }
+
+    colgroup.appendChild(col);
+  }
+
+  const existingColgroup = table.querySelector('colgroup');
+  if (existingColgroup) {
+    existingColgroup.remove();
+  }
+
+  table.insertBefore(colgroup, table.firstChild);
+}
+
+// Create a Bootstrap table with optional column widths.
+// @param {string} hid - Class name for thead
+// @param {string} bid - Class name for tbody
+// @param {string} cont - Container ID to append the table
+// @param {object} options - Additional table options
+// @param {boolean} options.borderless - If true, add table-borderless class
+// @param {string|string[]} options.tableClasses - Additional class(es) for table
+// @param {Array<string|number>} options.columnWidths - Optional widths (e.g. ['25%','50%',10,'15%'])
+function createBootstrapTable(hid, bid, cont, options = {}) {
+  const {
+    borderless = false,
+    tableClasses = [],
+    columnWidths = []
+  } = options;
+
+  const table = document.createElement('table');
+  const thead = document.createElement('thead');
+  const tbody = document.createElement('tbody');
+
+  table.className = "table";
+
+  if (borderless) {
+    table.classList.add("table-borderless");
+  }
+
+  const normalizedClasses = Array.isArray(tableClasses) ? tableClasses : [tableClasses];
+  for (const cssClass of normalizedClasses) {
+    if (typeof cssClass === 'string' && cssClass.trim()) {
+      table.classList.add(cssClass.trim());
+    }
+  }
+
+  table.style.marginBottom = "0px";
+
+  if (hid !== "") {
+    thead.className = hid;
+  }
+  tbody.className = bid;
+
+  if (hid !== "") {
+    table.appendChild(thead);
+  }
+  table.appendChild(tbody);
+  applyTableColumnWidths(table, columnWidths);
+
+  $(`#${cont}`).append(table);
+
+  return table;
+}
+
 // Function to create a table with thead and tbody elements
+// Backward-compatible wrapper around createBootstrapTable.
 // @param {string} hid - Class name for thead
 // @param {string} bid - Class name for tbody
 // @param {string} cont - Container ID to append the table
 // @param {boolean} bless - If true, the table is borderless
 // @param {string} tclass - Additional class for the table (optional)
 function createTable(hid, bid, cont, bless, tclass) {
-  const table = document.createElement('table');
-  const thead = document.createElement('thead');
-  const tbody = document.createElement('tbody');
-
-  // Set the base class for the table
-  table.className = "table";
-
-  // If 'bless' is true, add the borderless class
-  if (bless) {
-    table.classList.add("table-borderless");
-  }
-
-  // If 'tclass' is provided, add it as a class
-  if (tclass) {
-    table.classList.add(tclass);
-  }
-
-  // Remove bottom margin for the table
-  table.style.marginBottom = "0px";
-
-  // Set class for thead and tbody if provided
-  if (hid !== "") {
-    thead.className = hid;
-  }
-  tbody.className = bid;
-
-  // Append thead and tbody to the table
-  if (hid !== "") {
-    table.appendChild(thead);
-  }
-  table.appendChild(tbody);
-
-  // Append the table to the specified container
-  $(`#${cont}`).append(table);
+  const tableClasses = tclass ? [tclass] : [];
+  return createBootstrapTable(hid, bid, cont, {
+    borderless: Boolean(bless),
+    tableClasses
+  });
 }
 
 // Creates a table row <tr>
@@ -755,28 +804,113 @@ function createTable(hid, bid, cont, bless, tclass) {
 //
 // @return : <tr> with <td> or <th> as child(s)
 function createTableRow(list, head, align) {
-  const row = document.createElement('tr');
+  return createBootstrapTableRow(list, {
+    isHeader: head === true,
+    alignMiddle: Boolean(align)
+  });
+}
 
-  for (const element of list) {
-    const el = head === true ? document.createElement('th') : document.createElement('td');
-    if (align) {
-      el.style.verticalAlign = "middle";
-    }
-
-    if (element instanceof Node) {
-      el.appendChild(element);
-    } else {
-      const purifyConfig = {
-        ADD_TAGS: ['button'],
-        ADD_ATTR: ['onclick']
-      };
-      el.innerHTML = DOMPurify.sanitize(String(element), purifyConfig);
-    }
-
-    row.appendChild(el);
+function applyTableCellClasses(cell, classes) {
+  if (typeof classes === 'string' && classes.trim()) {
+    cell.classList.add(...classes.trim().split(/\s+/));
+    return;
   }
 
-  // Return the constructed table row
+  if (!Array.isArray(classes)) {
+    return;
+  }
+
+  for (const cssClass of classes) {
+    if (typeof cssClass === 'string' && cssClass.trim()) {
+      cell.classList.add(cssClass.trim());
+    }
+  }
+}
+
+function applyTableCellAttributes(cell, attributes) {
+  if (!attributes || typeof attributes !== 'object') {
+    return;
+  }
+
+  for (const [key, value] of Object.entries(attributes)) {
+    if (value !== undefined && value !== null) {
+      cell.setAttribute(key, String(value));
+    }
+  }
+}
+
+function applyTableCellStyles(cell, styles) {
+  if (!styles || typeof styles !== 'object') {
+    return;
+  }
+
+  for (const [prop, value] of Object.entries(styles)) {
+    if (value !== undefined && value !== null) {
+      cell.style[prop] = String(value);
+    }
+  }
+}
+
+function setTableCellContent(cell, element) {
+  if (element instanceof Node) {
+    cell.appendChild(element);
+    return;
+  }
+
+  const purifyConfig = {
+    ADD_TAGS: ['button'],
+    ADD_ATTR: ['onclick']
+  };
+  cell.innerHTML = DOMPurify.sanitize(String(element), purifyConfig);
+}
+
+function createBootstrapTableCell(element, isHeader, alignMiddle, classes, attributes, styles) {
+  const cell = isHeader ? document.createElement('th') : document.createElement('td');
+
+  if (alignMiddle) {
+    cell.style.verticalAlign = 'middle';
+  }
+
+  applyTableCellClasses(cell, classes);
+  applyTableCellAttributes(cell, attributes);
+  applyTableCellStyles(cell, styles);
+  setTableCellContent(cell, element);
+
+  return cell;
+}
+
+// Create a Bootstrap-friendly table row with optional per-column customization.
+// @param {Array<Node|string|number>} cells - Content for table cells.
+// @param {object} options - Row/cell options.
+// @param {boolean} options.isHeader - If true, creates <th> cells.
+// @param {boolean} options.alignMiddle - If true, applies vertical-align: middle.
+// @param {Array<string|string[]>} options.columnClasses - Optional classes per column.
+// @param {Array<object>} options.columnAttributes - Optional attributes per column.
+// @param {Array<object>} options.columnStyles - Optional style object per column.
+// @returns {HTMLTableRowElement}
+function createBootstrapTableRow(cells, options = {}) {
+  const {
+    isHeader = false,
+    alignMiddle = false,
+    columnClasses = [],
+    columnAttributes = [],
+    columnStyles = []
+  } = options;
+
+  const row = document.createElement('tr');
+
+  for (let index = 0; index < cells.length; index += 1) {
+    const cell = createBootstrapTableCell(
+      cells[index],
+      isHeader,
+      alignMiddle,
+      columnClasses[index],
+      columnAttributes[index],
+      columnStyles[index]
+    );
+    row.appendChild(cell);
+  }
+
   return row;
 }
 
@@ -999,7 +1133,7 @@ function createPanelWide(head, body, footer, bodyid, css, panelId, type = 'card-
 }
 
 function createPanel(head, body, footer, bodyid, css, panelId, type = 'card-default', containerClass = 'col-lg-6') {
-  return createPanelInternal({ head, body, footer, bodyid, css, panelId, type, containerClass  });
+  return createPanelInternal({ head, body, footer, bodyid, css, panelId, type, containerClass });
 }
 
 function resolvePanelStyle(panelStyle = 'card-default') {
@@ -1249,3 +1383,24 @@ function debounce(fn, delay = 100) {
 
   return debounced;
 }
+
+
+const applyResponsiveActionButtonsLayout = (submitButton, defaultsButton) => {
+  if (!submitButton) {
+    return;
+  }
+
+  const container = submitButton.parentElement;
+  if (container) {
+    container.classList.add('d-flex', 'flex-column', 'flex-sm-row', 'gap-2', 'align-items-end', 'justify-content-sm-end');
+  }
+
+  submitButton.classList.add('w-auto');
+  submitButton.classList.remove('w-100', 'w-sm-auto');
+
+  if (defaultsButton) {
+    defaultsButton.classList.remove('me-2');
+    defaultsButton.classList.add('w-auto');
+    defaultsButton.classList.remove('w-100', 'w-sm-auto');
+  }
+};

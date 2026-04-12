@@ -334,6 +334,9 @@ function ensureJsonEditorDefaultsConfigured() {
       // --- input styling ---
       this.input.classList.add('form-control', 'form-control-sm', 'text-center');
       this.input.type = 'number';
+      const isInputDisabled = Boolean(this.input?.disabled);
+      btnMinus.disabled = isInputDisabled;
+      btnPlus.disabled = isInputDisabled;
 
       // --- append label ---
       let appendEl = null;
@@ -405,6 +408,36 @@ function ensureJsonEditorDefaultsConfigured() {
           updateValue(val - step);
         }
       });
+
+      this._stepperMinusButton = btnMinus;
+      this._stepperPlusButton = btnPlus;
+    }
+
+    enable() {
+      super.enable();
+      if (this.always_disabled) {
+        return;
+      }
+
+      if (this._stepperMinusButton) {
+        this._stepperMinusButton.disabled = false;
+      }
+
+      if (this._stepperPlusButton) {
+        this._stepperPlusButton.disabled = false;
+      }
+    }
+
+    disable(always_disabled) {
+      if (this._stepperMinusButton) {
+        this._stepperMinusButton.disabled = true;
+      }
+
+      if (this._stepperPlusButton) {
+        this._stepperPlusButton.disabled = true;
+      }
+
+      super.disable(always_disabled);
     }
 
     sanitize(value) {
@@ -477,6 +510,7 @@ function ensureJsonEditorDefaultsConfigured() {
       range.min = String(min);
       range.max = String(max);
       range.step = 'any';
+      range.disabled = Boolean(this.input?.disabled);
 
       const rangeWrap = document.createElement('div');
       rangeWrap.classList.add('w-100');
@@ -569,6 +603,20 @@ function ensureJsonEditorDefaultsConfigured() {
           this._rangeInput.value = String(v);
         }
       }
+    }
+
+    enable() {
+      super.enable();
+      if (this._rangeInput && !this.always_disabled) {
+        this._rangeInput.disabled = false;
+      }
+    }
+
+    disable(always_disabled) {
+      if (this._rangeInput) {
+        this._rangeInput.disabled = true;
+      }
+      super.disable(always_disabled);
     }
 
     sanitize(value) {

@@ -7,6 +7,8 @@ $(document).ready(function () {
 
   const DEFAULT_EFFECTS_COLOR = '#B500FF';
   const BG_PRIORITY = 254;
+  const inputSourcesWithOwnerLabel = new Set(["GRABBER", "V4L", "AUDIO"]);
+  const inputSourcesWithoutOwnerLabel = new Set(["BOBLIGHTSERVER", "FLATBUFSERVER", "PROTOSERVER"]);
   const COLOR_INPUT_SELECTOR = String.raw`#root\[colorEffects\]\[color\]`;
   const IMAGE_INPUT_SELECTOR = String.raw`#root\[colorEffects\]\[image\]`;
   const IMAGE_FIELD_SELECTOR = '[data-schemapath="root.colorEffects.image"]';
@@ -36,37 +38,39 @@ $(document).ready(function () {
     return { originName, ip };
   };
 
+
   // Update the list of Hyperion instances
   updateHyperionInstanceListing();
 
+  initializeUI();
+  initComponents();
+  updateInputSelect();
+  updateVideoMode();
+
   if (isCurrentInstanceRunning()) {
-    initializeUI();
-    initComponents();
-    updateInputSelect();
-    updateVideoMode();
     setupEventListenersForUpdates();
   }
 
   removeOverlay();
 
   function initializeUI() {
-    // // Create initial HTML structure
-    createTable('ssthead', 'sstbody', 'sstcont');
-    $('.ssthead').html(createTableRow([$.i18n('remote_input_origin'), $.i18n('remote_input_owner'), $.i18n('remote_input_priority'), $.i18n('remote_input_status')], true, true));
 
+    setupSourceSelection();
     setupColorEditor();
     setupImageProcessingEditor();
     setupChannelAdjustmentEditor();
 
     // Create introduction hints if the help option is enabled
     if (globalThis.showOptHelp) {
-      createHint("intro", $.i18n('remote_input_intro', $.i18n('remote_losthint')), "sstcont");
       createHint("intro", $.i18n('remote_components_intro', $.i18n('remote_losthint')), "comp_intro");
       createHint("intro", $.i18n('remote_videoMode_intro', $.i18n('remote_losthint')), "videomode_intro");
     }
   }
 
+  /////////////////////////////////
   /// Color and Effect Management
+  /////////////////////////////////
+
   function setupColorEditor() {
 
     createSection('colorEffects', $.i18n("remote_color_label"), '', 'fa-wifi', 'remote_color_intro', {}, 'card-default', '');
@@ -75,6 +79,7 @@ $(document).ready(function () {
       colorEffectsSubmitButton.dataset.i18n = 'remote_color_button_reset';
       colorEffectsSubmitButton.setAttribute('type', 'button');
       colorEffectsSubmitButton.innerHTML = `<i class="fa fa-fw fa-undo"></i>${$.i18n('remote_color_button_reset')}`;
+      colorEffectsSubmitButton.disabled = !isCurrentInstanceRunning();
     }
 
     updateColorEffectsEditor();
@@ -164,9 +169,80 @@ $(document).ready(function () {
       onSubmit: resetColorEffectsEditor,
       startval: startval
     });
+  }
 
+  function handleColorEffectsChange(editor) {
 
-    
+    editor.on('ready', () => {
+      if (!isCurrentInstanceRunning()) {
+        editor.disable();
+        return;
+      }
+
+      const duration = editor.getEditor("root.colorEffects.duration").getValue();
+      colorEffects.effect = editor.getEditor("root.colorEffects.effect")?.getValue() || "";
+      syncDurationValue(duration);
+
+      appendRerunColorButton(editor);
+      appendRerunUploadButton(editor);
+      appendRerunEffectButton(editor);
+      updateUploadActionButtonsVisibility();
+      updateEffectActionButtonsVisibility();
+    });
+
+    editor.watch('root.colorEffects.color', () => {
+      if (!editor.ready) return;
+      const color = editor.getEditor("root.colorEffects.color").getValue();
+      colorEffects.color = color;
+      debugMessage("Color changed to: " + JSON.stringify(color));
+
+      colorEffects.colorRGB = hexToRgb(color);
+      if (!colorEffects.colorRGB) {
+        return;
+      }
+      setStorage('remoteColorEffectsColor', color);
+      requestSetColor(colorEffects.colorRGB.r, colorEffects.colorRGB.g, colorEffects.colorRGB.b, colorEffects.duration_s);
+    });
+
+    editor.watch('root.colorEffects.effect', () => {
+      if (!editor.ready) return;
+      const effect = editor.getEditor("root.colorEffects.effect").getValue();
+      colorEffects.effect = effect;
+      updateEffectActionButtonsVisibility();
+
+      debugMessage("Effect changed to: " + effect);
+      requestPlayEffect(effect, colorEffects.duration_s);
+    });
+
+    editor.watch('root.colorEffects.image', () => {
+      if (!editor.ready) return;
+      const uploadedFileData = editor.getEditor("root.colorEffects.image").getValue();
+      debugMessage("Uploaded file data changed to: " + JSON.stringify(uploadedFileData));
+
+      if (!uploadedFileData?.includes(",")) {
+        colorEffects.lastImgData = "";
+        updateUploadActionButtonsVisibility();
+        return;
+      }
+
+      const [type, data] = uploadedFileData.split(",");
+      if (!(type.includes("image") && type.includes("base64"))) {
+        colorEffects.lastImgData = "";
+        updateUploadActionButtonsVisibility();
+        return;
+      }
+
+      colorEffects.lastImgData = data;
+      updateUploadActionButtonsVisibility();
+      requestSetImage(colorEffects.lastImgData, colorEffects.duration_s);
+    });
+
+    editor.watch('root.colorEffects.duration', () => {
+      if (!editor.ready) return;
+      const duration = editor.getEditor("root.colorEffects.duration").getValue();
+      debugMessage("Duration changed to: " + duration);
+      syncDurationValue(duration);
+    });
   }
 
   function appendRerunEffectButton(editor) {
@@ -381,85 +457,12 @@ $(document).ready(function () {
   }
 
   function resetColorEffectsEditor() {
-    //requestPriorityClear();
     colorEffects.effect = "";
     colorEffects.image = "";
     colorEffects.lastImgData = "";
     updateColorEffectsEditor();
   }
 
-  function handleColorEffectsChange(editor) {
-
-    editor.on('ready', () => {
-      const duration = editor.getEditor("root.colorEffects.duration").getValue();
-      colorEffects.effect = editor.getEditor("root.colorEffects.effect")?.getValue() || "";
-      syncDurationValue(duration);
-      appendRerunColorButton(editor);
-      appendRerunUploadButton(editor);
-      appendRerunEffectButton(editor);
-      updateUploadActionButtonsVisibility();
-      updateEffectActionButtonsVisibility();
-    });
-
-    editor.watch('root.colorEffects.color', () => {
-      if (!editor.ready) return;
-      const color = editor.getEditor("root.colorEffects.color").getValue();
-      colorEffects.color = color;
-      debugMessage("Color changed to: " + JSON.stringify(color));
-
-      colorEffects.colorRGB = hexToRgb(color);
-      if (!colorEffects.colorRGB) {
-        return;
-      }
-      setStorage('remoteColorEffectsColor', color);
-      requestSetColor(colorEffects.colorRGB.r, colorEffects.colorRGB.g, colorEffects.colorRGB.b, colorEffects.duration_s);
-    });
-
-    editor.watch('root.colorEffects.effect', () => {
-      if (!editor.ready) return;
-      const effect = editor.getEditor("root.colorEffects.effect").getValue();
-      colorEffects.effect = effect;
-      updateEffectActionButtonsVisibility();
-
-      debugMessage("Effect changed to: " + effect);
-      requestPlayEffect(effect, colorEffects.duration_s);
-
-      // requestPriorityClear();
-      // $(globalThis.hyperion).one("cmd-clear", function () {
-      //   setTimeout(function () { requestPlayEffect(effect, colorEffects.duration_s); }, 100);
-      // });
-    });
-
-    editor.watch('root.colorEffects.image', () => {
-      if (!editor.ready) return;
-      const uploadedFileData = editor.getEditor("root.colorEffects.image").getValue();
-      debugMessage("Uploaded file data changed to: " + JSON.stringify(uploadedFileData));
-
-      if (!uploadedFileData?.includes(",")) {
-        colorEffects.lastImgData = "";
-        updateUploadActionButtonsVisibility();
-        return;
-      }
-
-      const [type, data] = uploadedFileData.split(",");
-      if (!(type.includes("image") && type.includes("base64"))) {
-        colorEffects.lastImgData = "";
-        updateUploadActionButtonsVisibility();
-        return;
-      }
-
-      colorEffects.lastImgData = data;
-      updateUploadActionButtonsVisibility();
-      requestSetImage(colorEffects.lastImgData, colorEffects.duration_s);
-    });
-
-    editor.watch('root.colorEffects.duration', () => {
-      if (!editor.ready) return;
-      const duration = editor.getEditor("root.colorEffects.duration").getValue();
-      debugMessage("Duration changed to: " + duration);
-      syncDurationValue(duration);
-    });
-  }
 
   function syncDurationValue(value) {
     setStorage('remoteColorEffectsDuration', value);
@@ -546,38 +549,29 @@ $(document).ready(function () {
     }
   }
 
-  // Handle Reset or Color Click
-  function handleResetOrColor() {
-    if (this.id === "remote_input_rescol") {
-      sendColor();
-    } else if (EFFECTENGINE_ENABLED) {
-      sendEffect();
-    }
-  }
-
-  // Handle Image Request
-  function handleImageRequest() {
-    if (colorEffects.lastImgData) {
-      requestSetImage(colorEffects.lastImgData, colorEffects.duration_s);
-    }
-  }
-
+  /////////////////////////////////
   /// Image Processing Management
+  /////////////////////////////////
+
   function setupImageProcessingEditor() {
 
     createSection('imageProcessing', $.i18n("remote_maptype_label"), '', 'fa-wifi', 'remote_maptype_intro', {}, 'card-default', '');
 
     const imageProcessingSubmitButton = document.getElementById('btn_submit_imageProcessing');
     const imageProcessingDefaultsButtonId = 'btn_submit_imageProcessingDefaults';
+    let imageProcessingDefaultsButton = document.getElementById(imageProcessingDefaultsButtonId);
     if (imageProcessingSubmitButton && !document.getElementById(imageProcessingDefaultsButtonId)) {
       const defaultsButton = document.createElement('button');
       defaultsButton.className = 'btn btn-primary me-2';
       defaultsButton.id = imageProcessingDefaultsButtonId;
       defaultsButton.type = 'button';
-      defaultsButton.innerHTML = '<i class="fa fa-fw fa-undo"></i><span data-i18n="general_button_reset">' + $.i18n('general_button_reset') + '</span>';
+      defaultsButton.innerHTML = '<i class="fa fa-fw fa-undo"></i><span data-i18n="general_btn_reset">' + $.i18n('general_btn_reset') + '</span>';
       defaultsButton.addEventListener('click', resetToImageProcessingConfig);
       imageProcessingSubmitButton.parentNode.insertBefore(defaultsButton, imageProcessingSubmitButton);
+      imageProcessingDefaultsButton = defaultsButton;
     }
+
+    applyResponsiveActionButtonsLayout(imageProcessingSubmitButton, imageProcessingDefaultsButton);
 
     const startval = {
       imageProcessing: globalThis.serverConfig.color.imageProcessing
@@ -587,11 +581,14 @@ $(document).ready(function () {
 
     console.log("Starting ImageProcessing Editor with value: " + JSON.stringify(startval));
     createEditor(editors, 'imageProcessing', 'imageProcessing', handleImageProcessingChange, {
-      bindDefaultChange: true,
+      bindDefaultChange: false,
       bindSubmit: true,
       onSubmit: saveImageProcessingConfig,
       startval: startval
     });
+
+    $('#btn_submit_imageProcessing').prop('disabled', !isCurrentInstanceRunning());
+    $('#btn_submit_imageProcessingDefaults').prop('disabled', !isCurrentInstanceRunning());
   }
 
   function resetToImageProcessingConfig() {
@@ -606,14 +603,12 @@ $(document).ready(function () {
   function saveImageProcessingConfig() {
     if (editors['imageProcessing'].ready) {
       console.log("Submitting ImageProcessing configuration: " + JSON.stringify(editors['imageProcessing'].getValue()));
-      // requestWriteConfig(editors['imageProcessing'].getValue());
+      requestWriteConfig(editors['imageProcessing'].getValue());
     }
   }
 
   function updateLedMapping() {
     const mapping = globalThis.serverInfo.imageToLedMappingType;
-
-    // ToDo Update ImagePorcessing Editor with new mapping value
     if (editors['imageProcessing']?.ready) {
       const currentValue = editors['imageProcessing'].getValue().imageProcessing?.imageToLedMappingType;
       if (currentValue !== mapping) {
@@ -622,22 +617,29 @@ $(document).ready(function () {
     }
   }
 
+  /////////////////////////////////
   /// Channel Adjustment Management
+  /////////////////////////////////
+
   function setupChannelAdjustmentEditor() {
 
     createSection('channelAdjustment', $.i18n("remote_adjustment_label"), '', 'fa-wifi', 'remote_adjustment_intro', {}, 'card-default', '');
 
     const channelAdjustmentSubmitButton = document.getElementById('btn_submit_channelAdjustment');
     const channelAdjustmentDefaultsButtonId = 'btn_submit_channelAdjustmentDefaults';
+    let channelAdjustmentDefaultsButton = document.getElementById(channelAdjustmentDefaultsButtonId);
     if (channelAdjustmentSubmitButton && !document.getElementById(channelAdjustmentDefaultsButtonId)) {
       const defaultsButton = document.createElement('button');
       defaultsButton.className = 'btn btn-primary me-2';
       defaultsButton.id = channelAdjustmentDefaultsButtonId;
       defaultsButton.type = 'button';
-      defaultsButton.innerHTML = '<i class="fa fa-fw fa-undo"></i><span data-i18n="general_button_reset">' + $.i18n('general_button_reset') + '</span>';
+      defaultsButton.innerHTML = '<i class="fa fa-fw fa-undo"></i><span data-i18n="general_btn_reset">' + $.i18n('general_btn_reset') + '</span>';
       defaultsButton.addEventListener('click', resetToChannelAdjustmentConfig);
       channelAdjustmentSubmitButton.parentNode.insertBefore(defaultsButton, channelAdjustmentSubmitButton);
+      channelAdjustmentDefaultsButton = defaultsButton;
     }
+
+    applyResponsiveActionButtonsLayout(channelAdjustmentSubmitButton, channelAdjustmentDefaultsButton);
 
     let channelAdjustmenSchema = globalThis.schema.channelAdjustment;
     channelAdjustmenSchema.properties.id = { options: { hidden: true } };
@@ -650,11 +652,14 @@ $(document).ready(function () {
 
     console.log("Starting ChannelAdjustment Editor with value: " + JSON.stringify(startval));
     createEditor(editors, 'channelAdjustment', 'channelAdjustment', handleChannelAdjustmentChange, {
-      bindDefaultChange: true,
+      bindDefaultChange: false,
       bindSubmit: true,
       onSubmit: saveChannelAdjustmentConfig,
       startval: startval
     });
+
+    $('#btn_submit_channelAdjustment').prop('disabled', !isCurrentInstanceRunning());
+    $('#btn_submit_channelAdjustmentDefaults').prop('disabled', !isCurrentInstanceRunning());
   }
 
   function resetToChannelAdjustmentConfig() {
@@ -669,7 +674,7 @@ $(document).ready(function () {
   function saveChannelAdjustmentConfig() {
     if (editors['channelAdjustment'].ready) {
       console.log("Submitting ChannelAdjustment configuration: " + JSON.stringify(editors['channelAdjustment'].getValue()));
-      // requestWriteConfig(editors['channelAdjustment'].getValue());
+      requestWriteConfig(editors['channelAdjustment'].getValue());
     }
   }
 
@@ -687,30 +692,66 @@ $(document).ready(function () {
     }
   }
 
+  /////////////////////////////////
   /// Input Source Management
+  /////////////////////////////////
 
+  function buildOwnerColorBadge(value) {
+    const badgeStyle = [
+      'width:18px',
+      'height:18px',
+      'border-radius:20px',
+      'margin-bottom:-4px',
+      'border:1px grey solid',
+      `background-color: rgb(${value})`,
+      'display:inline-block'
+    ].join('; ');
 
+    return `<div style="${badgeStyle}" title="RGB: (${value})"></div>`;
+  }
+
+  function setupSourceSelection() {
+    createSection('sourceSelection', $.i18n("remote_input_label"), '', 'fa-wifi', 'remote_input_intro', {}, 'card-default', '');
+    createBootstrapTable('sourceSelectionTableHead', 'sourceSelectionTableBody', 'editor_body_sourceSelection', {
+      borderless: true,
+      tableClasses: ['w-100'],
+      columnWidths: ['25%', '40%', '10%', '25%']
+    });
+    $('.sourceSelectionTableHead').html(createBootstrapTableRow([
+      $.i18n('remote_input_origin'),
+      $.i18n('remote_input_owner'),
+      $.i18n('remote_input_priority'),
+      $.i18n('remote_input_status')
+    ], {
+      isHeader: true,
+      alignMiddle: true,
+      columnClasses: ['', '', 'text-nowrap', 'text-end']
+    }));
+    setupAutoButtons();
+  }
 
   function resolveOwnerText(componentId, owner, value) {
-    switch (componentId) {
-      case "EFFECT":
-        return $.i18n('remote_effects_label_effects') + " " + owner;
-      case "COLOR":
-        return $.i18n('remote_color_label_color') + ' ' +
-          `<div style="width:18px; height:18px; border-radius:20px; margin-bottom:-4px; border:1px grey solid; background-color: rgb(${value}); display:inline-block" title="RGB: (${value})"></div>`;
-      case "IMAGE":
-        return $.i18n('remote_effects_label_picture') + (owner ? `  ${owner}` : "");
-      case "GRABBER":
-      case "V4L":
-      case "AUDIO":
-        return `${$.i18n("general_comp_" + componentId)}: (${owner})`;
-      case "BOBLIGHTSERVER":
-      case "FLATBUFSERVER":
-      case "PROTOSERVER":
-        return $.i18n("general_comp_" + componentId);
-      default:
-        return owner;
+    if (componentId === "EFFECT") {
+      return `${$.i18n('remote_effects_label_effects')}` + (owner ? ": " + `${owner}` : '');
     }
+
+    if (componentId === "COLOR") {
+      return `${$.i18n('remote_color_label_color')} ${buildOwnerColorBadge(value)}`;
+    }
+
+    if (componentId === "IMAGE") {
+      return $.i18n('remote_effects_label_picture') + (owner ? ": " + `${owner}` : '');
+    }
+
+    if (inputSourcesWithOwnerLabel.has(componentId)) {
+      return `${$.i18n('general_comp_' + componentId)}: (${owner})`;
+    }
+
+    if (inputSourcesWithoutOwnerLabel.has(componentId)) {
+      return $.i18n('general_comp_' + componentId);
+    }
+
+    return owner;
   }
 
   function resolveButtonState(active, visible) {
@@ -729,29 +770,134 @@ $(document).ready(function () {
     };
   }
 
+  function isClearablePriority(componentId, priority) {
+    return priority < BG_PRIORITY && ["EFFECT", "COLOR", "IMAGE"].includes(componentId);
+  }
+
+  function shouldShowDuration(componentId, durationSeconds) {
+    return durationSeconds > 0 && !["GRABBER", "FLATBUFSERVER", "PROTOSERVER"].includes(componentId);
+  }
+
+  function buildPriorityOriginText(priorityEntry) {
+    const { originName, ip } = parsePriorityOrigin(priorityEntry);
+    if (!ip) {
+      return originName;
+    }
+
+    return `${originName}<br/><span style="font-size:80%; color:grey;">${$.i18n('remote_input_ip')} ${ip}</span>`;
+  }
+
+  function appendPriorityDuration(ownerText, durationSeconds) {
+    return `${ownerText}<br/><span style="font-size:80%; color:grey;">${$.i18n('remote_input_duration')} ${durationSeconds.toFixed(0)}${$.i18n('edt_append_s')}</span>`;
+  }
+
+  function appendNoSourcesRow() {
+    $('.sourceSelectionTableBody').append(`<tr><td colspan="4" class="text-center text-muted">${$.i18n('remote_input_no_sources')}</td></tr>`);
+  }
+
+  function appendSourceSelectionRow(origin, ownerText, priority, btn) {
+    const row = createBootstrapTableRow([origin, ownerText, priority, btn], {
+      alignMiddle: true,
+      columnClasses: ['', '', 'text-nowrap', 'text-end']
+    });
+
+    $('.sourceSelectionTableBody').append(row);
+  }
+
   function buildSourceButtonHtml(index, priority, btnState, btnType, btnText, componentId) {
     let btn = `<button id="srcBtn${index}" type="button" ${btnState} class="btn btn-${btnType} btn_input_selection" onclick="requestSetSource(${priority});">${btnText}</button>`;
 
-    if (["EFFECT", "COLOR", "IMAGE"].includes(componentId) && priority < BG_PRIORITY) {
+    if (isClearablePriority(componentId, priority)) { 
       btn += `<button type="button" class="btn btn-sm btn-danger" style="margin-left:10px;" onclick="requestPriorityClear(${priority});"><i class="fa fa-close"></i></button>`;
     }
 
     return btn;
   }
 
+  function setupAutoButtons() {
+    const sourceSelectionSubmitButton = document.getElementById('btn_submit_sourceSelection');
+
+    if (!sourceSelectionSubmitButton?.parentElement) {
+      return;
+    }
+
+    const sourceSelectionActionsContainer = sourceSelectionSubmitButton.parentElement;
+    sourceSelectionActionsContainer.replaceChildren();
+    sourceSelectionActionsContainer.style.textAlign = 'left';
+    sourceSelectionActionsContainer.classList.add('d-flex', 'align-items-center', 'justify-content-between', 'w-100');
+
+    const autoSwitchContainer = document.createElement('div');
+    autoSwitchContainer.className = 'form-check form-switch form-switch-md d-inline-flex align-items-center gap-2 mb-0';
+
+    const autoSwitchInput = document.createElement('input');
+    autoSwitchInput.className = 'form-check-input';
+    autoSwitchInput.setAttribute('role', 'switch');
+    autoSwitchInput.id = 'srcSwitchAuto';
+    autoSwitchInput.type = 'checkbox';
+    autoSwitchInput.setAttribute('switch', '');
+    autoSwitchInput.addEventListener('change', () => {
+      requestSetSource('auto');
+    });
+
+    const autoSwitchLabel = document.createElement('label');
+    autoSwitchLabel.className = 'form-check-label';
+    autoSwitchLabel.setAttribute('for', 'srcSwitchAuto');
+    autoSwitchLabel.id = 'srcSwitchAutoLabel';
+
+    autoSwitchContainer.appendChild(autoSwitchInput);
+    autoSwitchContainer.appendChild(autoSwitchLabel);
+
+    const clearAllButton = document.createElement('button');
+    clearAllButton.id = 'srcBtnClearAll';
+    clearAllButton.type = 'button';
+    clearAllButton.className = 'btn btn-primary';
+    clearAllButton.textContent = $.i18n('remote_input_clearall');
+    clearAllButton.addEventListener('click', () => {
+      requestClearAll();
+    });
+
+    sourceSelectionActionsContainer.appendChild(autoSwitchContainer);
+    sourceSelectionActionsContainer.appendChild(clearAllButton);
+  }
+
+  function updateAutoButtons(clearAll) {
+    const autoText = globalThis.serverInfo.priorities_autoselect ? $.i18n('general_btn_on') : $.i18n('general_btn_off');
+    const isRunning = isCurrentInstanceRunning();
+    const autoSwitchInput = document.getElementById('srcSwitchAuto');
+    const autoSwitchLabel = document.getElementById('srcSwitchAutoLabel');
+    const clearAllButton = document.getElementById('srcBtnClearAll');
+
+    if (!autoSwitchInput || !autoSwitchLabel || !clearAllButton) {
+      setupAutoButtons();
+    }
+
+    const ensuredAutoSwitchInput = document.getElementById('srcSwitchAuto');
+    const ensuredAutoSwitchLabel = document.getElementById('srcSwitchAutoLabel');
+    const ensuredClearAllButton = document.getElementById('srcBtnClearAll');
+
+    if (!ensuredAutoSwitchInput || !ensuredAutoSwitchLabel || !ensuredClearAllButton) {
+      return;
+    }
+
+    ensuredAutoSwitchInput.checked = globalThis.serverInfo.priorities_autoselect;
+    ensuredAutoSwitchInput.disabled = !isRunning || globalThis.serverInfo.priorities_autoselect;
+    ensuredAutoSwitchLabel.textContent = `${$.i18n('remote_input_label_autoselect')} (${autoText})`;
+    ensuredClearAllButton.disabled = !isRunning || !clearAll;
+  }
+  
   // Update input select options based on priorities
   function updateInputSelect() {
     // Clear existing elements
-    $('.sstbody').empty().html('');
-    console.log("Updating input select with priorities: " + JSON.stringify(globalThis.serverInfo.priorities));
-
+    $('.sourceSelectionTableBody').empty().html('');
+    debugMessage("Updating input select with priorities: " + JSON.stringify(globalThis.serverInfo.priorities));
 
     const prios = globalThis.serverInfo.priorities;
     let clearAll = false;
+    let renderedRows = 0;
 
     if (prios.length === 0) {
-      $('.sstbody').append(`<tr><td colspan="4" class="text-center text-muted">${$.i18n('remote_input_no_sources')}</td></tr>`);
-      $('#auto_btn').empty();
+      appendNoSourcesRow();
+      updateAutoButtons(false);
       return;
     }
 
@@ -763,58 +909,42 @@ $(document).ready(function () {
         return;
       }
 
-      if (priority < BG_PRIORITY && ["EFFECT", "COLOR", "IMAGE"].includes(componentId)) {
+      if (isClearablePriority(componentId, priority)) {
         clearAll = true;
       }
 
-      const remoteInputDuration_s = duration_ms / 1000;
-      const { originName, ip } = parsePriorityOrigin(priorityEntry);
-      const origin = ip
-        ? `${originName}<br/><span style="font-size:80%; color:grey;">${$.i18n('remote_input_ip')} ${ip}</span>`
-        : originName;
+      const remoteInputDuration_s = Number.isFinite(duration_ms) ? duration_ms / 1000 : 0;
+      const origin = buildPriorityOriginText(priorityEntry);
 
       const value = "value" in priorityEntry ? priorityEntry.value.RGB : "0,0,0";
       let ownerText = resolveOwnerText(componentId, owner, value);
 
-      if (remoteInputDuration_s > 0 && !["GRABBER", "FLATBUFSERVER", "PROTOSERVER"].includes(componentId)) {
-        ownerText += `<br/><span style="font-size:80%; color:grey;">${$.i18n('remote_input_duration')} ${remoteInputDuration_s.toFixed(0)}${$.i18n('edt_append_s')}</span>`;
+      if (shouldShowDuration(componentId, remoteInputDuration_s)) {
+        ownerText = appendPriorityDuration(ownerText, remoteInputDuration_s);
       }
 
       if (remoteInputDuration_s > 0 || remoteInputDuration_s === 0) {
         const { btnType, btnText, btnState } = resolveButtonState(active, visible);
         if (btnType !== 'default') {
           const btn = buildSourceButtonHtml(index, priority, btnState, btnType, btnText, componentId);
-          $('.sstbody').append(createTableRow([origin, ownerText, priority, btn], false, true));
+          appendSourceSelectionRow(origin, ownerText, priority, btn);
+          renderedRows += 1;
         }
       }
     });
 
-    // Auto-select and Clear All buttons
-    const autoColor = globalThis.serverInfo.priorities_autoselect ? "btn-success" : "btn-danger";
-    const autoState = globalThis.serverInfo.priorities_autoselect ? "disabled" : "enabled";
-    const autoText = globalThis.serverInfo.priorities_autoselect ? $.i18n('general_btn_on') : $.i18n('general_btn_off');
-    const callState = clearAll ? "enabled" : "disabled";
+    if (renderedRows === 0) {
+      appendNoSourcesRow();
+      clearAll = false;
+    }
 
-    $('#auto_btn').html(`
-        <button id="srcBtnAuto" type="button" ${autoState} class="btn ${autoColor}" style="margin-right:5px; display:inline-block;" 
-        onclick="requestSetSource('auto');">${$.i18n('remote_input_label_autoselect')} (${autoText})</button>
-    `);
-
-    $('#auto_btn').append(`
-        <button type="button" ${callState} class="btn btn-danger" style="display:inline-block;" 
-        onclick="requestClearAll();">${$.i18n('remote_input_clearall')}</button>
-    `);
-
-    // Adjust button widths
-    let maxWidth = 100;
-    $('.btn_input_selection').each(function () {
-      if ($(this).innerWidth() > maxWidth) maxWidth = $(this).innerWidth();
-    });
-    $('.btn_input_selection').css("min-width", maxWidth + "px");
+    updateAutoButtons(clearAll);
   }
 
-
+  /////////////////////////////////
   /// Component Management
+  /////////////////////////////////
+
   function shouldSkipComponent(componentName) {
     // Define conditions to skip certain components
     const skipConditions = {
@@ -897,7 +1027,7 @@ $(document).ready(function () {
           return;
         }
 
-        setComponentSwitchState(comp.name, { disabled: !isInstanceEnabled });
+        setComponentSwitchState(comp.name, { disabled: !(isInstanceEnabled && isCurrentInstanceRunning()) });
         $switch.off('change').on('change', (e) => {
           requestSetComponentState(comp.name, e.currentTarget.checked);
         });
@@ -958,19 +1088,34 @@ $(document).ready(function () {
 
   // Update Video Mode
   function updateVideoMode() {
-    const videoModes = ["2D", "3DSBS", "3DTAB"];
+    const videoModes = ["3DSBS", "3DTAB", "2D"];
     const currVideoMode = globalThis.serverInfo.videomode;
+    const isRunning = isCurrentInstanceRunning();
+    const videoModeContainer = document.getElementById('videomodebtns');
 
-    $('#videomodebtns').empty();
-    videoModes.forEach(mode => {
+    if (!videoModeContainer) {
+      return;
+    }
+
+    videoModeContainer.replaceChildren();
+    videoModeContainer.classList.add('d-flex', 'flex-wrap', 'gap-2');
+
+    videoModes.forEach((mode) => {
       const btnStyle = currVideoMode === mode ? 'btn-success' : 'btn-primary';
-      const buttonHtml = `<button type="button" id="vModeBtn_${mode}" class="btn ${btnStyle}" 
-                          style="margin:3px;min-width:200px" 
-                          onclick="requestVideoMode('${mode}')">
-                          ${$.i18n('remote_videoMode_' + mode)}
-                        </button><br/>`;
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.id = `vModeBtn_${mode}`;
+      button.className = `btn ${btnStyle}`;
+      button.style.margin = '0';
+      button.style.minWidth = '140px';
+      button.style.flex = '1 1 140px';
+      button.disabled = !isRunning;
+      button.textContent = $.i18n('remote_videoMode_' + mode);
+      button.addEventListener('click', () => {
+        requestVideoMode(mode);
+      });
 
-      $('#videomodebtns').append(buttonHtml);
+      videoModeContainer.appendChild(button);
     });
   }
 
@@ -1014,10 +1159,26 @@ $(document).ready(function () {
 
 function handleChannelAdjustmentChange(channelEditor) {
 
+  const updateChannelAdjustmentButtons = () => {
+    const isRunning = isCurrentInstanceRunning();
+    const isValid = channelEditor.validate().length === 0 && !globalThis.readOnlyMode;
+
+    $('#btn_submit_channelAdjustment').prop('disabled', !(isRunning && isValid));
+    $('#btn_submit_channelAdjustmentDefaults').prop('disabled', !isRunning);
+  };
+
   channelEditor.on('ready', () => {
+    updateChannelAdjustmentButtons();
+
+    if (!isCurrentInstanceRunning()) {
+      channelEditor.disable();
+      return;
+    }
+
     const allEditors = Object.values(channelEditor.editors);
 
     for (const editor of allEditors) {
+
       if (!editor?.input) {
         continue;
       }
@@ -1063,9 +1224,33 @@ function handleChannelAdjustmentChange(channelEditor) {
       });
     }
   });
+
+  channelEditor.on('change', () => {
+    updateChannelAdjustmentButtons();
+  });
 }
 
 function handleImageProcessingChange(editor) {
+
+  const updateImageProcessingButtons = () => {
+    const isRunning = isCurrentInstanceRunning();
+    const isValid = editor.validate().length === 0 && !globalThis.readOnlyMode;
+
+    $('#btn_submit_imageProcessing').prop('disabled', !(isRunning && isValid));
+    $('#btn_submit_imageProcessingDefaults').prop('disabled', !isRunning);
+  };
+
+  editor.on('ready', () => {
+    updateImageProcessingButtons();
+
+    if (!isCurrentInstanceRunning()) {
+      editor.disable();
+    }
+  });
+
+  editor.on('change', () => {
+    updateImageProcessingButtons();
+  });
 
   editor.watch('root.imageProcessing.imageToLedMappingType', () => {
     if (!editor.ready) return;
@@ -1089,3 +1274,5 @@ function handleImageProcessingChange(editor) {
   });
 
 }
+
+
