@@ -1,26 +1,33 @@
-$(document).ready(() => {
+$(document).ready(function () {
   // Perform initial translation setup
   performTranslation();
 
-  const DEFAULT_CPCOLOR = '#B500FF';
-  const BG_PRIORITY = 254;
   // Check if the effect engine is enabled
   const EFFECTENGINE_ENABLED = (jQuery.inArray("effectengine", globalThis.serverInfo.services) !== -1);
 
-  const editors = {}; // Store JSON editors in a structured way
+  const DEFAULT_EFFECTS_COLOR = '#B500FF';
+  const BG_PRIORITY = 254;
+  const EFFECTS_DURATION_INPUT_SELECTOR = String.raw`#root\[colorEffects\]\[duration\]`;
+  const EFFECTS_DURATION_ENDLESS_HINT_ID = 'duration-endless-hint';
 
+  const editors = {}; // Store JSON editors in a structured way
 
   // Update the list of Hyperion instances
   updateHyperionInstanceListing();
 
-
   // Initialize variables
-  let oldEffects = [];
-  const mappingList = globalThis.serverSchema.properties.color.properties.imageProcessing.properties.imageToLedMappingType.enum;
-  let uiInputDuration_s = 0; // Endless
-  let rgb = { r: 255, g: 0, b: 0 };
-  let lastImgData = "";
-  let lastFileName = "";
+  //let oldEffects = [];
+  //  const mappingList = globalThis.serverSchema.properties.color.properties.imageProcessing.properties.imageToLedMappingType.enum;
+
+  const initialEffectsColor = getStorage('remoteColorEffectsColor') || DEFAULT_EFFECTS_COLOR;
+  let colorEffects = {
+    color: initialEffectsColor,
+    colorRGB: hexToRgb(initialEffectsColor),
+    effect: "",
+    image: "",
+    duration_s: Number(getStorage('remoteColorEffectsDuration')) || 0, // 0 = Endless
+    lastImgData: ""
+  };
 
   // // Create initial HTML structure
   createTable('ssthead', 'sstbody', 'sstcont');
@@ -31,7 +38,7 @@ $(document).ready(() => {
   setupChannelAdjustmentEditor();
 
 
-    // Hide color effect table and reset color button if current instance is not running
+  // Hide color effect table and reset color button if current instance is not running
   if (!isCurrentInstanceRunning()) {
     $("#color_effect_table").hide();
     $("#reset_color").hide();
@@ -57,6 +64,10 @@ $(document).ready(() => {
       colorEffectsSubmitButton.innerHTML = `<i class="fa fa-fw fa-undo"></i>${$.i18n('remote_color_button_reset')}`;
     }
 
+    updateColorEffectsEditor();
+  }
+
+  function getColorEffectsEditorSchema() {
     let colorEffectsSchema = {
       colorEffects: {
         "type": "object",
@@ -71,20 +82,15 @@ $(document).ready(() => {
             "format": "color",
             "propertyOrder": 1
           },
-          "effect": {
-            "type": "string",
-            "format": "choices",
-            "title": "remote_effects_label_effects",
-            "enum": getAvailableEffectNames(),
-            "options": {
-              "enum_titles": getAvailableEffectNames()
-            },
-            "propertyOrder": 2
-          },
           "image": {
             "type": "string",
-            "format": "file",
             "title": "remote_effects_label_picture",
+            "media": {
+              "binaryEncoding": "base64"
+            },
+            "options": {
+              "infoText": $.i18n('remote__effects_picture_infoText'),
+            },
             "propertyOrder": 3
           },
           "duration": {
@@ -99,17 +105,47 @@ $(document).ready(() => {
       }
     };
 
+    if (EFFECTENGINE_ENABLED) {
+      const effectNames = [$.i18n('edt_conf_enum_please_select'),...getAvailableEffectNames()];
+      colorEffectsSchema.colorEffects.properties.effect = {
+        "type": "string",
+        "format": "choices",
+        "title": "remote_effects_label_effects",
+        "enum": effectNames,
+        "options": {
+          "enum_titles": effectNames,
+          "choices": {
+            "placeholder": true,
+            "placeholderValue": $.i18n('edt_conf_enum_please_select'),
+          }
+        },
+        "propertyOrder": 2
+      };
+    }
+
+    return colorEffectsSchema;
+  }
+
+  function updateColorEffectsEditor() {
+
+    if (editors['colorEffects']) {
+      editors['colorEffects'].destroy();
+      delete editors['colorEffects'];
+    }
+
     const startval = {
       colorEffects: {
-        color: "#ff0000",
-        effect: "",
-        image: "",
-        duration: 0
+        color: colorEffects.color,
+        image: colorEffects.image,
+        duration: colorEffects.duration_s
       }
     };
 
-    //console.log("Starting Color/Effects Editor with value: " + JSON.stringify(startval));
-    createEditor(editors, 'colorEffects', colorEffectsSchema, handleColorEffectsChange, {
+    if (EFFECTENGINE_ENABLED) {
+      startval.colorEffects.effect = colorEffects.effect;
+    }
+
+    createEditor(editors, 'colorEffects', getColorEffectsEditorSchema(), handleColorEffectsChange, {
       bindDefaultChange: false,
       bindSubmit: true,
       onSubmit: resetColorEffectsEditor,
@@ -118,18 +154,32 @@ $(document).ready(() => {
   }
 
   function resetColorEffectsEditor() {
-    if (editors['colorEffects'].ready) {
-      console.log("Resetting Color/Effects value: " + JSON.stringify(editors['colorEffects'].getValue()));
-    }
+    //requestPriorityClear();
+    colorEffects.effect = "";    
+    colorEffects.image = "";
+    colorEffects.lastImgData = "";
+    updateColorEffectsEditor();
   }
 
   function handleColorEffectsChange(editor) {
 
+    editor.on('ready', () => {
+      const duration = editor.getEditor("root.colorEffects.duration").getValue();
+      syncDurationValue(duration);
+    });
+
     editor.watch('root.colorEffects.color', () => {
       if (!editor.ready) return;
       const color = editor.getEditor("root.colorEffects.color").getValue();
-
+      colorEffects.color = color;
       debugMessage("Color changed to: " + JSON.stringify(color));
+
+      colorEffects.colorRGB = hexToRgb(color);
+      if (!colorEffects.colorRGB) {
+        return;
+      }
+      setStorage('remoteColorEffectsColor', color);
+      requestSetColor(colorEffects.colorRGB.r, colorEffects.colorRGB.g, colorEffects.colorRGB.b, colorEffects.duration_s);
     });
 
     editor.watch('root.colorEffects.effect', () => {
@@ -137,112 +187,126 @@ $(document).ready(() => {
       const effect = editor.getEditor("root.colorEffects.effect").getValue();
 
       debugMessage("Effect changed to: " + effect);
+      requestPlayEffect(effect, colorEffects.duration_s);
+
+      // requestPriorityClear();
+      // $(globalThis.hyperion).one("cmd-clear", function () {
+      //   setTimeout(function () { requestPlayEffect(effect, colorEffects.duration_s); }, 100);
+      // });
     });
 
     editor.watch('root.colorEffects.image', () => {
       if (!editor.ready) return;
-      const image = editor.getEditor("root.colorEffects.image").getValue();
+      const uploadedFileData = editor.getEditor("root.colorEffects.image").getValue();
+      debugMessage("Uploaded file data changed to: " + JSON.stringify(uploadedFileData));
 
-      debugMessage("Image changed to: " + JSON.stringify(image));
+      const [type, data] = uploadedFileData.split(",");
+      if (!(type.includes("image") && type.includes("base64"))) {
+        return;
+      }
+
+      colorEffects.lastImgData = data;
+      requestSetImage(colorEffects.lastImgData, colorEffects.duration_s);
     });
 
-  }
-
-    // Function to send the selected color
-  function sendColor() {
-    requestSetColor(rgb.r, rgb.g, rgb.b, uiInputDuration_s);
-  }
-
-  // Function to send the selected effect
-  function sendEffect() {
-    const effect = $("#effect_select").val();
-    if (effect !== "__none__") {
-      requestPriorityClear();
-      $(globalThis.hyperion).one("cmd-clear", function () {
-        setTimeout(function () { requestPlayEffect(effect, uiInputDuration_s); }, 100);
-      });
-    }
-  }
-
-    /// Effect Management
-  // Update Effect List
-  function updateEffectlist() {
-    const newEffects = globalThis.serverInfo.effects;
-
-    if (newEffects.length !== oldEffects.length) {
-      $('#effect_select').html('<option value="__none__"></option>');
-      const usrEffArr = [];
-      const sysEffArr = [];
-
-      newEffects.forEach(effect => {
-        const effectName = effect.name;
-        const effectArr = effect.file.startsWith(":") ? sysEffArr : usrEffArr;
-        effectArr.push(effectName);
-      });
-
-      $('#effect_select')
-        .append(createSel(usrEffArr, $.i18n('remote_optgroup_usreffets')))
-        .append(createSel(sysEffArr, $.i18n('remote_optgroup_syseffets')));
-
-      oldEffects = newEffects;
-    }
-  }
-
- // Initialize Color Picker and Effects
-  function initColorPickerAndEffects() {
-    let cpcolor = getStorage('rmcpcolor') || DEFAULT_CPCOLOR;
-    if (cpcolor) rgb = hexToRgb(cpcolor);
-
-    const storedDuration = getStorage('rmduration');
-    if (storedDuration) {
-      uiInputDuration_s = Number(storedDuration);
-      $("#remote_duration").val(uiInputDuration_s);
-      updateDurationPlaceholder(); // Update the placeholder for "Endless"
-    }
-
-    createCP('cp2', cpcolor, function (rgbT, hex) {
-      rgb = rgbT;
-      sendColor();
-      setStorage('rmcpcolor', hex);
-      updateInputSelect();
+    editor.watch('root.colorEffects.duration', () => {
+      if (!editor.ready) return;
+      const duration = editor.getEditor("root.colorEffects.duration").getValue();
+      debugMessage("Duration changed to: " + duration);
+      syncDurationValue(duration);
     });
-
-    setupEventListeners();
   }
 
-  // Setup Event Listeners for Controls
-  function setupEventListeners() {
-    $("#reset_color").off().on("click", resetColor);
-    $("#remote_duration").off().on("change", updateDuration);
-    $("#effect_select").off().on("change", sendEffect);
-    $("#remote_input_reseff, #remote_input_rescol").off().on("click", handleResetOrColor);
-    $("#remote_input_repimg").off().on("click", handleImageRequest);
-    $("#remote_input_img").on("change", handleImageChange);
+  // // Reset Color Function
+  // function resetColor() {
+  //   requestPriorityClear();
+  //   lastImgData = "";
+  //   $("#effect_select").val("__none__");
+  //   $("#remote_input_img").val("");
+  // }
+
+  function syncDurationValue(value) {
+    setStorage('remoteColorEffectsDuration', value);
+    colorEffects.duration_s = value;
+    updateDurationPlaceholder();
   }
 
-  // Reset Color Function
-  function resetColor() {
-    requestPriorityClear();
-    lastImgData = "";
-    $("#effect_select").val("__none__");
-    $("#remote_input_img").val("");
+  function getDurationInput() {
+    return $(EFFECTS_DURATION_INPUT_SELECTOR);
   }
 
-  // Update Duration
-  function updateDuration() {
-    uiInputDuration_s = valValue(this.id, this.value, this.min, this.max);
-    setStorage('rmduration', uiInputDuration_s);
-    updateDurationPlaceholder(); // Ensure placeholder is updated dynamically
+  function ensureDurationHintElement(durationInput) {
+    if (durationInput.length === 0) {
+      return $();
+    }
+
+    const parent = durationInput.parent();
+    parent.css('position', 'relative');
+
+    let hint = parent.find(`#${EFFECTS_DURATION_ENDLESS_HINT_ID}`);
+    if (hint.length === 0) {
+      hint = $('<label/>', {
+        id: EFFECTS_DURATION_ENDLESS_HINT_ID,
+        class: 'text-muted'
+      }).hide();
+
+      hint.css({
+        position: 'absolute',
+        left: '0.75rem',
+        top: '50%',
+        transform: 'translateY(-50%)',
+        pointerEvents: 'none',
+        margin: '0',
+        fontWeight: '400'
+      });
+
+      if (durationInput.attr('id')) {
+        hint.attr('for', durationInput.attr('id'));
+      }
+
+      parent.append(hint);
+    }
+
+    return hint;
   }
 
-  // Update the placeholder or display "Endless" dynamically
+  function ensureDurationDisplayStyle() {
+    if ($('#duration-endless-style').length > 0) {
+      return;
+    }
+
+    const style = String.raw`
+      #root\[colorEffects\]\[duration\].duration-endless-display {
+        color: transparent;
+        text-shadow: none;
+        caret-color: currentColor;
+      }
+    `;
+    $('<style/>', {
+      id: 'duration-endless-style',
+      text: style
+    }).appendTo('head');
+  }
+
+  // Keep numeric value and overlay "Endless" text when value is 0
   function updateDurationPlaceholder() {
-    const remoteDuration = $("#remote_duration");
-    if (Number(remoteDuration.val()) === 0) {
-      remoteDuration.val(""); // Clear value temporarily
-      remoteDuration.attr("placeholder", $.i18n('remote_input_duration_endless'));
+    const durationInput = getDurationInput();
+    if (durationInput.length === 0) {
+      return;
+    }
+
+    const durationValue = Number(durationInput.val());
+
+    const isEndless = !Number.isNaN(durationValue) && durationValue === 0;
+    const durationHint = ensureDurationHintElement(durationInput);
+    ensureDurationDisplayStyle();
+
+    if (isEndless) {
+      durationInput.addClass('duration-endless-display');
+      durationHint.text($.i18n('remote_input_duration_endless')).show();
     } else {
-      remoteDuration.attr("placeholder", "");
+      durationInput.removeClass('duration-endless-display');
+      durationHint.text("").hide();
     }
   }
 
@@ -257,20 +321,10 @@ $(document).ready(() => {
 
   // Handle Image Request
   function handleImageRequest() {
-    if (lastImgData) {
-      requestSetImage(lastImgData, uiInputDuration_s, lastFileName);
+    if (colorEffects.lastImgData) {
+      requestSetImage(colorEffects.lastImgData, colorEffects.duration_s);
     }
   }
-
-  // Handle Image Change
-  function handleImageChange() {
-    readImg(this, function (src, fileName) {
-      lastFileName = fileName;
-      lastImgData = src.includes(",") ? src.split(",")[1] : src;
-      requestSetImage(lastImgData, uiInputDuration_s, lastFileName);
-    });
-  }
-
 
   /// Image Processing Management
   function setupImageProcessingEditor() {
@@ -686,7 +740,7 @@ $(document).ready(() => {
     });
   }
 
- 
+
   // Force First Update
   function forceFirstUpdate() {
     initComponents();
@@ -694,11 +748,11 @@ $(document).ready(() => {
     //updateLedMapping();
     updateVideoMode();
     //updateChannelAdjustments();
-    if (EFFECTENGINE_ENABLED) {
-      updateEffectlist();
-    } else {
-      $('#effect_row').hide();
-    }
+    // if (EFFECTENGINE_ENABLED) {
+    //   updateEffectlist();
+    // } else {
+    //   $('#effect_row').hide();
+    // }
   }
 
   // Interval Updates and Event Handlers
@@ -723,7 +777,7 @@ $(document).ready(() => {
 
     $(globalThis.hyperion).on("cmd-effects-update", (event) => {
       globalThis.serverInfo.effects = event.response.data.effects;
-      updateEffectlist();
+      updateColorEffectsEditor();
     });
 
     $(globalThis.hyperion).on("cmd-settings-update", (event) => {
@@ -740,7 +794,6 @@ $(document).ready(() => {
 
   // Initialize everything
   function init() {
-    //initColorPickerAndEffects();
     forceFirstUpdate();
     setupEventListenersForUpdates();
   }
