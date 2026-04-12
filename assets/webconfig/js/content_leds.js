@@ -257,7 +257,7 @@ function addClassicLayoutControls() {
         $("#ip_cl_gpos").attr({ 'max': maxLEDs - 1 });
 
         let max = maxLEDs - gpos;
-        if (gpos == 0) {
+        if (gpos == 0 && max > 0) {
           --max;
         }
         $("#ip_cl_glength").attr({ 'max': max });
