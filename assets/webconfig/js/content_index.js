@@ -104,14 +104,6 @@ $(window.hyperion).on("cmd-videomode-update", function (event) {
 $(window.hyperion).on("cmd-components-update", function (event) {
   let obj = event.response.data
 
-  // notfication in index
-  if (obj.name == "ALL") {
-    if (obj.enabled)
-      $("#hyperion_disabled_notify").fadeOut("fast");
-    else
-      $("#hyperion_disabled_notify").fadeIn("fast");
-  }
-
   window.comps.forEach((entry, index) => {
     if (entry.name === obj.name) {
       window.comps[index] = obj;
