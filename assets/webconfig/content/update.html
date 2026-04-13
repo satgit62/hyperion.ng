@@ -1,70 +1,121 @@
 <div class="container-fluid">
+  <h3 class="page-header"><i class="fa fa-download fa-fw" aria-hidden="true"></i><span
+      data-i18n="main_menu_update_token">Update</span>
+  </h3>
+
   <div class="row">
     <div class="col-lg-12">
-      <h3 class="page-header"><i class="fa fa-download fa-fw"></i><span data-i18n="main_menu_update_token">Update</span></h3>
-      <div class="introd">
-        <h4 data-i18n="update_label_intro">Overview about all available Hyperion versions. On top you could update or downgrade your version of Hyperion whenever you want. Sorted from newest to oldest</h4>
-        <h4> At the moment the respective install button is disabled. Development is still ongoing here. </h4>
-        <hr />
-      </div>
-      <h4 id="update_currver"></h4>
+			<div id="update_intro"></div>
+      <h4 id="update_currver" aria-live="polite" data-i18n="dashboard_infobox_label_currenthyp">Your Hyperion version:
+      </h4>
       <hr>
-      <div class="col-lg-12" id="versionlist">
+      <div class="row gy-2" id="versionlist">
       </div>
     </div>
   </div>
 </div>
 
 <script>
-  $(document).ready(function (error) {
+  (() => {
     performTranslation();
-    getReleases(function (callback) {
 
-      if (callback) {
-        var matches = 0;
-        for (var key in window.gitHubVersionList) {
+    createHintH("intro", $.i18n('update_label_intro'), "update_intro");
 
-          if (window.gitHubVersionList[key].name == null ||
-            window.gitHubVersionList[key].tag_name.includes('rc') ||
-            (window.serverConfig.general.watchedVersionBranch == "Stable" &&
-              (window.gitHubVersionList[key].tag_name.includes('beta') ||
-                window.gitHubVersionList[key].tag_name.includes('alpha')
-              )
-            ) ||
-            (window.serverConfig.general.watchedVersionBranch == "Beta"
-              && window.gitHubVersionList[key].tag_name.includes('Alpha')
-            )) {
-            continue;
-          }
+    const getReleaseMeta = (tagName) => {
+      const normalizedTag = tagName.toLowerCase();
 
-          var danger;
-          var type;
-
-          if (window.gitHubVersionList[key].tag_name.includes('beta')) {
-            danger = 'warning';
-            type = 'Beta';
-          }
-          else if (window.gitHubVersionList[key].tag_name.includes('alpha')) {
-            danger = 'danger';
-            type = 'Alpha';
-          }
-          else {
-            danger = 'default';
-            type = 'Stable';
-          }
-
-          matches++;
-          $('#versionlist').append('<div class="col-lg-6"><div class="card card-' + danger + '"><div class="card-header"><i class="fa fa-television fa-fw"></i>Hyperion - ' + window.gitHubVersionList[key].tag_name + '</div><div class="card-body"><p><span style="font-weight:bold;">' + $.i18n('update_label_type') + '</span> ' + type + '</p><p><span id="desc" style="font-weight:bold;">' + $.i18n('update_label_description') + '</span> ' + DOMPurify.sanitize(marked.parse(window.gitHubVersionList[key].body)) + '</p><hr><a class="btn btn-primary" href="' + window.gitHubVersionList[key].html_url + '" target="_blank"><i class="fa fa-list fa-fw"></i><span style="font-weight:bold;">' + $.i18n('update_button_changelog') + '</span></a><button type="button" class="btn btn-warning float-end" ' + (window.gitHubVersionList[key].tag_name == window.currentVersion ? "disabled" : "disabled") + '><i class="fa fa-download fa-fw"></i>' + $.i18n('update_button_install') + '</button></div></div></div>');
-        }
-        $('#update_currver').append($.i18n('update_versreminder', currentVersion));
-
-        if (matches == 0)
-          $('#versionlist').append($.i18n('update_no_updates_for_branch'));
+      if (normalizedTag.includes('beta')) {
+        return { cardStyle: 'warning', releaseType: 'Beta' };
       }
-      else {
-        $('#versionlist').append($.i18n('update_error_getting_versions'));
+
+      if (normalizedTag.includes('alpha')) {
+        return { cardStyle: 'danger', releaseType: 'Alpha' };
+      }
+
+      return { cardStyle: 'default', releaseType: 'Stable' };
+    };
+
+    const shouldSkipRelease = (release, branch) => {
+      const { name, tag_name: tagName } = release;
+      const normalizedTag = tagName.toLowerCase();
+
+      if (name === null || normalizedTag.includes('rc')) {
+        return true;
+      }
+
+      if (branch === 'Stable' && (normalizedTag.includes('beta') || normalizedTag.includes('alpha'))) {
+        return true;
+      }
+
+      return branch === 'Beta' && normalizedTag.includes('alpha');
+    };
+
+    const createReleaseCard = (release) => {
+      const { tag_name: tagName, body, html_url: htmlUrl } = release;
+      const { cardStyle, releaseType } = getReleaseMeta(tagName);
+
+      const col = document.createElement('div');
+      col.className = 'col-lg-6';
+
+      const card = document.createElement('div');
+      card.className = `card card-${cardStyle}`;
+
+      const cardHeader = document.createElement('div');
+      cardHeader.className = 'card-header';
+
+      const cardHeading = document.createElement('h5');
+      cardHeading.className = 'card-title mb-0';
+      cardHeading.innerHTML = `<i class="fa fa-television fa-fw" aria-hidden="true"></i> Hyperion - ${tagName}`;
+      cardHeader.appendChild(cardHeading);
+
+      const cardBody = document.createElement('div');
+      cardBody.className = 'card-body';
+
+      const typeP = document.createElement('p');
+      typeP.innerHTML = `<span style="font-weight:bold;">${$.i18n('update_label_type')}</span> ${releaseType}`;
+
+      const descP = document.createElement('p');
+      descP.innerHTML = `<span style="font-weight:bold;">${$.i18n('update_label_description')}</span> ${DOMPurify.sanitize(marked.parse(body ?? ''))}`;
+
+      const changelogLink = document.createElement('a');
+      changelogLink.className = 'btn btn-primary';
+      changelogLink.href = htmlUrl;
+      changelogLink.target = '_blank';
+      changelogLink.rel = 'noopener noreferrer';
+      changelogLink.innerHTML = `<i class="fa fa-list fa-fw" aria-hidden="true"></i><span style="font-weight:bold;">${$.i18n('update_button_changelog')}</span>`;
+
+      cardBody.append(typeP, descP, document.createElement('hr'), changelogLink);
+      card.append(cardHeader, cardBody);
+      col.append(card);
+
+      return col;
+    };
+
+    getReleases((success) => {
+      const versionList = document.getElementById('versionlist');
+      const updateCurrentVersionHeading = () => {
+        document.getElementById('update_currver').textContent = `${$.i18n('dashboard_infobox_label_currenthyp')} ${globalThis.currentVersion}`;
+      };
+
+      if (success) {
+        const branch = globalThis.serverConfig.general.watchedVersionBranch;
+        const releases = Object.values(globalThis.gitHubVersionList);
+        const visibleReleases = releases.filter((release) => !shouldSkipRelease(release, branch));
+
+        for (const release of visibleReleases) {
+          versionList.append(createReleaseCard(release));
+        }
+
+        updateCurrentVersionHeading();
+
+        if (visibleReleases.length === 0) {
+          versionList.append($.i18n('update_no_updates_for_branch'));
+        }
+      } else {
+        versionList.append($.i18n('update_error_getting_versions'));
       }
     });
+
     removeOverlay();
-  });
+  })();
 </script>

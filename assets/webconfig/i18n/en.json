@@ -1157,7 +1157,7 @@
   "update_button_install": "Install",
   "update_error_getting_versions": "We had trouble determining the latest available Version.",
   "update_label_description": "Description:",
-  "update_label_intro": "Overview about all available Hyperion versions. On top you could update or downgrade your version of Hyperion whenever you want. Sorted from newest to oldest",
+  "update_label_intro": "Overview about all available Hyperion versions. Sorted from newest to oldest",
   "update_label_type": "Type:",
   "update_no_updates_for_branch": "No updates for selected version channel.",
   "update_versreminder": "Your version: $1",
