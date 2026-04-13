@@ -648,7 +648,9 @@ $(document).ready(function () {
     if (editors['imageProcessing'].ready) {
       const imageProcessingValue = editors['imageProcessing'].getValue().imageProcessing;
       const config = { color: { imageProcessing: imageProcessingValue } };
-      requestWriteConfig(config, false);
+
+      console.warn("Saving image processing config is currently disabled for remote control. Need to check how partical updates of the config can be sent to the server without overwriting other values.");
+      //requestWriteConfig(config, false);
     }
   }
 
@@ -791,7 +793,8 @@ $(document).ready(function () {
     if (editors['channelAdjustment'].ready) {
       const channelAdjustmentValue = editors['channelAdjustment'].getValue().channelAdjustment;
       const config = { color: { channelAdjustment: [channelAdjustmentValue] } };
-      requestWriteConfig(config, false);
+      console.warn("Saving channel adjustment config is currently disabled for remote control. Need to check how partical updates of the config can be sent to the server without overwriting other values.");
+      //requestWriteConfig(config, false);
     }
   }
 
@@ -1248,9 +1251,9 @@ $(document).ready(function () {
     setComponentSwitchState(component.name, { checked: component.enabled });
   }
 
-
-
-  // Update Video Mode
+  /////////////////////////////////
+  /// Update Video Mode
+  /////////////////////////////////  
   function updateVideoMode() {
     const videoModes = ["3DSBS", "3DTAB", "2D"];
     const currVideoMode = globalThis.serverInfo.videomode;
