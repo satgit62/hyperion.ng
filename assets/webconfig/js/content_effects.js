@@ -2,7 +2,7 @@ $(document).ready(function () {
 
   performTranslation();
 
-  const EFFECTENGINE_ENABLED = (jQuery.inArray("effectengine", globalThis.serverInfo.services) !== -1);
+  const EFFECTENGINE_ENABLED = globalThis.hyperion.isServiceEnabled("effectengine");
 
   const editors = {}; // Store JSON editors in a structured way
   let availableEffectNames = getAvailableEffectNames();

@@ -1,11 +1,9 @@
 $(document).ready(function () {
   performTranslation();
 
-  const services = globalThis.serverInfo.services;
-  const isServiceEnabled = (service) => services.includes(service);
-  const isForwarderEnabled = isServiceEnabled("forwarder");
-  const isFlatbufEnabled = isServiceEnabled("flatbuffer");
-  const isProtoBufEnabled = isServiceEnabled("protobuffer");
+  const isForwarderEnabled = globalThis.hyperion.isServiceEnabled("forwarder");
+  const isFlatbufEnabled = globalThis.hyperion.isServiceEnabled("flatbuffer");
+  const isProtoBufEnabled = globalThis.hyperion.isServiceEnabled("protobuffer");
 
   const editors = {}; // Store JSON editors in a structured way
 

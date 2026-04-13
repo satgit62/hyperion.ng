@@ -11,13 +11,13 @@ $(window.hyperion).on("ready", function (event) {
     (window.serverInfo.grabbers.video.available.length === 0) &&
     (window.serverInfo.grabbers.audio.available.length === 0)) {
     $("#MenuItemGrabber").hide();
-    if ((jQuery.inArray("boblight", window.serverInfo.services) === -1)) {
+    if (!globalThis.hyperion.isServiceEnabled("boblight")) {
       $("#MenuItemInstCapture").hide();
     }
   }
 
   // Hide effects config menu entry if effect engine is not available
-  if (jQuery.inArray("effectengine", window.serverInfo.services) === -1) {
+  if (!globalThis.hyperion.isServiceEnabled("effectengine")) {
     $("#MenuItemEffectsConfig").hide();
   }
 

@@ -6,7 +6,7 @@ $(document).ready(function () {
   isGrabberAvailable["video"] = (globalThis.serverInfo.grabbers.video.available.length !== 0);
   isGrabberAvailable["audio"] = (globalThis.serverInfo.grabbers.audio.available.length !== 0);
 
-  const BOBLIGHT_ENABLED = (jQuery.inArray("boblight", globalThis.serverInfo.services) !== -1);
+  const BOBLIGHT_ENABLED = globalThis.hyperion.isServiceEnabled("boblight");
 
   const editors = {}; // Store JSON editors in a structured way
 

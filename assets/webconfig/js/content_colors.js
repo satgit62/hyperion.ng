@@ -1,7 +1,7 @@
 $(document).ready(function () {
   performTranslation();
 
-  const BORDERDETECT_ENABLED = (jQuery.inArray("borderdetection", globalThis.serverInfo.services) !== -1);
+  const BORDERDETECT_ENABLED = globalThis.hyperion.isServiceEnabled("borderdetection");
 
   const editors = {}; // Store JSON editors in a structured way
 

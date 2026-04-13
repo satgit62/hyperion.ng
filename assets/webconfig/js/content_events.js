@@ -16,7 +16,7 @@ $(document).ready(function () {
   performTranslation();
 
   const isGuiMode = globalThis.sysInfo.hyperion.isGuiMode;
-  const CEC_ENABLED = (jQuery.inArray("cec", globalThis.serverInfo.services) !== -1);
+  const CEC_ENABLED = globalThis.hyperion.isServiceEnabled("cec");
 
   const editors = {}; // Store JSON editors in a structured way
 

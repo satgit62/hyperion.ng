@@ -210,7 +210,7 @@ function updateUiOnInstance(inst) {
       $("#MenuItemRemoteControl, #NavMenuWizards, #btn_open_ledsim").show();
 
       //Show effectsconfigurator menu entry, only if effectengine is available
-      if (jQuery.inArray("effectengine", globalThis.serverInfo.services) !== -1) {
+      if (globalThis.hyperion.isServiceEnabled("effectengine")) {
         $("#MenuItemEffectsConfig").show();
       }
 
