@@ -1098,6 +1098,7 @@
   "remote_components_label": "Components control",
   "remote_effects_label_effects": "Effect",
   "remote_effects_label_picture": "Picture",
+  "remote_input_clear": "Clear Effect/Color",  
   "remote_input_clearall": "Clear all Effects/Colors",
   "remote_input_duration": "Duration:",
   "remote_input_duration_endless": "Endless",

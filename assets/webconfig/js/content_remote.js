@@ -3,7 +3,9 @@ $(document).ready(function () {
   performTranslation();
 
   // Check if the effect engine is enabled
-  const EFFECTENGINE_ENABLED = (jQuery.inArray("effectengine", globalThis.serverInfo.services) !== -1);
+  const EFFECTENGINE_ENABLED = globalThis.hyperion.isServiceEnabled("effectengine");
+
+  // Constants and initial state
 
   const DEFAULT_EFFECTS_COLOR = '#B500FF';
   const BG_PRIORITY = 254;
@@ -37,7 +39,6 @@ $(document).ready(function () {
     const [originName, ip] = origin.split("@");
     return { originName, ip };
   };
-
 
   // Update the list of Hyperion instances
   updateHyperionInstanceListing();
@@ -579,7 +580,6 @@ $(document).ready(function () {
         : {}
     };
 
-    console.log("Starting ImageProcessing Editor with value: " + JSON.stringify(startval));
     createEditor(editors, 'imageProcessing', 'imageProcessing', handleImageProcessingChange, {
       bindDefaultChange: false,
       bindSubmit: true,
@@ -591,8 +591,52 @@ $(document).ready(function () {
     $('#btn_submit_imageProcessingDefaults').prop('disabled', !isCurrentInstanceRunning());
   }
 
+  function handleImageProcessingChange(editor) {
+
+    const updateImageProcessingButtons = () => {
+      const isRunning = isCurrentInstanceRunning();
+      const isValid = editor.validate().length === 0 && !globalThis.readOnlyMode;
+
+      $('#btn_submit_imageProcessing').prop('disabled', !(isRunning && isValid));
+      $('#btn_submit_imageProcessingDefaults').prop('disabled', !isRunning);
+    };
+
+    editor.on('ready', () => {
+      updateImageProcessingButtons();
+
+      if (!isCurrentInstanceRunning()) {
+        editor.disable();
+      }
+    });
+
+    editor.on('change', () => {
+      updateImageProcessingButtons();
+    });
+
+    editor.watch('root.imageProcessing.imageToLedMappingType', () => {
+      if (!editor.ready) return;
+      const mappingType = editor.getEditor("root.imageProcessing.imageToLedMappingType").getValue();
+
+      debugMessage("Image to LED mapping type changed to: " + mappingType);
+    });
+
+    editor.watch('root.imageProcessing.accuracyLevel', () => {
+      if (!editor.ready) return;
+      const accuracyLevel = editor.getEditor("root.imageProcessing.accuracyLevel").getValue();
+
+      debugMessage("Accuracy level changed to: " + accuracyLevel);
+    });
+
+    editor.watch('root.imageProcessing.reducedPixelSetFactorFactor', () => {
+      if (!editor.ready) return;
+      const reducedPixelSetFactor = editor.getEditor("root.imageProcessing.reducedPixelSetFactorFactor").getValue();
+
+      debugMessage("Reduced pixel set factor changed to: " + reducedPixelSetFactor);
+    });
+
+  }
+
   function resetToImageProcessingConfig() {
-    console.log("Setting Image Processing config values...");
     editors['imageProcessing'].setValue({
       imageProcessing: globalThis.serverConfig.color.imageProcessing
         ? globalThis.serverConfig.color.imageProcessing
@@ -602,8 +646,9 @@ $(document).ready(function () {
 
   function saveImageProcessingConfig() {
     if (editors['imageProcessing'].ready) {
-      console.log("Submitting ImageProcessing configuration: " + JSON.stringify(editors['imageProcessing'].getValue()));
-      requestWriteConfig(editors['imageProcessing'].getValue());
+      const imageProcessingValue = editors['imageProcessing'].getValue().imageProcessing;
+      const config = { color: { imageProcessing: imageProcessingValue } };
+      requestWriteConfig(config, false);
     }
   }
 
@@ -650,7 +695,6 @@ $(document).ready(function () {
         : {}
     };
 
-    console.log("Starting ChannelAdjustment Editor with value: " + JSON.stringify(startval));
     createEditor(editors, 'channelAdjustment', 'channelAdjustment', handleChannelAdjustmentChange, {
       bindDefaultChange: false,
       bindSubmit: true,
@@ -662,8 +706,80 @@ $(document).ready(function () {
     $('#btn_submit_channelAdjustmentDefaults').prop('disabled', !isCurrentInstanceRunning());
   }
 
+  function handleChannelAdjustmentChange(channelEditor) {
+
+    const updateChannelAdjustmentButtons = () => {
+      const isRunning = isCurrentInstanceRunning();
+      const isValid = channelEditor.validate().length === 0 && !globalThis.readOnlyMode;
+
+      $('#btn_submit_channelAdjustment').prop('disabled', !(isRunning && isValid));
+      $('#btn_submit_channelAdjustmentDefaults').prop('disabled', !isRunning);
+    };
+
+    channelEditor.on('ready', () => {
+      updateChannelAdjustmentButtons();
+
+      if (!isCurrentInstanceRunning()) {
+        channelEditor.disable();
+        return;
+      }
+
+      const allEditors = Object.values(channelEditor.editors);
+
+      for (const editor of allEditors) {
+
+        if (!editor?.input) {
+          continue;
+        }
+
+        if (editor.input_type !== 'color' && editor.input.type !== 'color') {
+          continue;
+        }
+
+        const input = editor.input;
+
+        // add Bootstrap styling
+        //input.classList.add('form-control', 'form-control-color');
+        input.dataset.editorKey = editor.key;
+        input.dataset.editorPath = editor.path;
+
+        const sendColorAdjustment = (adjustmentKey, color) => {
+          const rgb = hexToRgb(color);
+          if (!rgb) {
+            return;
+          }
+
+          debugMessage('Color adjustment event. Color: ' + adjustmentKey + ' -> RGB: ' + JSON.stringify(rgb));
+          requestAdjustment(adjustmentKey, [rgb.r, rgb.g, rgb.b]);
+        };
+
+        const sendColorAdjustmentDebounced = debounce(sendColorAdjustment, 150);
+
+        input.addEventListener('input', (e) => {
+          const { editorKey } = input.dataset;
+          sendColorAdjustmentDebounced(editorKey, e.currentTarget.value);
+        });
+
+        input.addEventListener('change', () => {
+          const { editorKey, editorPath } = input.dataset;
+          const currentEditor = channelEditor.editors[editorPath];
+          if (!currentEditor) {
+            return;
+          }
+
+          const currentValue = currentEditor.getValue();
+          sendColorAdjustmentDebounced.cancel();
+          sendColorAdjustment(editorKey, currentValue);
+        });
+      }
+    });
+
+    channelEditor.on('change', () => {
+      updateChannelAdjustmentButtons();
+    });
+  }
+
   function resetToChannelAdjustmentConfig() {
-    console.log("Setting Channel Adjustment config values...");
     editors['channelAdjustment'].setValue({
       channelAdjustment: globalThis.serverConfig.color.channelAdjustment && globalThis.serverConfig.color.channelAdjustment.length > 0
         ? globalThis.serverConfig.color.channelAdjustment[0]
@@ -673,8 +789,9 @@ $(document).ready(function () {
 
   function saveChannelAdjustmentConfig() {
     if (editors['channelAdjustment'].ready) {
-      console.log("Submitting ChannelAdjustment configuration: " + JSON.stringify(editors['channelAdjustment'].getValue()));
-      requestWriteConfig(editors['channelAdjustment'].getValue());
+      const channelAdjustmentValue = editors['channelAdjustment'].getValue().channelAdjustment;
+      const config = { color: { channelAdjustment: [channelAdjustmentValue] } };
+      requestWriteConfig(config, false);
     }
   }
 
@@ -715,9 +832,10 @@ $(document).ready(function () {
     createBootstrapTable('sourceSelectionTableHead', 'sourceSelectionTableBody', 'editor_body_sourceSelection', {
       borderless: true,
       tableClasses: ['w-100'],
-      columnWidths: ['25%', '40%', '10%', '25%']
+      columnWidths: ['5%', '25%', '40%', '10%', '20%']
     });
     $('.sourceSelectionTableHead').html(createBootstrapTableRow([
+      "",
       $.i18n('remote_input_origin'),
       $.i18n('remote_input_owner'),
       $.i18n('remote_input_priority'),
@@ -725,9 +843,26 @@ $(document).ready(function () {
     ], {
       isHeader: true,
       alignMiddle: true,
-      columnClasses: ['', '', 'text-nowrap', 'text-end']
+      columnClasses: ['', '', '', 'text-nowrap', 'text-end']
     }));
+    setupSourceSelectionEventListeners();
     setupAutoButtons();
+  }
+
+  function setupSourceSelectionEventListeners() {
+    const tableBody = $('.sourceSelectionTableBody');
+    tableBody.off('click', '.src-clear-btn');
+    tableBody.off('click', '.src-select-btn');
+
+    tableBody.on('click', '.src-clear-btn', function () {
+      const priority = Number.parseInt($(this).data('priority'), 10);
+      requestPriorityClear(priority);
+    });
+
+    tableBody.on('click', '.src-select-btn', function () {
+      const priority = Number.parseInt($(this).data('priority'), 10);
+      requestSetSource(priority);
+    });
   }
 
   function resolveOwnerText(componentId, owner, value) {
@@ -792,26 +927,53 @@ $(document).ready(function () {
   }
 
   function appendNoSourcesRow() {
-    $('.sourceSelectionTableBody').append(`<tr><td colspan="4" class="text-center text-muted">${$.i18n('remote_input_no_sources')}</td></tr>`);
+    $('.sourceSelectionTableBody').append(`<tr><td colspan="5" class="text-center text-muted">${$.i18n('remote_input_no_sources')}</td></tr>`);
   }
 
-  function appendSourceSelectionRow(origin, ownerText, priority, btn) {
-    const row = createBootstrapTableRow([origin, ownerText, priority, btn], {
+  function appendSourceSelectionRow(clear, origin, ownerText, priority, btn) {
+    const row = createBootstrapTableRow([clear, origin, ownerText, priority, btn], {
       alignMiddle: true,
-      columnClasses: ['', '', 'text-nowrap', 'text-end']
+      columnClasses: ['', '', '', 'text-nowrap', 'text-end']
     });
 
     $('.sourceSelectionTableBody').append(row);
   }
 
-  function buildSourceButtonHtml(index, priority, btnState, btnType, btnText, componentId) {
-    let btn = `<button id="srcBtn${index}" type="button" ${btnState} class="btn btn-${btnType} btn_input_selection" onclick="requestSetSource(${priority});">${btnText}</button>`;
-
-    if (isClearablePriority(componentId, priority)) { 
-      btn += `<button type="button" class="btn btn-sm btn-danger" style="margin-left:10px;" onclick="requestPriorityClear(${priority});"><i class="fa fa-close"></i></button>`;
+  function buildSourceClearButtonHtml(index, priority, componentId) {
+    if (!isClearablePriority(componentId, priority)) {
+      return "";
     }
 
-    return btn;
+    const clearLabel = $.i18n('remote_input_clear');
+    const button = document.createElement('button');
+    button.id = `srcClearBtn${index}`;
+    button.type = 'button';
+    button.className = 'btn btn-link text-danger btn-sm p-0 border-0 shadow-none src-clear-btn';
+    button.style.marginLeft = '8px';
+    button.style.lineHeight = '1';
+    button.setAttribute('aria-label', clearLabel);
+    button.setAttribute('title', clearLabel);
+    button.dataset.priority = priority;
+
+    const icon = document.createElement('i');
+    icon.className = 'mdi mdi-delete-forever';
+    button.appendChild(icon);
+
+    return button.outerHTML;
+  }
+
+  function buildSourceButtonHtml(index, priority, btnState, btnType, btnText) {
+    const button = document.createElement('button');
+    button.id = `srcBtn${index}`;
+    button.type = 'button';
+    button.className = `btn btn-${btnType} btn-sm btn_input_selection src-select-btn`;
+    button.textContent = btnText;
+    if (btnState === 'disabled') {
+      button.disabled = true;
+    }
+    button.dataset.priority = priority;
+
+    return button.outerHTML;
   }
 
   function setupAutoButtons() {
@@ -884,7 +1046,7 @@ $(document).ready(function () {
     ensuredAutoSwitchLabel.textContent = `${$.i18n('remote_input_label_autoselect')} (${autoText})`;
     ensuredClearAllButton.disabled = !isRunning || !clearAll;
   }
-  
+
   // Update input select options based on priorities
   function updateInputSelect() {
     // Clear existing elements
@@ -926,8 +1088,9 @@ $(document).ready(function () {
       if (remoteInputDuration_s > 0 || remoteInputDuration_s === 0) {
         const { btnType, btnText, btnState } = resolveButtonState(active, visible);
         if (btnType !== 'default') {
-          const btn = buildSourceButtonHtml(index, priority, btnState, btnType, btnText, componentId);
-          appendSourceSelectionRow(origin, ownerText, priority, btn);
+          const clearBtn = buildSourceClearButtonHtml(index, priority, componentId);
+          const selectSourceBtn = buildSourceButtonHtml(index, priority, btnState, btnType, btnText);
+          appendSourceSelectionRow(clearBtn, origin, ownerText, priority, selectSourceBtn);
           renderedRows += 1;
         }
       }
@@ -938,6 +1101,7 @@ $(document).ready(function () {
       clearAll = false;
     }
 
+    setupSourceSelectionEventListeners();
     updateAutoButtons(clearAll);
   }
 
@@ -1152,127 +1316,5 @@ $(document).ready(function () {
         updateChannelAdjustments();
       }
     });
-
-
   }
 });
-
-function handleChannelAdjustmentChange(channelEditor) {
-
-  const updateChannelAdjustmentButtons = () => {
-    const isRunning = isCurrentInstanceRunning();
-    const isValid = channelEditor.validate().length === 0 && !globalThis.readOnlyMode;
-
-    $('#btn_submit_channelAdjustment').prop('disabled', !(isRunning && isValid));
-    $('#btn_submit_channelAdjustmentDefaults').prop('disabled', !isRunning);
-  };
-
-  channelEditor.on('ready', () => {
-    updateChannelAdjustmentButtons();
-
-    if (!isCurrentInstanceRunning()) {
-      channelEditor.disable();
-      return;
-    }
-
-    const allEditors = Object.values(channelEditor.editors);
-
-    for (const editor of allEditors) {
-
-      if (!editor?.input) {
-        continue;
-      }
-
-      if (editor.input_type !== 'color' && editor.input.type !== 'color') {
-        continue;
-      }
-
-      const input = editor.input;
-
-      // add Bootstrap styling
-      //input.classList.add('form-control', 'form-control-color');
-      input.dataset.editorKey = editor.key;
-      input.dataset.editorPath = editor.path;
-
-      const sendColorAdjustment = (adjustmentKey, color) => {
-        const rgb = hexToRgb(color);
-        if (!rgb) {
-          return;
-        }
-
-        debugMessage('Color adjustment event. Color: ' + adjustmentKey + ' -> RGB: ' + JSON.stringify(rgb));
-        requestAdjustment(adjustmentKey, [rgb.r, rgb.g, rgb.b]);
-      };
-
-      const sendColorAdjustmentDebounced = debounce(sendColorAdjustment, 150);
-
-      input.addEventListener('input', (e) => {
-        const { editorKey } = input.dataset;
-        sendColorAdjustmentDebounced(editorKey, e.currentTarget.value);
-      });
-
-      input.addEventListener('change', () => {
-        const { editorKey, editorPath } = input.dataset;
-        const currentEditor = channelEditor.editors[editorPath];
-        if (!currentEditor) {
-          return;
-        }
-
-        const currentValue = currentEditor.getValue();
-        sendColorAdjustmentDebounced.cancel();
-        sendColorAdjustment(editorKey, currentValue);
-      });
-    }
-  });
-
-  channelEditor.on('change', () => {
-    updateChannelAdjustmentButtons();
-  });
-}
-
-function handleImageProcessingChange(editor) {
-
-  const updateImageProcessingButtons = () => {
-    const isRunning = isCurrentInstanceRunning();
-    const isValid = editor.validate().length === 0 && !globalThis.readOnlyMode;
-
-    $('#btn_submit_imageProcessing').prop('disabled', !(isRunning && isValid));
-    $('#btn_submit_imageProcessingDefaults').prop('disabled', !isRunning);
-  };
-
-  editor.on('ready', () => {
-    updateImageProcessingButtons();
-
-    if (!isCurrentInstanceRunning()) {
-      editor.disable();
-    }
-  });
-
-  editor.on('change', () => {
-    updateImageProcessingButtons();
-  });
-
-  editor.watch('root.imageProcessing.imageToLedMappingType', () => {
-    if (!editor.ready) return;
-    const mappingType = editor.getEditor("root.imageProcessing.imageToLedMappingType").getValue();
-
-    debugMessage("Image to LED mapping type changed to: " + mappingType);
-  });
-
-  editor.watch('root.imageProcessing.accuracyLevel', () => {
-    if (!editor.ready) return;
-    const accuracyLevel = editor.getEditor("root.imageProcessing.accuracyLevel").getValue();
-
-    debugMessage("Accuracy level changed to: " + accuracyLevel);
-  });
-
-  editor.watch('root.imageProcessing.reducedPixelSetFactorFactor', () => {
-    if (!editor.ready) return;
-    const reducedPixelSetFactor = editor.getEditor("root.imageProcessing.reducedPixelSetFactorFactor").getValue();
-
-    debugMessage("Reduced pixel set factor changed to: " + reducedPixelSetFactor);
-  });
-
-}
-
-

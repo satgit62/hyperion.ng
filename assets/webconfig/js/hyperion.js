@@ -35,6 +35,11 @@ globalThis.currentHyperionInstanceName = "?";
 globalThis.comps = [];
 globalThis.defaultPasswordIsSet = null;
 
+globalThis.hyperion.isServiceEnabled = function(service) {
+  return Array.isArray(globalThis.serverInfo.services)
+    && globalThis.serverInfo.services.includes(service);
+};
+
 let tokenList = [];
 globalThis.setTokenList = function(list) {
   globalThis.tokenList = list;
@@ -83,8 +88,8 @@ function connectionLostDetection(type) {
 function sanitizeForLog(input) {
   if (typeof input !== 'string') return '';
   return input
-    .replace(/[\n\r\t]/g, ' ') // Replace newlines, carriage returns, and tabs with space
-    .replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, ''); // Remove ANSI escape codes
+    .replaceAll(/[\n\r\t]/g, ' ') // Replace newlines, carriage returns, and tabs with space
+    .replaceAll(/[\u001b\u009b][[()#;?]*(?:\d{1,4}(?:;\d{0,4})*)?[\dA-ORZcf-nqry=><]/g, ''); // Remove ANSI escape codes
 }
 
 setInterval(connectionLostDetection, 3000);
@@ -161,7 +166,7 @@ function initWebSocket() {
           const success = response.success;
           const cmd = response.command;
           const tan = response.tan
-          if (success || typeof (success) == "undefined") {
+          if (success || (success) === undefined) {
             $(globalThis.hyperion).trigger({ type: "cmd-" + cmd, response: response });
           }
           else
@@ -174,8 +179,8 @@ function initWebSocket() {
                 const errorData = Array.isArray(response.errorData) ? response.errorData : [];
 
                 // Sanitize provided input
-                const logError = error.replace(/\n|\r/g, "");
-                const logErrorData = JSON.stringify(errorData).replace(/[\r\n\t]/g, ' ')
+                const logError = error.replaceAll(/\n|\r/g, "");
+                const logErrorData = JSON.stringify(errorData).replaceAll(/[\r\n\t]/g, ' ')
                 console.error("[globalThis.websocket::onmessage] ", logError, ", Description:", logErrorData);
 
                 $(globalThis.hyperion).trigger({
@@ -383,7 +388,7 @@ function requestServerInfo(instance = null) {
   ];
 
   const data = { subscribe: subscriptions };
-  const targetInstance = instance !== null ? Number(instance) : null;
+  const targetInstance = instance === null ? null : Number(instance);
 
   sendToHyperion("serverinfo", "getInfo", data, targetInstance);
   return Promise.resolve();
@@ -752,7 +757,7 @@ Hyperion Server OS:
 - Root/Admin:        ${sys.isUserAdmin}
 - Qt Version:        ${sys.qtVersion}`;
 
-  if (globalThis.serverInfo.services.includes("effectengine")) {
+  if (globalThis.hyperion.isServiceEnabled("effectengine")) {
     info += `\n- Python Version:    ${sys.pyVersion}`;
   }
 
