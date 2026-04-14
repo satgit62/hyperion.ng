@@ -1,0 +1,173 @@
+
+Todo:
+  Dashboard:
+    ✔ Update html @done(26-04-14 17:53)
+    ✔ Update structure @done(26-04-14 17:53)
+    ✔ Update elements @done(26-04-14 17:53)
+  General:
+    ✔ Update html @done(26-04-14 17:53)
+    ✔ Update elements @done(26-04-14 18:28)
+    ✔ Update Code @done(26-04-14 18:40)
+    ☐ Update structure
+    ☐ Update LED instance management (add/remove/edit) and table
+
+  LED Instances:
+    LED Output:
+      ☐ Update html
+      ☐ Update structure
+      ☐ Update elements
+      ☐ Update LED-Device code
+      ☐ Update schema as required per device before creating editor, sunset dynamic selection lists
+      ☐ Convert layout elements to JSON editor
+      ☐ Update Layout code
+    Sources:
+      ✔ Update html @done(26-04-14 17:55)
+      ✔ Update structure @done(26-04-14 17:55)
+      ✔ Update elements @done(26-04-14 17:55)
+    Effects:
+      ✔ Update html @done(26-04-14 17:57)
+      ✔ Update structure @done(26-04-14 17:57)
+      ✔ Update elements @done(26-04-14 17:57)
+      ☐ Code - Errors when loading default config
+      ☐ Match choices editor style with standard
+    Image Processing:
+      ✔ Update html @done(26-04-14 18:14)
+      ✔ Update structure @done(26-04-14 18:14)
+      ✔ Update elements @done(26-04-14 18:14)
+      ☐ Style array editor titel - reduce size
+      ☐ Check, if Slider or Stepper are better from a usability perspective
+  Capturing Hardware:
+    ✔ Update html @done(26-04-14 18:16)
+    ☐ Update structure
+    ☐ Update elements
+    ☐ Update schema as required per capture device before creating editor, sunset dynamic selection lists
+    ☐ Align Code per capture device
+  Network Services:
+    ✔ Update html @done(26-04-14 18:16)
+    ✔ Update structure @done(26-04-14 18:16)
+    ✔ Update elements @done(26-04-14 18:16)
+    ☐ Fix table layout and delete icon style
+  Remote Control:
+    ✔ Update html @done(26-04-14 18:19)
+    ✔ Update structure @done(26-04-14 18:19)
+    ✔ Update elements @done(26-04-14 18:19)
+    ☐ Implement backend APIs for image processing and reactivate editor elements
+    ☐ Implement that ColorAdjustment and ImageProcessing can be saved separately and do not override each other
+    ☐ Check, if source selection can be better done for mobile devices
+    ☐ Check, if there are better ways arranging the source and effect selection for mobile devices, e.g. tabs for mapping type, color calibarion and video mode (maybe next to Color/effects)
+    ☐ Fix Duration when increase and decrease to 0
+  Effects Configurator:
+    ☐ Update html
+    ☐ Update structure
+    ☐ Update elements
+    ☐ Update Code
+    ☐ Use choices element to select effects
+    ☐ Fix effect backend that it can handle hex colors instead of RGB-Array
+  Support:
+    ✔ Update html @done(26-04-14 18:25)
+    ✔ Update structure @done(26-04-14 18:25)
+    ✔ Update elements @done(26-04-14 18:25)
+    ✔ Update Code @done(26-04-14 18:30)  
+  System:
+    Event Services:
+      ✔ Update html @done(26-04-14 18:29)
+      ✔ Update structure @done(26-04-14 18:29)
+      ✔ Update elements @done(26-04-14 18:29)
+      ✔ Update Code @done(26-04-14 18:30)
+    Web configuration:
+      ✔ Update html @done(26-04-14 18:29)
+      ✔ Update structure @done(26-04-14 18:30)
+      ✔ Update elements @done(26-04-14 18:31)
+      ✔ Update Code @done(26-04-14 18:30)
+    Log:
+      ✔ Update html @done(26-04-14 18:30)
+      ✔ Update structure @done(26-04-14 18:31)
+      ✔ Update elements @done(26-04-14 18:31)
+      ✔ Update Code @done(26-04-14 18:30)
+    Update:
+      ✔ Update html @done(26-04-14 18:30)
+      ✔ Update structure @done(26-04-14 18:30)
+      ✔ Update elements @done(26-04-14 18:30)
+      ✔ Update Code @done(26-04-14 18:30)
+    About Hyperion:
+      ☐ Update html
+      ☐ Update structure
+      ☐ Update elements
+      ☐ Update Code
+    Special pages:
+      Login:
+        ☐ Update html
+        ☐ Update structure
+        ☐ Update elements
+        ☐ Update Code
+      Restart:
+        ☐ Update html
+        ☐ Update structure
+        ☐ Update elements
+        ☐ Update Code        
+      Forbidden:
+        ☐ Update html
+        ☐ Update structure
+        ☐ Update elements
+        ☐ Update Code
+      connection_lost:
+        ☐ Update html
+        ☐ Update structure
+        ☐ Update elements
+        ☐ Update Code
+
+UI:
+  Navigation:
+    Menue:
+      ☐ Update html
+      ☐ Update structure
+      ☐ Update elements
+      ☐ Update Code
+    NavBar:
+      ☐ Update html
+      ☐ Update structure
+      ☐ Update elements
+      ☐ Update Code
+      ☐ Move elements into menue under settings, e.g. language selection, settings-level selection, dark/light mode toggle
+  Dark/Light Mode:
+    ☐ Use Bootstrap 5.3 built in dark/light mode support and remove custom code
+  
+  Preview:
+    ☐ Update html
+    ☐ Update structure
+    ☐ Update elements
+    ☐ Update Code
+  Color Calibration Wizard:
+    ☐ Update html
+    ☐ Update structure
+    ☐ Update elements
+    ☐ Update Code
+    ☐ Check if there is a better way then using modals for the wizards, e.g. by using a separate page or a sidebar
+  RGB Wizard:
+    ☐ Update html
+    ☐ Update structure
+    ☐ Update elements
+    ☐ Update Code
+  LED Device Wizards:
+    ☐ Update html
+    ☐ Update structure
+    ☐ Update elements
+    ☐ Update Code
+    ☐ Check if there is a better way then using modals for the wizards, e.g. by using a separate page or a sidebar
+
+General:
+  Refactor Code:
+    ☐ Refactor code to use ES6 features and modern JavaScript practices
+    ☐ Reduce single global variable and use modules instead
+    ☐ Clean up code and remove unused functions and variables
+    ☐ Clean up translations
+    Configuration:
+      ☐ Define full configuration model and retire legacy translation layer
+  JQuery:
+    ☐ Replace JQuery functions by standard
+    ☐ Remove JQuery migration js
+    ☐ Remove JQuery
+  JSON-Editor:
+    ☐ Reimplement configuration level support
+    ☐ Checkl, which bespoke modifications were done in json editor and if they can be replaced by standard features or if they need to be implemented as custom extensions
+    ☐ Test, if can be replaced by [Jedison](https://github.com/germanbisurgi/jedison)
