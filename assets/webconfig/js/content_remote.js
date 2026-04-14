@@ -574,6 +574,13 @@ $(document).ready(function () {
 
     applyResponsiveActionButtonsLayout(imageProcessingSubmitButton, imageProcessingDefaultsButton);
 
+    // TODO: The image processing options exposed for remote control are currently limited, as the API does not yet support changing all options. 
+    // Once the API supports more options, they can be easily added to the editor by removing the "hidden" flag from the respective schema properties 
+    // and ensuring that changes to those properties are sent to the server.
+    let imageProcessingSchema = globalThis.schema.imageProcessing;
+    imageProcessingSchema.properties.accuracyLevel = { options: { hidden: true } };
+    imageProcessingSchema.properties.reducedPixelSetFactorFactor = { options: { hidden: true } };
+
     const startval = {
       imageProcessing: globalThis.serverConfig.color.imageProcessing
         ? globalThis.serverConfig.color.imageProcessing
@@ -618,6 +625,7 @@ $(document).ready(function () {
       const mappingType = editor.getEditor("root.imageProcessing.imageToLedMappingType").getValue();
 
       debugMessage("Image to LED mapping type changed to: " + mappingType);
+      requestMappingType(mappingType);
     });
 
     editor.watch('root.imageProcessing.accuracyLevel', () => {
@@ -625,6 +633,7 @@ $(document).ready(function () {
       const accuracyLevel = editor.getEditor("root.imageProcessing.accuracyLevel").getValue();
 
       debugMessage("Accuracy level changed to: " + accuracyLevel);
+      console.warn("Accuracy level change is currently not supported for remote control. API to be implemented.");
     });
 
     editor.watch('root.imageProcessing.reducedPixelSetFactorFactor', () => {
@@ -632,6 +641,7 @@ $(document).ready(function () {
       const reducedPixelSetFactor = editor.getEditor("root.imageProcessing.reducedPixelSetFactorFactor").getValue();
 
       debugMessage("Reduced pixel set factor changed to: " + reducedPixelSetFactor);
+      console.warn("Reduced pixel set factor change is currently not supported for remote control. API to be implemented.");
     });
 
   }
@@ -688,9 +698,9 @@ $(document).ready(function () {
 
     applyResponsiveActionButtonsLayout(channelAdjustmentSubmitButton, channelAdjustmentDefaultsButton);
 
-    let channelAdjustmenSchema = globalThis.schema.channelAdjustment;
-    channelAdjustmenSchema.properties.id = { options: { hidden: true } };
-    channelAdjustmenSchema.properties.leds = { options: { hidden: true } };
+    let channelAdjustmentSchema = globalThis.schema.channelAdjustment;
+    channelAdjustmentSchema.properties.id = { options: { hidden: true } };
+    channelAdjustmentSchema.properties.leds = { options: { hidden: true } };
     const startval = {
       channelAdjustment: globalThis.serverConfig.color.channelAdjustment && globalThis.serverConfig.color.channelAdjustment.length > 0
         ? globalThis.serverConfig.color.channelAdjustment[0]
