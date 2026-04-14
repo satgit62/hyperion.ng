@@ -8,64 +8,75 @@ $(document).ready(function () {
 
   initializeUI();
   setupEditors();
-  addHints();
   buildInstanceList();
   removeOverlay();
 
   function initializeUI() {
-    // Initialize the configuration card
-    $('#conf_cont').append(createOptPanel('fa-wrench', $.i18n("edt_conf_gen_heading_title"), 'editor_container_container', 'btn_submit_container', 'card-system'));
 
-    // Show help if needed
-    if (globalThis.showOptHelp) {
-      $('#conf_cont').append(createHelpTable(globalThis.schema.general.properties, $.i18n("edt_conf_gen_heading_title")));
-    } else {
-      $('#conf_imp').appendTo('#conf_cont');
-    }
+    createSystemSection("general", "edt_conf_gen_heading_title", globalThis.schema.general.properties, "fa-wrench", "conf_general_intro", "generalHelpPanelId");
 
-    // Create instance table structure
-    createTable('ithead', 'itbody', 'itable');
-    if ($('#ithead').length === 0) {
-      $('.ithead').html(createTableRow([$.i18n('conf_general_inst_namehead'), "", $.i18n('conf_general_inst_actionhead'), ""], true, true));
-    }
-  }
+    createSection("instance", "conf_general_inst_title", '', "mdi mdi-lightbulb-group", "conf_general_inst_desc", false, 'card-instance');
+    createBootstrapTable('instanceTableHead', 'instanceTableBody', 'editor_body_instance', {
+      borderless: false,
+      tableClasses: ['w-100'],
+      columnWidths: ['70%', '30%']
+    });
+    $('.instanceTableHead').html(createBootstrapTableRow([
+      $.i18n('conf_general_inst_namehead'),
+      $.i18n('conf_general_inst_actionhead')
+    ], {
+      isHeader: true,
+      alignMiddle: true,
+      columnClasses: ['text-nowrap', 'text-center']
+    }));
 
-  function addHints() {
-    // Create introduction hints if help is shown
-    if (globalThis.showOptHelp) {
-      createHint("intro", $.i18n('conf_general_intro'), "editor_container_container");
-      createHint("intro", $.i18n('conf_general_inst_desc'), "inst_desc_cont");
-      createHint("intro", $.i18n('conf_general_impexp_l1') + " " + $.i18n('conf_general_impexp_l2'), "imp_desc_cont");
-    }
+    const $instanceFooterButton = $('#btn_submit_instance');
+    const $instanceFooter = $instanceFooterButton.closest('.card-footer');
+    $instanceFooter.empty();
+
+    createSystemSection("import", "conf_general_impexp_title", '', "fa-wrench", "conf_general_impexp_l1", false);
+    const $importBody = $('#editor_body_import');
+    const $importFooterButton = $('#btn_submit_import');
+    const $importFooter = $importFooterButton.closest('.card-footer');
+    const $importDescription = $('<div>', { id: 'imp_desc_cont' });
+    const $importFileInput = $('<input>', {
+      class: 'form-control',
+      type: 'file',
+      id: 'select_import_conf',
+      accept: '.json'
+    });
+    const $importFooterActions = $('<div>', {
+      class: 'd-flex justify-content-end align-items-center gap-2'
+    });
+    const $importButton = $('<button>', {
+      type: 'button',
+      class: 'btn btn-primary',
+      id: 'btn_import_conf',
+      html: `<i class="fa fa-fw fa-upload"></i>${$.i18n('conf_general_impexp_impbtn')}`
+    }).prop('disabled', true);
+    const $exportButton = $('<button>', {
+      type: 'button',
+      class: 'btn btn-primary',
+      id: 'btn_export_conf',
+      html: `<i class="fa fa-fw fa-download"></i>${$.i18n('conf_general_impexp_expbtn')}`
+    });
+
+    $importBody.append($importDescription, $importFileInput);
+    $importFooterActions.append($importButton, $exportButton);
+    $importFooter.empty().append($importFooterActions);
   }
 
   function setupEditors() {
-    createEditor(editors, 'container', 'general', handleGeneralChange, {
-      bindDefaultChange: false,
-      bindSubmit: false,
-      submitButtonId: 'btn_submit_container'
-    });
+    createEditor(editors, 'general', 'general', '', {
+      bindDefaultChange: true,
+      bindSubmit: true,
+      onSubmit: function () {
+        globalThis.showOptHelp = editors["general"].getEditor("root.general.showOptHelp").getValue();
+        requestWriteConfig(editors["general"].getValue());
+      }
 
-    $('#btn_submit_container').off().on('click', function () {
-      globalThis.showOptHelp = editors["container"].getEditor("root.general.showOptHelp").getValue();
-      requestWriteConfig(editors["container"].getValue());
-    });
-  }
-
-  function handleGeneralChange(editor) {
-    editor.on('change', function () {
-      onGeneralEditorChange(editor);
     });
   }
-
-  function onGeneralEditorChange(editor) {
-    if (!editor.ready) {
-      return;
-    }
-    const isValid = !editor.validate().length && !globalThis.readOnlyMode;
-    $('#btn_submit_container').prop('disabled', !isValid);
-  }
-
 
   // Instance handling functions
   function handleInstanceRename(instance) {
@@ -95,9 +106,9 @@ $(document).ready(function () {
   // Build the instance list
   function buildInstanceList() {
 
-    const $itbody = $('.itbody');
-    if ($itbody.length === 0) {
-      console.warn("Element '.itbody' does not exist. Aborting instance list build.");
+    const $instanceTableBody = $('.instanceTableBody');
+    if ($instanceTableBody.length === 0) {
+      console.warn("Element '.instanceTableBody' does not exist. Aborting instance list build.");
       return;
     }
 
@@ -108,7 +119,7 @@ $(document).ready(function () {
       // Sort instances by friendly_name (case-insensitive)
       instances.sort((a, b) => a.friendly_name.toLowerCase().localeCompare(b.friendly_name.toLowerCase()));
 
-      $itbody.empty(); // Explicitly clear the content before adding new rows
+      $instanceTableBody.empty(); // Explicitly clear the content before adding new rows
 
       // Collect rows in a document fragment for efficient DOM updates
       const $rows = $(document.createDocumentFragment());
@@ -116,26 +127,11 @@ $(document).ready(function () {
       // Build all instance rows
       for (const instance of instances) {
         const instanceID = instance.instance;
-        const renameBtn = document.createElement('button');
-        renameBtn.type = 'button';
-        renameBtn.className = 'btn btn-outline-primary';
-        renameBtn.id = `instren_${instanceID}`;
-        const renameIcon = document.createElement('i');
-        renameIcon.className = 'mdi mdi-lead-pencil';
-        renameBtn.appendChild(renameIcon);
-
-        const delBtn = document.createElement('button');
-        delBtn.type = 'button';
-        delBtn.className = 'btn btn-outline-danger';
-        delBtn.id = `instdel_${instanceID}`;
-        const delIcon = document.createElement('i');
-        delIcon.className = 'mdi mdi-delete-forever';
-        delBtn.appendChild(delIcon);
 
         const startBtn = document.createElement('div');
-        startBtn.className = 'form-check form-switch form-switch-md';
+        startBtn.className = 'form-check form-switch form-switch-md m-0 d-flex align-items-center';
         const startInput = document.createElement('input');
-        startInput.className = 'form-check-input';
+        startInput.className = 'form-check-input mt-0';
         startInput.type = 'checkbox';
         startInput.setAttribute('role', 'switch');
         startInput.id = `inst_${instanceID}`;
@@ -143,8 +139,32 @@ $(document).ready(function () {
         startInput.checked = instance.running;
         startBtn.appendChild(startInput);
 
+        const renameBtn = document.createElement('button');
+        renameBtn.type = 'button';
+        renameBtn.className = 'btn btn-outline-secondary d-inline-flex align-items-center justify-content-center';
+        renameBtn.id = `instren_${instanceID}`;
+        renameBtn.style.width = '2.8rem';
+        renameBtn.style.height = '2.5rem';
+        const renameIcon = document.createElement('i');
+        renameIcon.className = 'mdi mdi-lead-pencil fs-5';
+        renameBtn.appendChild(renameIcon);
+
+        const delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.className = 'btn btn-outline-danger d-inline-flex align-items-center justify-content-center';
+        delBtn.id = `instdel_${instanceID}`;
+        delBtn.style.width = '2.8rem';
+        delBtn.style.height = '2.5rem';
+        const delIcon = document.createElement('i');
+        delIcon.className = 'mdi mdi-playlist-remove fs-5';
+        delBtn.appendChild(delIcon);
+
+        const actionContainer = document.createElement('div');
+        actionContainer.className = 'd-flex justify-content-end align-items-center gap-3';
+        actionContainer.append(startBtn, renameBtn, delBtn);
+
         const $row = createTableRow(
-          [instance.friendly_name, startBtn, renameBtn, delBtn],
+          [instance.friendly_name, actionContainer],
           false,
           true
         );
@@ -152,7 +172,68 @@ $(document).ready(function () {
         $rows.append($row);
       }
 
-      $itbody.append($rows);
+
+      const createInput = document.createElement('input');
+      createInput.type = 'text';
+      createInput.id = 'instance_name';
+      createInput.className = 'form-control';
+      createInput.placeholder = $.i18n('conf_general_inst_name_title');
+      createInput.setAttribute('aria-describedby', 'instance_chars_needed');
+
+      const createBtn = document.createElement('button');
+      createBtn.type = 'button';
+      createBtn.className = 'btn btn-outline-primary d-inline-flex align-items-center justify-content-center';
+      createBtn.id = 'btn_create_inst';
+      createBtn.disabled = true;
+      createBtn.title = $.i18n('conf_general_createInst_btn');
+      createBtn.style.width = '2.8rem';
+      createBtn.style.height = '2.5rem';
+      const createIcon = document.createElement('i');
+      createIcon.className = 'mdi mdi-playlist-plus fs-5';
+      createBtn.appendChild(createIcon);
+
+      const switchSpacer = document.createElement('div');
+      switchSpacer.className = 'form-check form-switch form-switch-md m-0 d-flex align-items-center invisible';
+      const switchSpacerInput = document.createElement('input');
+      switchSpacerInput.className = 'form-check-input mt-0';
+      switchSpacerInput.type = 'checkbox';
+      switchSpacer.appendChild(switchSpacerInput);
+
+      const deleteSpacer = document.createElement('button');
+      deleteSpacer.type = 'button';
+      deleteSpacer.className = 'btn btn-outline-danger d-inline-flex align-items-center justify-content-center invisible';
+      deleteSpacer.style.width = '2.8rem';
+      deleteSpacer.style.height = '2.5rem';
+      const deleteSpacerIcon = document.createElement('i');
+      deleteSpacerIcon.className = 'mdi mdi-delete-forever fs-5';
+      deleteSpacer.appendChild(deleteSpacerIcon);
+
+      const createActionContainer = document.createElement('div');
+      createActionContainer.className = 'd-flex justify-content-end align-items-center gap-3';
+      createActionContainer.append(switchSpacer, deleteSpacer, createBtn);
+
+      const $createRow = createTableRow(
+        [createInput, createActionContainer],
+        false,
+        true
+      );
+
+      $rows.append($createRow);
+
+      const createHint = document.createElement('span');
+      createHint.id = 'instance_chars_needed';
+      createHint.className = 'form-text';
+      createHint.innerHTML = '&nbsp;';
+
+      const $createHintRow = createTableRow(
+        [createHint, document.createElement('div')],
+        false,
+        true
+      );
+
+      $rows.append($createHintRow);
+
+      $instanceTableBody.append($rows);
 
       // Apply Bootstrap toggles and event handlers
       for (const instance of instances) {
@@ -178,16 +259,19 @@ $(document).ready(function () {
   }
 
   // Instance name input validation
-  $('#instance_name').off().on('input', function (e) {
+  $(document).off('input', '#instance_name').on('input', '#instance_name', function (e) {
     const isValid = e.currentTarget.value.length >= 5 && !globalThis.readOnlyMode;
     $('#btn_create_inst').prop('disabled', !isValid);
 
     const charsNeeded = 5 - e.currentTarget.value.length;
-    $('#instance_chars_needed').html(charsNeeded >= 1 && charsNeeded <= 4 ? `${charsNeeded} ${$.i18n('general_chars_needed')}` : "<br />");
+    const $charsHint = $('#instance_chars_needed');
+    if ($charsHint.length) {
+      $charsHint.html(charsNeeded >= 1 && charsNeeded <= 4 ? `${charsNeeded} ${$.i18n('general_chars_needed')}` : "<br />");
+    }
   });
 
   // Instance creation button click handler
-  $('#btn_create_inst').off().on('click', function (e) {
+  $(document).off('click', '#btn_create_inst').on('click', '#btn_create_inst', function () {
     requestInstanceCreate(encodeHTML($('#instance_name').val()));
     $('#instance_name').val("");
     $('#btn_create_inst').prop('disabled', true);

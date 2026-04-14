@@ -8,8 +8,9 @@ Todo:
     ✔ Update html @done(26-04-14 17:53)
     ✔ Update elements @done(26-04-14 18:28)
     ✔ Update Code @done(26-04-14 18:40)
-    ☐ Update structure
-    ☐ Update LED instance management (add/remove/edit) and table
+    ✔ Update structure @done(26-04-14 21:55)
+    ✔ Update LED instance management (add/remove/edit) and table @done(26-04-14 21:55)
+    ☐ Info Card is not removed when Show explanations is disabled
 
   LED Instances:
     LED Output:
