@@ -1,5 +1,5 @@
 //clear priority and other tasks if people reload the page or lost connection while a wizard was active
-$(window.hyperion).one("ready", function (event) {
+$(globalThis.hyperion).one("ready", function (event) {
   if (getStorage("wizardactive") === 'true') {
     requestPriorityClear();
     setStorage("wizardactive", false);
@@ -37,31 +37,31 @@ function createLedDeviceWizards(ledType) {
   $('#btn_led_device_wiz').off();
   if (ledType == "philipshue") {
     $('#btn_wiz_holder').show();
-    wizardName = ledType;
+    const wizardName = ledType;
     data = { wizardName };
     title = 'wiz_hue_title';
   }
   else if (ledType == "nanoleaf") {
     $('#btn_wiz_holder').hide();
-    wizardName = ledType;
+    const wizardName = ledType;
     data = { wizardName };
     title = 'wiz_nanoleaf_user_auth_title';
   }
   else if (ledType == "homeassistant") {
     $('#btn_wiz_holder').hide();
-    wizardName = "layoutLedPositions";
+    const wizardName = "layoutLedPositions";
     data = { wizardName, ledType };
     title = 'wiz_layout_led_positions_title';
   }
   else if (ledType == "atmoorb") {
     $('#btn_wiz_holder').show();
-    wizardName = ledType;
+    const wizardName = ledType;
     data = { wizardName };
     title = 'wiz_atmoorb_title';
   }
   else if (ledType == "yeelight") {
     $('#btn_wiz_holder').show();
-    wizardName = ledType;
+    const wizardName = ledType;
     data = { wizardName };
     title = 'wiz_yeelight_title';
   }

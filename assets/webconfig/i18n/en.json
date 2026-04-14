@@ -504,6 +504,8 @@
   "edt_conf_grabber_discovered_title": "Device discovered",
   "edt_conf_grabber_discovered_title_info": "Select your capture device discovered",
   "edt_conf_grabber_discovery_inprogress": "Discovery in progress",
+  "edt_conf_imageProcessing_heading_expl": "Define how the captured picture is processed before it is sent to the LEDs.",  
+  "edt_conf_imageProcessing_heading_title": "Image Processing",
   "edt_conf_instC_screen_grabber_device_expl": "The screen capture device used",
   "edt_conf_instC_screen_grabber_device_title": "Screen capture device",
   "edt_conf_instC_systemEnable_expl": "Enables the screen capture for this led hardware instance",
