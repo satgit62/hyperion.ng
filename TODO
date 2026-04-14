@@ -51,6 +51,8 @@ Todo:
     ✔ Update html @done(26-04-14 18:19)
     ✔ Update structure @done(26-04-14 18:19)
     ✔ Update elements @done(26-04-14 18:19)
+    ✔ Allow users to save dynamic values they calibrated with @done(26-04-14 19:55)
+    ✔ Allow users to reset dynamic values to configured ones @done(26-04-14 19:56)
     ☐ Implement backend APIs for image processing and reactivate editor elements
     ☐ Implement that ColorAdjustment and ImageProcessing can be saved separately and do not override each other
     ☐ Check, if source selection can be better done for mobile devices
@@ -163,6 +165,11 @@ General:
     ☐ Clean up translations
     Configuration:
       ☐ Define full configuration model and retire legacy translation layer
+  Bootstrap:
+    ☐ Update to Bootstrap 5.3
+    ☐ Remove custom css and use standard Bootstrap components and utilities as much as possible
+    ☐ Remove custom js and legacy bootstrap extensions and use standard Bootstrap components and utilities as much as possible
+    ☐ Update credits for used js libraries
   JQuery:
     ☐ Replace JQuery functions by standard
     ☐ Remove JQuery migration js
