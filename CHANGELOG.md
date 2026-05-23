@@ -48,6 +48,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fixed - Locally installed flatc/protoc compilers were not found
 - ProviderRestAPI - Handle QNetworkAccessManager as direct object
+- ProviderRestAPI - Add error when failing to load QT SSL 
 - Update docker compile to reduce prerequisites and allow ninja build
 
 ## [2.2.0](https://github.com/hyperion-project/hyperion.ng/releases/tag/2.2.0) - 2026-02-02

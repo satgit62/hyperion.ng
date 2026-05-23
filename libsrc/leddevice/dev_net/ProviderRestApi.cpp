@@ -431,15 +431,23 @@ bool ProviderRestApi::setCaCertificate(const QString& caFileName)
 	QFile caFile (caFileName);
 	if (!caFile.open(QIODevice::ReadOnly))
 	{
-		Error(_log,"Unable to open CA-Certificate file: %s", QSTRING_CSTR(caFileName));
+		Error(_log, "Unable to open CA-Certificate file: %s", QSTRING_CSTR(caFileName));
 		return false;
 	}
 
 	QSslCertificate const cert (&caFile);
 	caFile.close();
 
-	QList<QSslCertificate> allowedCAs;
-	allowedCAs << cert;
+	// Check if the certificate parsed correctly before adding it
+	if (cert.isNull())
+	{
+		Error(_log, "The file %s does not contain a valid SSL certificate", QSTRING_CSTR(caFileName));
+		return false;
+	}
+
+	// Append to existing CAs instead of overwriting them
+	QList<QSslCertificate> allowedCAs = configuration.caCertificates();
+	allowedCAs.append(cert);
 	configuration.setCaCertificates(allowedCAs);
 
 	QSslConfiguration::setDefaultConfiguration(configuration);
@@ -451,6 +459,15 @@ bool ProviderRestApi::setCaCertificate(const QString& caFileName)
 		_networkManager->connectToHostEncrypted(_apiUrl.host(), static_cast<quint16>(_apiUrl.port()), configuration);
 		rc = true;
 	}
+	else
+	{
+		Error(_log, "SSL support is compiled into Qt, but the underlying SSL libraries failed to load at runtime. "
+		            "Built against: \"%s\", runtime version: \"%s\".",
+		            QSTRING_CSTR(QSslSocket::sslLibraryBuildVersionString()),
+		            QSTRING_CSTR(QSslSocket::sslLibraryVersionString()));
+	}
+#else
+	Error(_log, "SSL support is entirely disabled in this build of Qt (QT_NO_SSL is defined).");
 #endif
 
 	return rc;
