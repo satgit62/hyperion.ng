@@ -32,21 +32,30 @@ inline bool portAvailable(quint16& port, QSharedPointer<Logger> log)
 {
 	const quint16 prevPort = port;
 	QTcpServer server;
+	int failCount = 0;
 
 	while (!server.listen(QHostAddress::Any, port))
 	{
+		++failCount;
 		QAbstractSocket::SocketError err = server.serverError();
 		QString errString = server.errorString();
 
-		Warning(log, "Port '%d' binding failed. SocketError: %d (%s)",
-				port, err, QSTRING_CSTR(errString));
+		if (failCount == 1)
+		{
+			Warning(log, "Port '%d' binding failed. SocketError: %d (%s)",
+					port, err, QSTRING_CSTR(errString));
+		}
+		else
+		{
+			Debug(log, "Port '%d' binding failed. SocketError: %d (%s)",
+				  port, err, QSTRING_CSTR(errString));
+		}
 
 		// On some platforms (notably Windows), certain ports fail with SocketAccessError
 		// due to OS/proxy reservations or exclusions while higher ports remain available.
-		// Log the detail but continue incrementing rather than aborting.
 		if (err == QAbstractSocket::SocketAccessError)
 		{
-			Warning(log, "Port '%d' is reserved or excluded by the OS/Proxy, trying next port.", port);
+			Debug(log, "Port '%d' is reserved or excluded by the OS/Proxy, trying next port.", port);
 		}
 
 		if (port >= MAX_PORT)
