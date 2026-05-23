@@ -30,45 +30,43 @@ const int MAX_PORT = 65535;
 ///
 inline bool portAvailable(quint16& port, QSharedPointer<Logger> log)
 {
-    const quint16 prevPort = port;
-    QTcpServer server;
-    
-    while (!server.listen(QHostAddress::Any, port))
-    {
-        QAbstractSocket::SocketError err = server.serverError();
-        QString errString = server.errorString();
+	const quint16 prevPort = port;
+	QTcpServer server;
 
-        Warning(log, "Port '%d' binding failed. OS Error: %d (%s)", 
-                port, err, QSTRING_CSTR(errString));
+	while (!server.listen(QHostAddress::Any, port))
+	{
+		QAbstractSocket::SocketError err = server.serverError();
+		QString errString = server.errorString();
 
-        // If Windows denies access outright, incrementing port++ won't solve it.
-        // We can safely return false here without calling server.close() 
-        // because the server never successfully began listening.
-        if (err == QAbstractSocket::SocketAccessError)
-        {
-            Error(log, "Access denied. Port is likely reserved or excluded by the OS/Proxy.");
-            return false;
-        }
+		Warning(log, "Port '%d' binding failed. SocketError: %d (%s)",
+				port, err, QSTRING_CSTR(errString));
 
-        if (port >= MAX_PORT)
-        {
-            Error(log, "Reached maximum port limit (%d).", MAX_PORT);
-            return false;
-        }
+		// On some platforms (notably Windows), certain ports fail with SocketAccessError
+		// due to OS/proxy reservations or exclusions while higher ports remain available.
+		// Log the detail but continue incrementing rather than aborting.
+		if (err == QAbstractSocket::SocketAccessError)
+		{
+			Warning(log, "Port '%d' is reserved or excluded by the OS/Proxy, trying next port.", port);
+		}
 
-        port++;
-    }
-    
-    // Explicitly release the port now that we proved we could listen on it.
-    server.close();
-    
-    if (port != prevPort)
-    {
-        Warning(log, "Requested Port '%d' was unavailable, will use Port '%d' instead", prevPort, port);
-        return false; 
-    }
-    
-    return true;
+		if (port >= MAX_PORT)
+		{
+			Error(log, "Reached maximum port limit (%d).", MAX_PORT);
+			return false;
+		}
+
+		port++;
+	}
+
+	// Explicitly release the port now that we proved we could listen on it.
+	server.close();
+
+	if (port != prevPort)
+	{
+		Warning(log, "Requested Port '%d' was unavailable, will use Port '%d' instead", prevPort, port);
+	}
+
+	return true;
 }
 
 ///
