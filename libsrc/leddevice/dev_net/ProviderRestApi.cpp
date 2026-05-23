@@ -1,6 +1,7 @@
 // Local-Hyperion includes
 #include "ProviderRestApi.h"
 
+#include <algorithm>
 #include <chrono>
 
 #include <QObject>
@@ -221,6 +222,13 @@ httpResponse ProviderRestApi::executeOperation(QNetworkAccessManager::Operation 
 	request.setUrl(url);
 	request.setOriginatingObject(this);
 
+#ifndef QT_NO_SSL
+	if (!_caCertificates.isEmpty() && url.scheme().compare("https", Qt::CaseInsensitive) == 0)
+	{
+		request.setSslConfiguration(_requestSslConfiguration);
+	}
+#endif
+
 #if (QT_VERSION >= QT_VERSION_CHECK(5, 15, 0))
 	_networkManager->setTransferTimeout(static_cast<int>(_requestTimeout.count()));
 #endif
@@ -282,7 +290,6 @@ httpResponse ProviderRestApi::executeOperation(QNetworkAccessManager::Operation 
 
 	return response;
 }
-
 namespace {
 QString getReplyErrorReason(QNetworkReply* const& reply, const httpResponse& response)
 {
@@ -424,10 +431,6 @@ QByteArray httpResponse::getHeader(const QByteArray& header) const
 
 bool ProviderRestApi::setCaCertificate(const QString& caFileName)
 {
-	bool rc {false};
-	/// Add our own CA to the default SSL configuration
-	QSslConfiguration configuration = QSslConfiguration::defaultConfiguration();
-
 	QFile caFile (caFileName);
 	if (!caFile.open(QIODevice::ReadOnly))
 	{
@@ -435,42 +438,45 @@ bool ProviderRestApi::setCaCertificate(const QString& caFileName)
 		return false;
 	}
 
-	QSslCertificate const cert (&caFile);
+	// Load all PEM certificates from the bundle (handles concatenated/multi-cert bundles)
+	QList<QSslCertificate> newCerts = QSslCertificate::fromDevice(&caFile, QSsl::Pem);
 	caFile.close();
 
-	// Check if the certificate parsed correctly before adding it
-	if (cert.isNull())
+	// Filter out any null/unparseable entries
+	newCerts.erase(std::remove_if(newCerts.begin(), newCerts.end(),
+	                              [](const QSslCertificate& c) { return c.isNull(); }),
+	               newCerts.end());
+
+	if (newCerts.isEmpty())
 	{
-		Error(_log, "The file %s does not contain a valid SSL certificate", QSTRING_CSTR(caFileName));
+		Error(_log, "The file %s does not contain any valid SSL certificates", QSTRING_CSTR(caFileName));
 		return false;
 	}
 
-	// Append to existing CAs instead of overwriting them
-	QList<QSslCertificate> allowedCAs = configuration.caCertificates();
-	allowedCAs.append(cert);
-	configuration.setCaCertificates(allowedCAs);
+	_caCertificates = newCerts;
 
-	QSslConfiguration::setDefaultConfiguration(configuration);
+	_requestSslConfiguration = QSslConfiguration::defaultConfiguration();
+	QList<QSslCertificate> allowedCAs = _requestSslConfiguration.caCertificates();
+	allowedCAs.append(_caCertificates);
+	_requestSslConfiguration.setCaCertificates(allowedCAs);
 
 #ifndef QT_NO_SSL
-	if (QSslSocket::supportsSsl())
-	{
-		QObject::connect( _networkManager.get(), &QNetworkAccessManager::sslErrors, this, &ProviderRestApi::onSslErrors );
-		_networkManager->connectToHostEncrypted(_apiUrl.host(), static_cast<quint16>(_apiUrl.port()), configuration);
-		rc = true;
-	}
-	else
+	if (!QSslSocket::supportsSsl())
 	{
 		Error(_log, "SSL support is compiled into Qt, but the underlying SSL libraries failed to load at runtime. "
 		            "Built against: \"%s\", runtime version: \"%s\".",
 		            QSTRING_CSTR(QSslSocket::sslLibraryBuildVersionString()),
 		            QSTRING_CSTR(QSslSocket::sslLibraryVersionString()));
+		return false;
 	}
+
+	// Use Qt::UniqueConnection to prevent duplicate signal connections on repeated calls
+	QObject::connect( _networkManager.get(), &QNetworkAccessManager::sslErrors, this, &ProviderRestApi::onSslErrors, Qt::UniqueConnection );
+	return true;
 #else
 	Error(_log, "SSL support is entirely disabled in this build of Qt (QT_NO_SSL is defined).");
+	return false;
 #endif
-
-	return rc;
 }
 
 void ProviderRestApi::acceptSelfSignedCertificates(bool isAccepted)

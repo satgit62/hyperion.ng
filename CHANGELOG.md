@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🔧 Changed
 
+ - Windows - Provide more error details if the UI fails to start because the system proxy is enabled (#2005).
+
 - **Fixes:**
 - Windows DDA Grabber - Prevent image updates when mouse is moved. Provide a Warning on incomptible setting. (#2002)
 ---
@@ -27,6 +29,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Technical
 
+- ProviderRestAPI - Add error when failing to load Qt SSL
+
 ## [2.2.1](https://github.com/hyperion-project/hyperion.ng/releases/tag/2.2.1) - 2026-04-06
 
 ### ✨ Added
@@ -36,8 +40,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ### 🔧 Changed
-
- - Windows - Provide more error details if the UI fails to start because the system proxy is enabled (#2005).
 
 - **Fixes:**
   - Art-Net device is limited to 108 DMX channels (36 RGB LEDs) instead of 512 channels (170 RGB LEDs)
@@ -50,7 +52,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fixed - Locally installed flatc/protoc compilers were not found
 - ProviderRestAPI - Handle QNetworkAccessManager as direct object
-- ProviderRestAPI - Add error when failing to load Qt SSL
 - Update docker compile to reduce prerequisites and allow ninja build
 
 ## [2.2.0](https://github.com/hyperion-project/hyperion.ng/releases/tag/2.2.0) - 2026-02-02
