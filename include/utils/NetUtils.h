@@ -30,20 +30,45 @@ const int MAX_PORT = 65535;
 ///
 inline bool portAvailable(quint16& port, QSharedPointer<Logger> log)
 {
-	const quint16 prevPort = port;
-	QTcpServer server;
-	while (!server.listen(QHostAddress::Any, port))
-	{
-		Warning(log,"Port '%d' is already in use, will increment", port);
-		port ++;
-	}
-	server.close();
-	if(port != prevPort)
-	{
-		Warning(log, "The requested Port '%d' is already in use, will use Port '%d' instead", prevPort, port);
-		return false;
-	}
-	return true;
+    const quint16 prevPort = port;
+    QTcpServer server;
+    
+    while (!server.listen(QHostAddress::Any, port))
+    {
+        QAbstractSocket::SocketError err = server.serverError();
+        QString errString = server.errorString();
+
+        Warning(log, "Port '%d' binding failed. OS Error: %d (%s)", 
+                port, err, QSTRING_CSTR(errString));
+
+        // If Windows denies access outright, incrementing port++ won't solve it.
+        // We can safely return false here without calling server.close() 
+        // because the server never successfully began listening.
+        if (err == QAbstractSocket::SocketAccessError)
+        {
+            Error(log, "Access denied. Port is likely reserved or excluded by the OS/Proxy.");
+            return false;
+        }
+
+        if (port >= MAX_PORT)
+        {
+            Error(log, "Reached maximum port limit (%d).", MAX_PORT);
+            return false;
+        }
+
+        port++;
+    }
+    
+    // Explicitly release the port now that we proved we could listen on it.
+    server.close();
+    
+    if (port != prevPort)
+    {
+        Warning(log, "Requested Port '%d' was unavailable, will use Port '%d' instead", prevPort, port);
+        return false; 
+    }
+    
+    return true;
 }
 
 ///

@@ -37,6 +37,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🔧 Changed
 
+- Windows - Provide more error details, if the UI fails to start due to system proxy is turned on (#2005).
+
 - **Fixes:**
   - Art-Net device is limited to 108 DMX channels (36 RGB LEDs) instead of 512 channels (170 RGB LEDs)
   - Image Effect trigger kills Hyperion (#1980)
