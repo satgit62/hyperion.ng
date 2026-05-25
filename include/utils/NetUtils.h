@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QTcpServer>
+#include <QNetworkProxy>
 #include <QUrl>
 #include <QHostAddress>
 #include <QHostInfo>
@@ -32,6 +33,9 @@ inline bool portAvailable(quint16& port, QSharedPointer<Logger> log)
 {
 	const quint16 prevPort = port;
 	QTcpServer server;
+	// Bypass any system-level proxy (e.g. SOCKSv5): proxies reject TCP listen/bind
+	// with UnsupportedSocketOperationError and the port cannot be recovered by incrementing.
+	server.setProxy(QNetworkProxy::NoProxy);
 	int failCount = 0;
 
 	while (!server.listen(QHostAddress::Any, port))
@@ -49,6 +53,15 @@ inline bool portAvailable(quint16& port, QSharedPointer<Logger> log)
 		{
 			Debug(log, "Port '%d' binding failed. SocketError: %d (%s)",
 				  port, err, QSTRING_CSTR(errString));
+		}
+
+		// UnsupportedSocketOperationError typically means a system proxy rejected the
+		// bind (SOCKSv5 does not support listen). setProxy(NoProxy) above should prevent
+		// this, but abort immediately if it still occurs — no port will succeed.
+		if (err == QAbstractSocket::UnsupportedSocketOperationError)
+		{
+			Error(log, "Port '%d' bind rejected as unsupported operation (proxy?). Aborting port search.", port);
+			return false;
 		}
 
 		// On some platforms (notably Windows), certain ports fail with SocketAccessError
