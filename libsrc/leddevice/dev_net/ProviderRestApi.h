@@ -488,7 +488,7 @@ private:
 	QSslConfiguration _requestSslConfiguration;
 
 	QString _serverIdentity;
-	bool _isSelfSignedCertificateAccpeted;
+	bool _isSelfSignedCertificateAccepted;
 };
 
 #endif // PROVIDERRESTAPI_H

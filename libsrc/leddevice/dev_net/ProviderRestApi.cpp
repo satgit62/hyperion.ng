@@ -1,7 +1,6 @@
 // Local-Hyperion includes
 #include "ProviderRestApi.h"
 
-#include <algorithm>
 #include <chrono>
 
 #include <QObject>
@@ -33,7 +32,7 @@ ProviderRestApi::ProviderRestApi(const QString& scheme, const QString& host, int
 	: _log(Logger::getInstance("LEDDEVICE"))
 	, _networkManager(new QNetworkAccessManager())
 	, _requestTimeout(DEFAULT_REST_TIMEOUT)
-	, _isSelfSignedCertificateAccpeted(false)
+	, _isSelfSignedCertificateAccepted(false)
 {
 	TRACK_SCOPE();
 
@@ -431,21 +430,38 @@ QByteArray httpResponse::getHeader(const QByteArray& header) const
 
 bool ProviderRestApi::setCaCertificate(const QString& caFileName)
 {
+	// Temporary debug line	
+	Warning(_log, "Built against: \"%s\", runtime version: \"%s\".",
+			QSTRING_CSTR(QSslSocket::sslLibraryBuildVersionString()),
+			QSTRING_CSTR(QSslSocket::sslLibraryVersionString()));
+
+#ifndef QT_NO_SSL
+	if (!QSslSocket::supportsSsl())
+	{
+		Error(_log, "SSL support is compiled into Qt, but the underlying SSL libraries failed to load at runtime. "
+		            "Built against: \"%s\", runtime version: \"%s\".",
+		            QSTRING_CSTR(QSslSocket::sslLibraryBuildVersionString()),
+		            QSTRING_CSTR(QSslSocket::sslLibraryVersionString()));
+		return false;
+	}
+#else
+	Error(_log, "SSL support is entirely disabled in this build of Qt (QT_NO_SSL is defined).");
+	return false;
+#endif
+
 	QFile caFile (caFileName);
 	if (!caFile.open(QIODevice::ReadOnly))
 	{
 		Error(_log, "Unable to open CA-Certificate file: %s", QSTRING_CSTR(caFileName));
 		return false;
 	}
+	
+	// Temporary debug line
+	Warning(_log, "DEBUG: Resource file size is %lld bytes", caFile.size());
 
 	// Load all PEM certificates from the bundle (handles concatenated/multi-cert bundles)
 	QList<QSslCertificate> newCerts = QSslCertificate::fromDevice(&caFile, QSsl::Pem);
 	caFile.close();
-
-	// Filter out any null/unparseable entries
-	newCerts.erase(std::remove_if(newCerts.begin(), newCerts.end(),
-	                              [](const QSslCertificate& c) { return c.isNull(); }),
-	               newCerts.end());
 
 	if (newCerts.isEmpty())
 	{
@@ -460,28 +476,14 @@ bool ProviderRestApi::setCaCertificate(const QString& caFileName)
 	allowedCAs.append(_caCertificates);
 	_requestSslConfiguration.setCaCertificates(allowedCAs);
 
-#ifndef QT_NO_SSL
-	if (!QSslSocket::supportsSsl())
-	{
-		Error(_log, "SSL support is compiled into Qt, but the underlying SSL libraries failed to load at runtime. "
-		            "Built against: \"%s\", runtime version: \"%s\".",
-		            QSTRING_CSTR(QSslSocket::sslLibraryBuildVersionString()),
-		            QSTRING_CSTR(QSslSocket::sslLibraryVersionString()));
-		return false;
-	}
-
 	// Use Qt::UniqueConnection to prevent duplicate signal connections on repeated calls
 	QObject::connect( _networkManager.get(), &QNetworkAccessManager::sslErrors, this, &ProviderRestApi::onSslErrors, Qt::UniqueConnection );
 	return true;
-#else
-	Error(_log, "SSL support is entirely disabled in this build of Qt (QT_NO_SSL is defined).");
-	return false;
-#endif
 }
 
 void ProviderRestApi::acceptSelfSignedCertificates(bool isAccepted)
 {
-	_isSelfSignedCertificateAccpeted = isAccepted;
+	_isSelfSignedCertificateAccepted = isAccepted;
 }
 
 void ProviderRestApi::setAlternateServerIdentity(const QString& serverIdentity)
@@ -586,7 +588,7 @@ bool ProviderRestApi::handleSslError(const QSslError& error, const QSslConfigura
 			}
 			break;
 		case QSslError::SelfSignedCertificate:
-			if (_isSelfSignedCertificateAccpeted)
+			if (_isSelfSignedCertificateAccepted)
 			{
 				const QSslCertificate& certificate = error.certificate();
 				if (matchesPinnedCertificate(certificate))
